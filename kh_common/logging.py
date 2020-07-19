@@ -1,4 +1,4 @@
-import getFullyQualifiedClassName
+from kh_common import getFullyQualifiedClassName
 from traceback import format_tb
 import logging
 
