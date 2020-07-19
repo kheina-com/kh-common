@@ -52,7 +52,7 @@ class LogHandler(logging.Handler) :
 		if record.exc_info :
 			e = record.exc_info[1]
 			errorinfo = {
-				'error': f'{GetFullyQualifiedClassName(e)}: {e}',
+				'error': f'{getFullyQualifiedClassName(e)}: {e}',
 				'stacktrace': format_tb(record.exc_info[2]),
 				**getattr(e, 'logdata', { }),
 			}
