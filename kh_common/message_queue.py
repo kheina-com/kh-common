@@ -1,4 +1,4 @@
-from pycrawl.common import GetFullyQualifiedClassName
+import getFullyQualifiedClassName
 from traceback import format_tb
 import logging
 import pika
