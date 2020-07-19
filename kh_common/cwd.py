@@ -1,6 +1,6 @@
 import os
 
-def SetCWD() :
+def setCwd() :
 	# fetch working directory
 	with open('/var/local/kheina.com-dir') as cwd :
 		os.chdir(cwd.read().strip())

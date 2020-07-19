@@ -1,6 +1,7 @@
 from time import time
 
 
+# PascalCase because these are technically classes
 def SimpleCache(TTL=300) :
 	def decorator(func) :
 		def wrapper(*args, **kwargs) :
@@ -15,6 +16,7 @@ def SimpleCache(TTL=300) :
 	return decorator
 
 
+# PascalCase because these are technically classes
 def ArgsCache(TTL=300, classfunc=None) :
 	def decorator(func) :
 		if classfunc :
