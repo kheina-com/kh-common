@@ -1,34 +1,34 @@
-class HTTPError(Exception) :
+class HttpError(Exception) :
 	def __init__(self, message, status=500, logdata={ }) :
 		super().__init__(message)
 		self.status = status
 		self.logdata = logdata
 
-class NotFound(HTTPError) :
+class NotFound(HttpError) :
 	def __init__(self, message, *args, **kwargs) :
 		super().__init__(message, *args, status=404, **kwargs)
 
-class BadRequest(HTTPError) :
+class BadRequest(HttpError) :
 	def __init__(self, message, *args, **kwargs) :
 		super().__init__(message, *args, status=400, **kwargs)
 
-class Unauthorized(HTTPError) :
+class Unauthorized(HttpError) :
 	def __init__(self, message, *args, **kwargs) :
 		super().__init__(message, *args, status=401, **kwargs)
 
-class Forbidden(HTTPError) :
+class Forbidden(HttpError) :
 	def __init__(self, message, *args, **kwargs) :
 		super().__init__(message, *args, status=403, **kwargs)
 
-class UnsupportedMedia(HTTPError) :
+class UnsupportedMedia(HttpError) :
 	def __init__(self, message, *args, **kwargs) :
 		super().__init__(message, *args, status=415, **kwargs)
 
-class InternalServerError(HTTPError) :
+class InternalServerError(HttpError) :
 	pass
 
-class ResponseNotOk(HTTPError) :
+class ResponseNotOk(HttpError) :
 	pass
 
-class BadOrMalformedResponse(HTTPError) :
+class BadOrMalformedResponse(HttpError) :
 	pass

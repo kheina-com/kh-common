@@ -1,2 +1,2 @@
-pika
-ujson
+pika>=1.1.0
+ujson>=3.0.0
