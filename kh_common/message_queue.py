@@ -2,6 +2,8 @@ from kh_common import getFullyQualifiedClassName
 from traceback import format_tb
 import logging
 import pika
+import sys
+
 
 class Receiver :
 

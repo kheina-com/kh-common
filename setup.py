@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
 	name='kh_common',
-	version='0.2.0',
+	version='0.2.1',
 	description='common libraries for kheina.com',
 	author='kheina',
 	url='https://gitlab.com/kheina.com/kh-common',

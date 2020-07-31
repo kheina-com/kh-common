@@ -7,7 +7,7 @@ tagOperators = defaultdict( lambda : normalizeTag, {
 	'/l': lambda x : x[:-2],
 })
 
-repeatreplace = re_compile(r'(\w+?)\1{2,}')
+repeatreplace = re_compile(r'(\w+?)\1{3,}')
 
 tagreplace = re_compile(r'[-_]+')
 
