@@ -13,7 +13,7 @@ tagreplace = re_compile(r'[-_]+')
 
 
 def normalizeTag(tag) :
-	return repeatreplace.sub(lambda x: x.group(1) * 2, tagreplace.sub('_', '_'.join(tag.split())).strip('-_').lower())
+	return repeatreplace.sub(lambda x: x.group(1) * 3, tagreplace.sub('_', '_'.join(tag.split())).strip('-_').lower())
 
 
 def tagSplit(tags) :
