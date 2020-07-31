@@ -74,5 +74,6 @@ def getLogger(name, *args, level=logging.INFO, filter=lambda x : x, disable=[], 
 	logging.root.setLevel(logging.NOTSET)
 	handler = LogHandler(name, level=level)
 	handler.addFilter(filter)
+	logging.root.handlers.clear()
 	logging.root.addHandler(handler)
 	return logging.getLogger(name)
