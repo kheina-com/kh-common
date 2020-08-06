@@ -6,4 +6,4 @@ def b64encode(bytestring) :
 
 
 def b64decode(bytestring) :
-	return urlsafe_b64decode(bytestring + (4 - len(bytestring) % 4) * b'=')
+	return urlsafe_b64decode(bytestring + (4 - len(bytestring) % 4) * (b'=' if isinstance(bytestring, bytes) else '='))
