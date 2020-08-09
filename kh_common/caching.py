@@ -1,4 +1,3 @@
-from sched import scheduler
 from time import time
 
 
@@ -8,7 +7,6 @@ def SimpleCache(TTL=300) :
 		def wrapper(*args, **kwargs) :
 			now = time()
 			if now > decorator.expire :
-				# set expire first so that another thread doesn't enter this block
 				decorator.expire = now + TTL
 				decorator.data = func(*args, **kwargs)
 			return decorator.data
@@ -20,24 +18,36 @@ def SimpleCache(TTL=300) :
 
 # PascalCase because these are technically classes
 def ArgsCache(TTL=300) :
-	class CachedObject :
-		def __init__(self, data=None) :
-			self.data = data
-			self.expires = time() + TTL
 
 	def decorator(func) :
 
 		def wrapper(*args) :
 
 			now = time()
-			if args in decorator.cache and decorator.cache[args].expires > now :
-				return decorator.cache[args].data
 
-			decorator.cache[args] = CachedObject(func(*args))
+			if decorator.cache :
 
-			return decorator.cache[args].data
+				i = 0
+				for expires, key in decorator.keys :
+					if expires > now : break
+					del decorator.cache[key]
+					i += 1
+
+				if i == len(decorator.keys) :
+					decorator.keys.clear()
+				elif i :
+					decorator.keys = decorator.keys[-len(decorator.cache):]
+
+				if args in decorator.cache :
+					return decorator.cache[args]
+
+			decorator.keys.append((now + TTL, args))
+			data = decorator.cache[args] = func(*args)
+
+			return data
 
 		return wrapper
 
 	decorator.cache = { }
+	decorator.keys = [ ]
 	return decorator
