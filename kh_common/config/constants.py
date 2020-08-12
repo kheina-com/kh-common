@@ -17,13 +17,7 @@ prod = {
 
 assert local.keys() == dev.keys() == prod.keys()
 
-env_vars = local
-if environment == 'prod' :
-	env_vars = prod
-elif environment == 'dev' :
-	env_vars = dev
-elif environment == 'local' :
-	env_vars = local
+env_vars = locals().get(environment, local)
 
 # add the variables from the environment to the module
 locals().update(env_vars)
