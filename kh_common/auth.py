@@ -57,6 +57,6 @@ def verifyToken(token) :
 	version = int(load[:load.find(b'.')])
 
 	if version in tokenVersionSwitch :
-		return tokenVersionSwitch[version]
+		return tokenVersionSwitch[version](load, signature)
 
 	raise ValueError('The given token uses a version that is unable to be decoded.')
