@@ -54,7 +54,7 @@ tokenVersionSwitch = {
 
 def verifyToken(token) :
 	load, signature = tuple(map(b64decode, token.split('.')))
-	version = int(a[:a.find('.')])
+	version = int(load[:load.find('.')])
 
 	if version in tokenVersionSwitch :
 		return tokenVersionSwitch[version]
