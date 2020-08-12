@@ -1,9 +1,9 @@
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from kh_common.config.constants import auth_host
 from kh_common.http_error import Unauthorized
 from requests import post as requests_post
 from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
-from kh_common.config import auth_host
 from time import time
 import ujson as json
 
