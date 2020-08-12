@@ -24,6 +24,9 @@ def v1token(token) :
 	expires = int.from_bytes(b64decode(expires), 'big')
 	guid = b64decode(guid).hex()
 
+	if time() > expires :
+		raise Unauthorized('Key has expired.')
+
 	key_data = fetchPublicKey(key_id, algorithm)
 
 	if time() > key_data['expires'] :
@@ -34,7 +37,7 @@ def v1token(token) :
 	)
 
 	try :
-		public_key.verify(b64decode(signature), content)
+		public_key.verify(b64decode(signature), content.encode())
 	except :
 		raise Unauthorized('Key validation failed.')
 
@@ -51,7 +54,7 @@ tokenVersionSwitch = {
 
 
 def verifyToken(token) :
-	version = b64decode(token[:token.find(b'.')])
+	version = b64decode(token[:token.find('.')])
 
 	if version in tokenVersionSwitch :
 		return tokenVersionSwitch[version](token)
