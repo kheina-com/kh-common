@@ -15,9 +15,10 @@ def fetchPublicKey(key_id, algorithm) :
 
 
 def v1token(token) :
-	version, algorithm, key_id, expires, guid, data = load.split(b'.', 5)
+	content, signature = token.rsplit('.', 1)
+	version, load = tuple(map(b64decode, content.split('.')))
+	algorithm, key_id, expires, guid, data = load.split(b'.', 4)
 
-	version = version.decode()
 	algorithm = algorithm.decode()
 	key_id = int.from_bytes(b64decode(key_id), 'big')
 	expires = int.from_bytes(b64decode(expires), 'big')
@@ -33,7 +34,7 @@ def v1token(token) :
 	)
 
 	try :
-		public_key.verify(signature, load)
+		public_key.verify(b64decode(signature), content)
 	except :
 		raise Unauthorized('Key validation failed.')
 

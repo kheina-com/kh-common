@@ -25,7 +25,6 @@ elif environment == 'dev' :
 elif environment == 'local' :
 	env_vars = local
 
-
 # add the variables from the environment to the module
 locals().update(env_vars)
 
