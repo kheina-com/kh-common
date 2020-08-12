@@ -4,7 +4,7 @@ from os import environ
 environment = environ.get('ENVIRONMENT', 'LOCAL').lower()
 
 local = {
-	'admin_host': 'http://127.0.0.1',
+	'admin_host': 'http://127.0.0.1:5000',
 }
 
 dev = {
