@@ -22,12 +22,8 @@ if path.isdir('credentials') :
 		env_vars.update(c)
 		del filename, config, c
 
-
 # add the variables from the environment to the module
 locals().update(env_vars)
 
 # delete extraneous data
 del env_vars, environment, environ, path, listdir, json_load
-
-
-# put other variables/constants here (these will overwrite the env-specific configs above!)
