@@ -49,6 +49,8 @@ class LogHandler(logging.Handler) :
 
 
 	def emit(self, record) :
+		if record.args and isinstance(record.msg, str) and len(record.args) == record.msg.count('%') :
+			record.msg = record.msg % record.args
 		if record.exc_info :
 			e = record.exc_info[1]
 			errorinfo = {
