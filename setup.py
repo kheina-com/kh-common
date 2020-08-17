@@ -10,5 +10,8 @@ setup(
 	install_requires=[
 		'pika',
 		'ujson',
+		'cryptography',
+		'requests',
+		'google-cloud-logging',
 	],
 )

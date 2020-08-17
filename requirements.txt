@@ -1,2 +1,5 @@
 pika>=1.1.0
 ujson>=3.0.0
+cryptography>=3.0
+google-cloud-logging>=1.15.0
+requests>=2.23.0
