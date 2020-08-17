@@ -18,15 +18,11 @@ def SimpleCache(TTL=300) :
 
 # PascalCase because these are technically classes
 def ArgsCache(TTL=300) :
-
 	def decorator(func) :
-
 		def wrapper(*args) :
-
 			now = time()
 
 			if decorator.cache :
-
 				i = 0
 				for expires, key in decorator.keys :
 					if expires > now : break
