@@ -1,4 +1,4 @@
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from cryptography.hazmat.primitives.serialization import load_der_public_key
 from kh_common.config.constants import auth_host
 from kh_common.http_error import Unauthorized
 from requests import post as requests_post
@@ -9,9 +9,21 @@ import ujson as json
 
 
 @ArgsCache(60 * 60 * 24)  # 24 hour cache
-def fetchPublicKey(key_id, algorithm) :
+def _fetchPublicKey(key_id, algorithm) :
 	response = requests_post(f'{auth_host}/v1/key', json={ 'key_id': key_id, 'algorithm': algorithm })
-	return json.loads(response.text)
+	load = json.loads(response.text)
+
+	signature = b64decode(load['signature'])
+	key = b64decode(load['key'])
+	public_key = load_der_public_key(key)
+
+	# don't verify in try/catch so that it doesn't cache an invalid token
+	public_key.verify(signature, key)
+
+	return {
+		'public_key': public_key,
+		'expires': load['expires'],
+	}
 
 
 def v1token(token) :
@@ -27,17 +39,13 @@ def v1token(token) :
 	if time() > expires :
 		raise Unauthorized('Key has expired.')
 
-	key_data = fetchPublicKey(key_id, algorithm)
+	key = _fetchPublicKey(key_id, algorithm)
 
-	if time() > key_data['expires'] :
+	if time() > key['expires'] :
 		raise Unauthorized('Key has expired.')
 
-	public_key = Ed25519PublicKey.from_public_bytes(
-		b64decode(key_data['key'])
-	)
-
 	try :
-		public_key.verify(b64decode(signature), content.encode())
+		key['public_key'].verify(b64decode(signature), content.encode())
 	except :
 		raise Unauthorized('Key validation failed.')
 
