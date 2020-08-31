@@ -2,7 +2,7 @@ from setuptools import setup, find_packages
 
 setup(
 	name='kh_common',
-	version='0.2.5',
+	version='0.2.6',
 	description='common libraries for kheina.com',
 	author='kheina',
 	url='https://gitlab.com/kheina.com/kh-common',
@@ -10,5 +10,8 @@ setup(
 	install_requires=[
 		'pika',
 		'ujson',
+		'cryptography',
+		'requests',
+		'google-cloud-logging',
 	],
 )
