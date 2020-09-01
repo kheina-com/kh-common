@@ -24,13 +24,14 @@ class B2Interface :
 		self.b2_max_backoff = max_backoff
 		self.b2_max_retries = max_retries
 		self.mime_types = {
-			'image/jpeg': 'jpg',
-			'image/png': 'png',
-			'image/webp': 'webp',
-			'image/gif': 'gif',
-			'video/webm': 'webm',
-			'video/mp4': 'mp4',
-			'video/quicktime': 'mov',
+			'jpg': 'image/jpeg',
+			'jpeg': 'image/jpeg',
+			'png': 'image/png',
+			'webp': 'image/webp',
+			'gif': 'image/gif',
+			'webm': 'video/webm',
+			'mp4': 'video/mp4',
+			'mov': 'video/quicktime',
 			**mime_types,
 		}
 		self.b2_authorize()
@@ -90,13 +91,13 @@ class B2Interface :
 		)
 
 
-	def b2_upload(self, file_data, content_type, filename=None, sha1=None, extension=None) :
+	def b2_upload(self, file_data, filename, content_type=None, sha1=None) :
 		# obtain upload url
 		upload_url = self._obtain_upload_url()
 
-		sha1  = sha1 or hashlib_sha1(file_data).hexdigest()
-		extension = extension or self.mime_types[content_type]
-		filename = filename or f'{sha1}.{extension}'
+		sha1 = sha1 or hashlib_sha1(file_data).hexdigest()
+		extension = filename[filename.rfind('.') + 1:]
+		content_type = content_type or self.mime_types[extension]
 
 		headers = {
 			'Authorization': upload_url['authorizationToken'],
@@ -107,6 +108,7 @@ class B2Interface :
 		}
 
 		backoff = 1
+		response = None
 		for _ in range(self.b2_max_retries) :
 			try :
 				response = requests.post(
@@ -125,4 +127,8 @@ class B2Interface :
 			sleep(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
 
-		raise B2UploadError(f'Upload to b2 failed, max retries exceeded: {self.b2_max_retries}.')
+		raise B2UploadError(
+			f'Upload to b2 failed, max retries exceeded: {self.b2_max_retries}.',
+			response=json.loads(response.content) if response else None,
+			status=response.status_code if response else None,
+		)
