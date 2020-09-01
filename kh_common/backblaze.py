@@ -33,9 +33,10 @@ class B2Interface :
 			'video/quicktime': 'mov',
 			**mime_types,
 		}
+		self.b2_authorize()
 
 
-	def authorize_b2(self) :
+	def b2_authorize(self) :
 		basic_auth_string = b'Basic ' + b64encode((b2['key_id'] + ':' + B2['key']).encode())
 		b2_headers = { 'Authorization': basic_auth_string }
 		response = requests.get(
@@ -49,7 +50,11 @@ class B2Interface :
 			return True
 
 		else :
-			raise B2AuthorizationError('B2 authorization handshake failed.', response=response.content)
+			raise B2AuthorizationError(
+				'B2 authorization handshake failed.',
+				response=json.loads(response.content) if response else None,
+				status=response.status_code if response else None,
+			)
 
 
 	def _obtain_upload_url(self) :

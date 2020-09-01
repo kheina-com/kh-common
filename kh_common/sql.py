@@ -8,10 +8,10 @@ class SqlInterface :
 
 	def __init__(self) :
 		self.logger = getLogger('sql-interface')
-		self.connect_sql()
+		self.sql_connect()
 
 
-	def connect_sql(self) :
+	def sql_connect(self) :
 		try :
 			self._conn = dbConnect(**db)
 
