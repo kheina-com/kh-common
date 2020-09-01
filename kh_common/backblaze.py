@@ -113,7 +113,7 @@ class B2Interface :
 					upload_url['uploadUrl'],
 					headers=headers,
 					data=file_data,
-					timeout=self.imageTimeout,
+					timeout=self.b2_timeout,
 				)
 
 			except :
