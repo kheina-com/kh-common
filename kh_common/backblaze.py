@@ -37,7 +37,7 @@ class B2Interface :
 
 
 	def b2_authorize(self) :
-		basic_auth_string = b'Basic ' + b64encode((b2['key_id'] + ':' + B2['key']).encode())
+		basic_auth_string = b'Basic ' + b64encode((b2['key_id'] + ':' + b2['key']).encode())
 		b2_headers = { 'Authorization': basic_auth_string }
 		response = requests.get(
 			'https://api.backblazeb2.com/b2api/v2/b2_authorize_account',
@@ -46,12 +46,12 @@ class B2Interface :
 		)
 
 		if response.ok :
-			self.B2 = json.loads(response.content)
+			self.b2 = json.loads(response.content)
 			return True
 
 		else :
 			raise B2AuthorizationError(
-				'B2 authorization handshake failed.',
+				'b2 authorization handshake failed.',
 				response=json.loads(response.content) if response else None,
 				status=response.status_code if response else None,
 			)
@@ -63,9 +63,9 @@ class B2Interface :
 		for _ in range(self.b2_max_retries) :
 			try :
 				response = requests.post(
-					self.B2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
-					data='{"bucketId":"' + self.B2['allowed']['bucketId'] + '"}',
-					headers={ 'Authorization': self.B2['authorizationToken'] },
+					self.b2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
+					data='{"bucketId":"' + self.b2['allowed']['bucketId'] + '"}',
+					headers={ 'Authorization': self.b2['authorizationToken'] },
 					timeout=self.b2_timeout,
 				)
 
@@ -84,7 +84,7 @@ class B2Interface :
 			backoff = min(backoff * 2, self.b2_max_backoff)
 
 		raise B2AuthorizationError(
-			f'Unable to obtain B2 upload url, max retries exceeded: {self.b2_max_retries}.',
+			f'Unable to obtain b2 upload url, max retries exceeded: {self.b2_max_retries}.',
 			response=json.loads(response.content) if response else None,
 			status=response.status_code if response else None,
 		)
@@ -125,4 +125,4 @@ class B2Interface :
 			sleep(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
 
-		raise B2UploadError(f'Upload to B2 failed, max retries exceeded: {self.b2_max_retries}.')
+		raise B2UploadError(f'Upload to b2 failed, max retries exceeded: {self.b2_max_retries}.')
