@@ -1,7 +1,7 @@
 from psycopg2.errors import UniqueViolation, ConnectionException
 from psycopg2 import Binary, connect as dbConnect
+from kh_common.config.credentials import db
 from kh_common.logging import getLogger
-from kh_common.credentials import db
 
 
 class SqlInterface :

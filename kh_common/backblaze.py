@@ -1,7 +1,7 @@
 from kh_common.exceptions.base_error import BaseError
+from kh_common.config.credentials import b2
 from hashlib import sha1 as hashlib_sha1
 from kh_common.logging import getLogger
-from kh_common.credentials import b2
 from base64 import b64encode
 from time import sleep
 import ujson as json
@@ -85,7 +85,7 @@ class B2Interface :
 		)
 
 
-	def upload(self, file_data, content_type, filename=None, sha1=None, extension=None) :
+	def b2_upload(self, file_data, content_type, filename=None, sha1=None, extension=None) :
 		# obtain upload url
 		upload_url = self._obtain_upload_url()
 
