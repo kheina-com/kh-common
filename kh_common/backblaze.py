@@ -102,7 +102,7 @@ class B2Interface :
 			'Authorization': upload_url['authorizationToken'],
 			'X-Bz-File-Name': filename,
 			'Content-Type': content_type,
-			'Content-Length': str(len(filedata)),
+			'Content-Length': str(len(file_data)),
 			'X-Bz-Content-Sha1': sha1,
 		}
 
@@ -112,7 +112,7 @@ class B2Interface :
 				response = requests.post(
 					upload_url['uploadUrl'],
 					headers=headers,
-					data=filedata,
+					data=file_data,
 					timeout=self.imageTimeout,
 				)
 
