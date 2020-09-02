@@ -34,10 +34,10 @@ class B2Interface :
 			'mov': 'video/quicktime',
 			**mime_types,
 		}
-		self.b2_authorize()
+		self._b2_authorize()
 
 
-	def b2_authorize(self) :
+	def _b2_authorize(self) :
 		basic_auth_string = b'Basic ' + b64encode((b2['key_id'] + ':' + b2['key']).encode())
 		b2_headers = { 'Authorization': basic_auth_string }
 		response = requests.get(
@@ -91,13 +91,17 @@ class B2Interface :
 		)
 
 
+	def _get_mime_from_filename(self, filename) :
+		extension = filename[filename.rfind('.') + 1:]
+		return self.mime_types[extension]
+
+
 	def b2_upload(self, file_data, filename, content_type=None, sha1=None) :
 		# obtain upload url
 		upload_url = self._obtain_upload_url()
 
 		sha1 = sha1 or hashlib_sha1(file_data).hexdigest()
-		extension = filename[filename.rfind('.') + 1:]
-		content_type = content_type or self.mime_types[extension]
+		content_type = content_type or self._get_mime_from_filename(filename)
 
 		headers = {
 			'Authorization': upload_url['authorizationToken'],
