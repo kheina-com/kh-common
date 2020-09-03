@@ -1,5 +1,6 @@
 from psycopg2.errors import UniqueViolation, ConnectionException
 from psycopg2 import Binary, connect as dbConnect
+from kh_common import getFullyQualifiedClassName
 from kh_common.config.credentials import db
 from kh_common.logging import getLogger
 from sys import exc_info
@@ -66,3 +67,8 @@ class SqlInterface :
 
 		finally :
 			cur.close()
+
+
+	def close(self) :
+		self._conn.close()
+		return self._conn.closed
