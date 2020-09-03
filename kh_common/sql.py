@@ -2,6 +2,7 @@ from psycopg2.errors import UniqueViolation, ConnectionException
 from psycopg2 import Binary, connect as dbConnect
 from kh_common.config.credentials import db
 from kh_common.logging import getLogger
+from sys import exc_info
 
 
 class SqlInterface :
@@ -43,7 +44,7 @@ class SqlInterface :
 		except ConnectionException :
 			self.connect()
 			if maxretry > 1 :
-				e, exc_tb = sys.exc_info()[1:]
+				e, exc_tb = exc_info()[1:]
 				self.logger.warning({
 					'message': f'{getFullyQualifiedClassName(e)}: {e}',
 					'stacktrace': format_tb(exc_tb),
@@ -54,7 +55,7 @@ class SqlInterface :
 				raise
 
 		except :
-			e, exc_tb = sys.exc_info()[1:]
+			e, exc_tb = exc_info()[1:]
 			self.logger.warning({
 				'message': f'{getFullyQualifiedClassName(e)}: {e}',
 				'stacktrace': format_tb(exc_tb),
