@@ -1,3 +1,4 @@
+from kh_common.config.credentials import message_queue
 from kh_common import getFullyQualifiedClassName
 from traceback import format_tb
 from kh_common import logging
@@ -7,11 +8,11 @@ import sys
 
 class Receiver :
 
-	def __init__(self, route, connection_info, channel_info, exchange_info=None) :
-		self._route = route
-		self._connection_info = connection_info
-		self._channel_info = channel_info
-		self._exchange_info = exchange_info
+	def __init__(self) :
+		self._route = message_queue['routing_key']
+		self._connection_info = message_queue['connection_info']
+		self._channel_info = message_queue['channel_info']
+		self._exchange_info = message_queue.get('exchange_info')
 		self.logger = logging.getLogger(__name__)
 
 
@@ -24,6 +25,7 @@ class Receiver :
 
 
 	def _recv(self) :
+		connection = None
 		try :
 			# returns a list of all messages retrieved from the message queue
 			connection = pika.BlockingConnection(pika.ConnectionParameters(**self._connection_info))
@@ -55,7 +57,8 @@ class Receiver :
 		finally :
 			# don't channel.cancel here since, if it fails, we want the messages to remain in the queue
 			try :
-				connection.close()
+				if connection :
+					connection.close()
 
 			except :
 				exc_type, exc_obj, exc_tb = sys.exc_info()
