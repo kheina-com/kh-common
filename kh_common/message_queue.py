@@ -24,6 +24,13 @@ class Receiver :
 		return list(self._recv())
 
 
+	def receiveJson(self, forcelist=False) :
+		if forcelist :
+			return list(map(json.loads, self._recv()))
+		else :
+			return map(json.loads, self._recv())
+
+
 	def _recv(self) :
 		connection = None
 		try :
