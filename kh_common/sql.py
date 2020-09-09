@@ -3,6 +3,7 @@ from psycopg2 import Binary, connect as dbConnect
 from kh_common import getFullyQualifiedClassName
 from kh_common.config.credentials import db
 from kh_common.logging import getLogger
+from traceback import format_tb
 from sys import exc_info
 
 
