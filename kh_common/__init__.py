@@ -1,4 +1,4 @@
-__version__ = '0.2.6'
+__version__ = '0.2.8'
 
 
 def getFullyQualifiedClassName(obj) :
@@ -11,6 +11,6 @@ def getFullyQualifiedClassName(obj) :
 def stringSlice(string: str, start:str=None, end:str=None) :
 	if not string : return None
 	assert start or end, 'start or end is required'
-	start = string.rfind(start) + 1 if start else None
+	start = string.rfind(start) + len(start) if start else None
 	end = string.find(end) if end else None
 	return string[start:end]
