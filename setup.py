@@ -1,8 +1,10 @@
+from kh_common import __version__ as kh_version
 from setuptools import setup, find_packages
+
 
 setup(
 	name='kh_common',
-	version='0.2.7',
+	version=kh_version,
 	description='common libraries for kheina.com',
 	author='kheina',
 	url='https://gitlab.com/kheina.com/kh-common',
