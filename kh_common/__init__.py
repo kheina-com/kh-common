@@ -1,3 +1,6 @@
+__version__ = '0.2.6'
+
+
 def getFullyQualifiedClassName(obj) :
 	module = getattr(obj, '__module__', None)
 	if module and module != str.__module__ :
