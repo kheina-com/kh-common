@@ -93,7 +93,9 @@ class B2Interface :
 
 	def _get_mime_from_filename(self, filename) :
 		extension = filename[filename.rfind('.') + 1:]
-		return self.mime_types[extension]
+		if extension in self.mime_types
+			return self.mime_types[extension]
+		raise ValueError(f'file extention does not have a known mime type: {filename}')
 
 
 	def b2_upload(self, file_data, filename, content_type=None, sha1=None) :
