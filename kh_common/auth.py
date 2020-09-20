@@ -1,6 +1,6 @@
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from kh_common.config.constants import auth_host
-from kh_common.http_error import Unauthorized
+from kh_common.exceptions.http_error import Unauthorized
 from requests import post as requests_post
 from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
