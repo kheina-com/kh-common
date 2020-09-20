@@ -7,6 +7,7 @@ def getFullyQualifiedClassName(obj) :
 		return f'{module}.{obj.__class__.__name__}'
 	return obj.__class__.__name__
 
+
 def stringSlice(string: str, start:str=None, end:str=None) :
 	if not string : return None
 	assert start or end, 'start or end is required'
