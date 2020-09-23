@@ -9,7 +9,7 @@ from sys import exc_info
 from uuid import uuid4
 
 
-def jsonErrorHandler(req: Request, logger:Logger=None, stacktrace:bool=False) :
+def jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stacktrace:bool=False) :
 	e: ConnectionException
 	traceback: TracebackType
 	e, traceback = exc_info()[1:]

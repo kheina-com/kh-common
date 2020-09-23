@@ -6,6 +6,8 @@ class BaseError(Exception) :
 	def __init__(self, message: str, *args:Tuple[Any], refid:Union[str, type(None)]=None, logdata:Dict[str, Any]={ }, **kwargs: Dict[str, Any]) -> type(None) :
 		Exception.__init__(self, message)
 		self.refid: str = refid or logdata.get('refid') or uuid4().hex
+		if 'refid' in logdata :
+			del logdata['refid']
 		self.logdata: Dict[str, Any] = {
 			**logdata,
 			**kwargs,

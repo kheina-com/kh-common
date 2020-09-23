@@ -58,6 +58,7 @@ class LogHandler(logging.Handler) :
 			errorinfo: Dict[str, Any] = {
 				'error': f'{getFullyQualifiedClassName(e)}: {e}',
 				'stacktrace': format_tb(record.exc_info[2]),
+				'refid': getattr(e, 'refid'),
 				**getattr(e, 'logdata', { }),
 			}
 			if isinstance(record.msg, dict) :
