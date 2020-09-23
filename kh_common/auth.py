@@ -1,5 +1,6 @@
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
+from cryptography.hazmat.backends import default_backend
 from kh_common.exceptions.http_error import Unauthorized
 from kh_common.config.constants import auth_host
 from typing import Any, Callable, Dict, Union
@@ -19,7 +20,7 @@ def _fetchPublicKey(key_id: int, algorithm: str) -> Dict[str, Union[str, int]] :
 
 	signature: bytes = b64decode(load['signature'])
 	key: bytes = b64decode(load['key'])
-	public_key: Ed25519PublicKey = load_der_public_key(key)
+	public_key: Ed25519PublicKey = load_der_public_key(key, backend=default_backend())
 
 	# don't verify in try/catch so that it doesn't cache an invalid token
 	public_key.verify(signature, key)
