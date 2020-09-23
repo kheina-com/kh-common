@@ -1,11 +1,12 @@
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
-from kh_common.config.constants import auth_host
 from kh_common.exceptions.http_error import Unauthorized
+from kh_common.config.constants import auth_host
 from typing import Any, Callable, Dict, Union
 from requests import post as requests_post
 from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
+from starlette.requests import Request
 from time import time
 import ujson as json
 
@@ -85,3 +86,12 @@ def verifyToken(token: str) -> Dict[str, Union[str, int, Dict[str, Any]]] :
 		return tokenVersionSwitch[version](token)
 
 	raise ValueError('The given token uses a version that is unable to be decoded.')
+
+
+def retrieveAuthData(request: Request) -> Dict[str, Union[str, int, Dict[str, Any]]] :
+	token: str = request.headers.get('Authorization') or request.cookies.get('kh_auth')
+
+	if not token :
+		raise Unauthorized('An authentication token was not provided.')
+
+	return verifyToken(token.split()[-1])
