@@ -1,4 +1,5 @@
 from kh_common.exceptions.base_error import BaseError
+from kh_common.config.repo import name, short_hash
 from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import b2
 from hashlib import sha1 as hashlib_sha1
@@ -20,7 +21,7 @@ class B2UploadError(BaseError) :
 class B2Interface :
 
 	def __init__(self, timeout:float=300, max_backoff:float=30, max_retries:float=15, mime_types:Dict[str, str]={ }) -> type(None) :
-		self.logger: Logger = getLogger('b2-interface')
+		self.logger: Logger = getLogger(f'{name}.{short_hash}')
 		self.b2_timeout: float = timeout
 		self.b2_max_backoff: float = max_backoff
 		self.b2_max_retries: float = max_retries

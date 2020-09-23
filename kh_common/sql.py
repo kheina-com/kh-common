@@ -1,5 +1,6 @@
 from psycopg2.extensions import connection as Connection, cursor as Cursor
 from psycopg2.errors import UniqueViolation, ConnectionException
+from kh_common.config.repo import name, short_hash
 from psycopg2 import Binary, connect as dbConnect
 from kh_common import getFullyQualifiedClassName
 from kh_common.logging import getLogger, Logger
@@ -14,7 +15,7 @@ from sys import exc_info
 class SqlInterface :
 
 	def __init__(self) -> type(None) :
-		self.logger: Logger = getLogger('sql-interface')
+		self.logger: Logger = getLogger(f'{name}.{short_hash}')
 		self._sql_connect()
 
 

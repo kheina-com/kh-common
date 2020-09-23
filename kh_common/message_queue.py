@@ -1,6 +1,7 @@
 from pika import BaseConnection, BlockingConnection, ConnectionParameters
 from typing import Any, Dict, Iterator, List, Tuple, Union
 from kh_common.config.credentials import message_queue
+from kh_common.config.repo import name, short_hash
 from kh_common import getFullyQualifiedClassName
 from kh_common.logging import getLogger, Logger
 from pika.channel import Channel
@@ -16,7 +17,7 @@ class Receiver :
 		self._connection_info: Dict[str, Union[str, int]] = message_queue['connection_info']
 		self._channel_info: Dict[str, Union[float, bool]] = message_queue['channel_info']
 		self._exchange_info: Dict[str, str] = message_queue.get('exchange_info')
-		self.logger: Logger = getLogger(__name__)
+		self.logger: Logger = getLogger(f'{name}.{short_hash}')
 
 
 	def consumer(self) -> Iterator[Any] :
