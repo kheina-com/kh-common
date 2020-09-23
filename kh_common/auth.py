@@ -26,6 +26,7 @@ def _fetchPublicKey(key_id: int, algorithm: str) -> Dict[str, Union[str, int]] :
 	return {
 		'key_id': key_id,
 		'algorithm': algorithm,
+		'public_key': public_key,
 		'expires': load['expires'],
 	}
 
