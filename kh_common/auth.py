@@ -88,7 +88,7 @@ def verifyToken(token: str) -> Dict[str, Union[str, int, Dict[str, Any]]] :
 	raise ValueError('The given token uses a version that is unable to be decoded.')
 
 
-def retrieveAuthData(request: Request) -> Dict[str, Union[str, int, Dict[str, Any]]] :
+def retrieveTokenData(request: Request) -> Dict[str, Union[str, int, Dict[str, Any]]] :
 	token: str = request.headers.get('Authorization') or request.cookies.get('kh_auth')
 
 	if not token :
