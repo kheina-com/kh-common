@@ -1,14 +1,16 @@
-from common.caching import SimpleCache
-from common.HTTPError import NotFound
-from common.cwd import SetCWD
-try : import ujson as json
-except : import json
+from kh_common.exceptions.http_error import NotFound
+from kh_common.caching import SimpleCache
+from kh_common.cwd import setCwd
+from typing import List, Tuple
+import ujson as json
 import os
 
-cwd = SetCWD()
+
+cwd = setCwd()
+
 
 @SimpleCache(900)  # 15 minute cache
-def secureFolders() :
+def secureFolders() -> List[str] :
 	try :
 		with open('securefolders.json') as folders :
 			return json.load(folders)
@@ -16,7 +18,7 @@ def secureFolders() :
 		return ['credentials']
 
 
-def safeJoin(*args) :
+def safeJoin(*args: Tuple[str]) -> str :
 	path = os.path.realpath(os.path.join(*args))
 	if path.startswith(cwd) and all(folder not in path for folder in secureFolders()) and os.path.exists(path) :
 		return path

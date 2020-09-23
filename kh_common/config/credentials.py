@@ -1,19 +1,18 @@
 from os import environ, path, listdir
 from ujson import load as json_load
+from typing import Any, Dict
 
 
-environment = environ.get('ENVIRONMENT', 'LOCAL').lower()
+environment: str = environ.get('ENVIRONMENT', 'LOCAL').lower()
 
-env_vars = { }
+env_vars: Dict[str, str] = { }
 
 # dynamically load local credentials
 if path.isdir('credentials') :
 	for filename in listdir('credentials') :
 		if filename.endswith('.json') :
-			config = json_load(open(f'credentials/{filename}'))
-			c = config.get(environment)
-			if not c :
-				c = config.get('prod')
+			config: Dict[str, Dict[str, Any]] = json_load(open(f'credentials/{filename}'))
+			c: Dict[str, Any] = config.get(environment) or config.get('prod')
 			if not c :
 				continue
 

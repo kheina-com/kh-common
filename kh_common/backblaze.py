@@ -1,11 +1,12 @@
 from kh_common.exceptions.base_error import BaseError
+from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import b2
 from hashlib import sha1 as hashlib_sha1
-from kh_common.logging import getLogger
+from typing import Any, Dict, Union
 from base64 import b64encode
 from time import sleep
 import ujson as json
-import requests
+from requests import Response, get as requests_get, post as requests_post
 
 
 class B2AuthorizationError(BaseError) :
@@ -18,12 +19,12 @@ class B2UploadError(BaseError) :
 
 class B2Interface :
 
-	def __init__(self, timeout=300, max_backoff=30, max_retries=15, mime_types={ }) :
-		self.logger = getLogger('b2-interface')
-		self.b2_timeout = timeout
-		self.b2_max_backoff = max_backoff
-		self.b2_max_retries = max_retries
-		self.mime_types = {
+	def __init__(self, timeout:float=300, max_backoff:float=30, max_retries:float=15, mime_types:Dict[str, str]={ }) -> type(None) :
+		self.logger: Logger = getLogger('b2-interface')
+		self.b2_timeout: float = timeout
+		self.b2_max_backoff: float = max_backoff
+		self.b2_max_retries: float = max_retries
+		self.mime_types: Dict[str, str] = {
 			'jpg': 'image/jpeg',
 			'jpeg': 'image/jpeg',
 			'png': 'image/png',
@@ -37,18 +38,26 @@ class B2Interface :
 		self._b2_authorize()
 
 
-	def _b2_authorize(self) :
-		basic_auth_string = b'Basic ' + b64encode((b2['key_id'] + ':' + b2['key']).encode())
-		b2_headers = { 'Authorization': basic_auth_string }
-		response = requests.get(
-			'https://api.backblazeb2.com/b2api/v2/b2_authorize_account',
-			headers=b2_headers,
-			timeout=self.b2_timeout,
-		)
+	def _b2_authorize(self) -> bool :
+		basic_auth_string: bytes = b'Basic ' + b64encode((b2['key_id'] + ':' + b2['key']).encode())
+		b2_headers: Dict[str, bytes] = { 'Authorization': basic_auth_string }
+		response: Union[Response, type(None)] = None
 
-		if response.ok :
-			self.b2 = json.loads(response.content)
-			return True
+		for _ in range(self.b2_max_retries) :
+			try :
+				response = requests_get(
+					'https://api.backblazeb2.com/b2api/v2/b2_authorize_account',
+					headers=b2_headers,
+					timeout=self.b2_timeout,
+				)
+
+			except :
+				pass
+
+			else :
+				if response.ok :
+					self.b2: Dict[str, Any] = json.loads(response.content)
+					return True
 
 		else :
 			raise B2AuthorizationError(
@@ -58,12 +67,13 @@ class B2Interface :
 			)
 
 
-	def _obtain_upload_url(self) :
-		backoff = 1
-		response = None
+	def _obtain_upload_url(self) -> Dict[Any] :
+		backoff: float = 1
+		response: Union[Response, type(None)] = None
+
 		for _ in range(self.b2_max_retries) :
 			try :
-				response = requests.post(
+				response = requests_post(
 					self.b2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
 					data='{"bucketId":"' + self.b2['allowed']['bucketId'] + '"}',
 					headers={ 'Authorization': self.b2['authorizationToken'] },
@@ -91,21 +101,21 @@ class B2Interface :
 		)
 
 
-	def _get_mime_from_filename(self, filename) :
-		extension = filename[filename.rfind('.') + 1:]
-		if extension in self.mime_types
-			return self.mime_types[extension]
+	def _get_mime_from_filename(self, filename: str) -> str :
+		extension: str = filename[filename.rfind('.') + 1:]
+		if extension in self.mime_types :
+			return self.mime_types[extension.lower()]
 		raise ValueError(f'file extention does not have a known mime type: {filename}')
 
 
-	def b2_upload(self, file_data, filename, content_type=None, sha1=None) :
+	def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, type(None)]=None, sha1:Union[str, type(None)]=None) -> Dict[str, Any] :
 		# obtain upload url
-		upload_url = self._obtain_upload_url()
+		upload_url: str = self._obtain_upload_url()
 
-		sha1 = sha1 or hashlib_sha1(file_data).hexdigest()
-		content_type = content_type or self._get_mime_from_filename(filename)
+		sha1: str = sha1 or hashlib_sha1(file_data).hexdigest()
+		content_type: str = content_type or self._get_mime_from_filename(filename)
 
-		headers = {
+		headers: Dict[str, str] = {
 			'Authorization': upload_url['authorizationToken'],
 			'X-Bz-File-Name': filename,
 			'Content-Type': content_type,
@@ -113,8 +123,9 @@ class B2Interface :
 			'X-Bz-Content-Sha1': sha1,
 		}
 
-		backoff = 1
-		response = None
+		backoff: float = 1
+		response: Union[Response, type(None)] = None
+
 		for _ in range(self.b2_max_retries) :
 			try :
 				response = requests.post(
@@ -128,7 +139,8 @@ class B2Interface :
 				pass
 
 			else :
-				if response.ok : return json.loads(response.content)
+				if response.ok :
+					return json.loads(response.content)
 
 			sleep(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)

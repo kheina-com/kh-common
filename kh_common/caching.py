@@ -1,35 +1,36 @@
+from typing import Any, Callable, Tuple
 from time import time
 
 
 # PascalCase because these are technically classes
-def SimpleCache(TTL_seconds=0, TTL_minutes=0, TTL_hours=0, TTL_days=0) :
+def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) :
 	TTL: float = TTL_seconds + TTL_minutes / 60 + TTL_hours / 3600 + TTL_days / 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	def decorator(func) :
 		def wrapper(*args, **kwargs) :
-			now = time()
+			now: float = time()
 			if now > decorator.expire :
 				decorator.expire = now + TTL
 				decorator.data = func(*args, **kwargs)
 			return decorator.data
 		return wrapper
-	decorator.expire = 0
-	decorator.data = None
+	decorator.expire: float = 0
+	decorator.data: Any = None
 	return decorator
 
 
 # PascalCase because these are technically classes
-def ArgsCache(TTL_seconds=0, TTL_minutes=0, TTL_hours=0, TTL_days=0) :
+def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
 	TTL: float = TTL_seconds + TTL_minutes / 60 + TTL_hours / 3600 + TTL_days / 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
-	def decorator(func) :
-		def wrapper(*args) :
-			now = time()
+	def decorator(func: Callable) -> Callable :
+		def wrapper(*args: Tuple[Any]) -> Any :
+			now: float = time()
 
 			if decorator.cache :
-				i = 0
+				i: int = 0
 				for expires, key in decorator.keys :
 					if expires > now : break
 					del decorator.cache[key]
@@ -44,34 +45,35 @@ def ArgsCache(TTL_seconds=0, TTL_minutes=0, TTL_hours=0, TTL_days=0) :
 					return decorator.cache[args]
 
 			decorator.keys.append((now + TTL, args))
-			data = decorator.cache[args] = func(*args)
+			data: Any = func(*args)
+			decorator.cache[args]: Any = data
 
 			return data
 
 		return wrapper
 
-	decorator.cache = { }
-	decorator.keys = [ ]
+	decorator.cache: Dict[Tuple[Any], Any] = { }
+	decorator.keys: List[Tuple[Any]] = [ ]
 	return decorator
 
 
 # PascalCase because these are technically classes
-def KwargsCache(TTL_seconds=0, TTL_minutes=0, TTL_hours=0, TTL_days=0, sort_keys=False) :
+def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0, sort_keys:bool=False) -> Callable :
 	TTL: float = TTL_seconds + TTL_minutes / 60 + TTL_hours / 3600 + TTL_days / 86400
 	if sort_keys :
-		create_key = lambda a, k : tuple((key, k[key]) for key in sorted(k.keys())) + a
+		create_key: Callable = lambda a, k : tuple((key, k[key]) for key in sorted(k.keys())) + a
 	else :
-		create_key = lambda a, k : tuple(k.items()) + a
+		create_key: Callable = lambda a, k : tuple(k.items()) + a
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days, sort_keys
 
 
-	def decorator(func) :
-		def wrapper(*args, **kwargs) :
-			cache_key = create_key(args, kwargs)
-			now = time()
+	def decorator(func: Callable) -> Callable :
+		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+			cache_key: Tuple[Any] = create_key(args, kwargs)
+			now: float = time()
 
 			if decorator.cache :
-				i = 0
+				i: int = 0
 				for expires, key in decorator.keys :
 					if expires > now : break
 					del decorator.cache[key]
@@ -86,12 +88,13 @@ def KwargsCache(TTL_seconds=0, TTL_minutes=0, TTL_hours=0, TTL_days=0, sort_keys
 					return decorator.cache[cache_key]
 
 			decorator.keys.append((now + TTL, cache_key))
-			data = decorator.cache[cache_key] = func(*args, **kwargs)
+			data: Any = func(*args, **kwargs)
+			decorator.cache[cache_key]: Any = data
 
 			return data
 
 		return wrapper
 
-	decorator.cache = { }
-	decorator.keys = [ ]
+	decorator.cache: Dict[Tuple[Any], Any] = { }
+	decorator.keys: List[Tuple[Any]] = [ ]
 	return decorator
