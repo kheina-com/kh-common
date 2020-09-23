@@ -20,7 +20,7 @@ def jsonErrorHandler(req: Request, logger:Logger=None, stacktrace:bool=False) :
 		'status': status,
 		'method': req.method,
 		'url': str(req.url),
-		'uuid': getattr(e, 'uuid', uuid4().hex),
+		'refid': getattr(e, 'refid', uuid4().hex),
 	}
 
 	traceback: List[str] = format_tb(traceback)
