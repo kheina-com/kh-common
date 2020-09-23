@@ -58,7 +58,7 @@ class LogHandler(logging.Handler) :
 			errorinfo: Dict[str, Any] = {
 				'error': f'{getFullyQualifiedClassName(e)}: {e}',
 				'stacktrace': format_tb(record.exc_info[2]),
-				'refid': getattr(e, 'refid'),
+				'refid': getattr(e, 'refid', None),
 				**getattr(e, 'logdata', { }),
 			}
 			if isinstance(record.msg, dict) :
@@ -70,7 +70,7 @@ class LogHandler(logging.Handler) :
 			if isinstance(record.msg, self._structs) :
 				self.agent.log_struct(record.msg, severity=record.levelname)
 			else :
-				self.agent.log_text(str(type(record)), severity=record.levelname)
+				self.agent.log_text(str(record.msg), severity=record.levelname)
 
 
 Logger: type = logging.Logger
