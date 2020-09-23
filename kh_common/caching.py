@@ -3,12 +3,12 @@ from time import time
 
 
 # PascalCase because these are technically classes
-def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) :
+def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
 	TTL: float = TTL_seconds + TTL_minutes / 60 + TTL_hours / 3600 + TTL_days / 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
-	def decorator(func) :
-		def wrapper(*args, **kwargs) :
+	def decorator(func: Callable) -> Callable :
+		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 			now: float = time()
 			if now > decorator.expire :
 				decorator.expire = now + TTL

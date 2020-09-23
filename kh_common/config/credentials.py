@@ -5,7 +5,7 @@ from typing import Any, Dict
 
 environment: str = environ.get('ENVIRONMENT', 'LOCAL').lower()
 
-env_vars: Dict[str, str] = { }
+env_vars: Dict[str, Any] = { }
 
 # dynamically load local credentials
 if path.isdir('credentials') :

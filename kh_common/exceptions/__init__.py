@@ -13,7 +13,7 @@ def jsonErrorHandler(req: Request, logger:Logger=None, stacktrace:bool=False) :
 	e: ConnectionException
 	traceback: TracebackType
 	e, traceback = exc_info()[1:]
-	status = getattr(e, 'status', 500)
+	status: int = getattr(e, 'status', 500)
 
 	error: Dict[str, Union[str, int]] = {
 		'error': f'{status} {getFullyQualifiedClassName(e)}: {e}',
