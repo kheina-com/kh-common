@@ -51,7 +51,6 @@ class LogHandler(logging.Handler) :
 
 
 	def emit(self, record: logging.LogRecord) -> type(None) :
-		print(type(record))
 		if record.args and isinstance(record.msg, str) and len(record.args) == record.msg.count('%') :
 			record.msg: str = record.msg % record.args
 		if record.exc_info :
