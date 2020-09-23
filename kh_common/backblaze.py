@@ -1,3 +1,4 @@
+from requests import Response, get as requests_get, post as requests_post
 from kh_common.exceptions.base_error import BaseError
 from kh_common.config.repo import name, short_hash
 from kh_common.logging import getLogger, Logger
@@ -7,7 +8,6 @@ from typing import Any, Dict, Union
 from base64 import b64encode
 from time import sleep
 import ujson as json
-from requests import Response, get as requests_get, post as requests_post
 
 
 class B2AuthorizationError(BaseError) :
