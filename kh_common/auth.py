@@ -112,7 +112,7 @@ def Authenticated(index:int=0, key:Union[str,type(None)]=None) -> Callable :
 	def decorator(func: Callable) -> Callable :
 		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 			request: Request = retrieve_request(args, kwargs)
-			token_data: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
-			return func(request, *args, token_data=token_data, **kwargs)
+			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
+			return func(*args, **kwargs)
 		return wrapper
 	return decorator
