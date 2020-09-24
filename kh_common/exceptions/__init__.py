@@ -58,7 +58,7 @@ def JsonErrorHandler(request_index:int=0) -> Callable :
 
 
 def checkJsonKeys(json_body: Dict[str, Any], keys: List[str]) :
-	missing_keys = [key for key in keys if key in json_body]
+	missing_keys = [key for key in keys if key not in json_body]
 
 	if missing_keys :
 		raise BadRequest(f'request body is missing required keys: {", ".join(missing_keys)}.', keys=missing_keys)
