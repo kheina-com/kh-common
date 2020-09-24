@@ -1,5 +1,5 @@
+from aiohttp import ClientResponse, ClientTimeout, request as request_async
 from requests import Response, get as requests_get, post as requests_post
-from aiohttp import ClientResponse, request as request_async
 from kh_common.exceptions.base_error import BaseError
 from kh_common.config.repo import name, short_hash
 from kh_common.logging import getLogger, Logger
@@ -92,7 +92,7 @@ class B2Interface :
 				)
 
 			except :
-				pass
+				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=True)
 
 			else :
 				if response.ok :
@@ -140,7 +140,7 @@ class B2Interface :
 				)
 
 			except :
-				pass
+				self.logger.warning('error encountered during b2 upload.', exc_info=True)
 
 			else :
 				if response.ok :
@@ -163,13 +163,13 @@ class B2Interface :
 
 		for _ in range(self.b2_max_retries) :
 			try :
-				async with asyncRequest(
+				async with request_async(
 					'POST',
 					self.b2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
 					json=self.b2['upload_url_load'],
 					headers={ 'Authorization': self.b2['authorizationToken'] },
-					timeout=self.b2_timeout,
-				) as r :
+					timeout=ClientTimeout(self.b2_timeout),
+				) as response :
 					if int(response.status / 100) == 2 :
 						return json.loads(await response.read())
 
@@ -182,7 +182,7 @@ class B2Interface :
 						status = response.status
 
 			except :
-				pass
+				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=True)
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
@@ -215,12 +215,12 @@ class B2Interface :
 
 		for _ in range(self.b2_max_retries) :
 			try :
-				async with asyncRequest(
+				async with request_async(
 					'POST',
 					upload_url['uploadUrl'],
 					headers=headers,
 					data=file_data,
-					timeout=self.b2_timeout,
+					timeout=ClientTimeout(self.b2_timeout),
 				) as response :
 					if int(response.status / 100) == 2 :
 						return json.loads(await response.read())
@@ -230,7 +230,7 @@ class B2Interface :
 						status = response.status
 
 			except :
-				pass
+				self.logger.warning('error encountered during b2 upload.', exc_info=True)
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)

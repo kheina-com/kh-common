@@ -23,11 +23,8 @@ class SqlInterface :
 		try :
 			self._conn: Connection = dbConnect(**db)
 
-		except Exception as e :
-			self.logger.critical({
-				'message': f'failed to connect to database!',
-				'error': f'{getFullyQualifiedClassName(e)}: {e}',
-			})
+		except :
+			self.logger.critical(f'failed to connect to database!', exc_info=True)
 
 		else :
 			self.logger.info('connected to database.')
@@ -64,13 +61,7 @@ class SqlInterface :
 				raise
 
 		except :
-			e: Exception
-			traceback: TracebackType
-			e, traceback = exc_info()[1:]
-			self.logger.warning({
-				'message': f'{getFullyQualifiedClassName(e)}: {e}',
-				'stacktrace': format_tb(traceback),
-			})
+			self.logger.warning('unexpected error encountered during sql query.', exc_info=True)
 			# now attempt to recover by rolling back
 			self._conn.rollback()
 			raise
