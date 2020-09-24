@@ -2,8 +2,8 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from cryptography.hazmat.backends import default_backend
 from kh_common.exceptions.http_error import Unauthorized
+from typing import Any, Callable, Dict, Tuple, Union
 from kh_common.config.constants import auth_host
-from typing import Any, Callable, Dict, Union
 from requests import post as requests_post
 from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
@@ -100,6 +100,7 @@ def retrieveTokenData(request: Request) -> Dict[str, Union[str, int, Dict[str, A
 
 # PascalCase because this is technically a class
 def Authenticated(index:int=0, key:Union[str,type(None)]=None) -> Callable :
+	# injects token data into the token_data kwarg
 	if key :
 		retrieve_request: Callable = lambda args, kwargs : kwargs[key]
 		del index
