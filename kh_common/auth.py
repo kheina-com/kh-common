@@ -98,21 +98,27 @@ def retrieveTokenData(request: Request) -> Dict[str, Union[str, int, Dict[str, A
 	return verifyToken(token.split()[-1])
 
 
-# PascalCase because this is technically a class
-def Authenticated(index:int=0, key:Union[str,type(None)]=None) -> Callable :
+# PascalCase because these are technically classes
+def Authenticated(index:int=0) -> Callable :
 	# injects token data into the token_data kwarg
-	if key :
-		retrieve_request: Callable = lambda args, kwargs : kwargs[key]
-		del index
-
-	else :
-		retrieve_request: Callable = lambda args, kwargs : args[index]
-		del key
 
 	def decorator(func: Callable) -> Callable :
 		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			request: Request = retrieve_request(args, kwargs)
+			request: Request = args[index]
 			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
 			return func(*args, **kwargs)
+		return wrapper
+	return decorator
+
+
+# PascalCase because these are technically classes
+def AuthenticatedAsync(index:int=0) -> Callable :
+	# injects token data into the token_data kwarg
+
+	def decorator(func: Callable) -> Callable :
+		async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+			request: Request = args[index]
+			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
+			return await func(*args, **kwargs)
 		return wrapper
 	return decorator
