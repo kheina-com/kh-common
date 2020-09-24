@@ -1,36 +1,38 @@
+from psycopg2.extensions import connection as Connection, cursor as Cursor
 from psycopg2.errors import UniqueViolation, ConnectionException
+from kh_common.config.repo import name, short_hash
 from psycopg2 import Binary, connect as dbConnect
 from kh_common import getFullyQualifiedClassName
+from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import db
-from kh_common.logging import getLogger
+from typing import Any, List, Tuple, Union
 from traceback import format_tb
+from types import TracebackType
 from sys import exc_info
+
 
 
 class SqlInterface :
 
-	def __init__(self) :
-		self.logger = getLogger('sql-interface')
+	def __init__(self) -> type(None) :
+		self.logger: Logger = getLogger()
 		self._sql_connect()
 
 
-	def _sql_connect(self) :
+	def _sql_connect(self) -> type(None) :
 		try :
-			self._conn = dbConnect(**db)
+			self._conn: Connection = dbConnect(**db)
 
-		except Exception as e :
-			self.logger.critical({
-				'message': f'failed to connect to database!',
-				'error': f'{getFullyQualifiedClassName(e)}: {e}',
-			})
+		except :
+			self.logger.critical(f'failed to connect to database!', exc_info=True)
 
 		else :
-			self.logger.info(f'connected to database.')
+			self.logger.info('connected to database.')
 
 
-	def query(self, sql, params=(), commit=False, fetch_one=False, fetch_all=False, maxretry=2) :
+	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[type(None), List[Any]] :
 		try :
-			cur = self._conn.cursor()
+			cur: Cursor = self._conn.cursor()
 			cur.execute(sql, params)
 
 			if commit :
@@ -46,10 +48,12 @@ class SqlInterface :
 		except ConnectionException :
 			self.connect()
 			if maxretry > 1 :
-				e, exc_tb = exc_info()[1:]
+				e: ConnectionException
+				traceback: TracebackType
+				e, traceback = exc_info()[1:]
 				self.logger.warning({
 					'message': f'{getFullyQualifiedClassName(e)}: {e}',
-					'stacktrace': format_tb(exc_tb),
+					'stacktrace': format_tb(traceback),
 				})
 				return self.query(sql, params, commit, fetch_one, fetch_all, maxretry - 1)
 			else :
@@ -57,11 +61,7 @@ class SqlInterface :
 				raise
 
 		except :
-			e, exc_tb = exc_info()[1:]
-			self.logger.warning({
-				'message': f'{getFullyQualifiedClassName(e)}: {e}',
-				'stacktrace': format_tb(exc_tb),
-			})
+			self.logger.warning('unexpected error encountered during sql query.', exc_info=True)
 			# now attempt to recover by rolling back
 			self._conn.rollback()
 			raise
@@ -70,6 +70,6 @@ class SqlInterface :
 			cur.close()
 
 
-	def close(self) :
+	def close(self) -> int :
 		self._conn.close()
 		return self._conn.closed

@@ -1,23 +1,24 @@
+from typing import Dict
 from os import environ
 
 
-environment = environ.get('ENVIRONMENT', 'LOCAL').lower()
+environment: str = environ.get('ENVIRONMENT', 'LOCAL').lower()
 
-local = {
+local: Dict[str, str] = {
 	'auth_host': 'http://127.0.0.1:5000',
 }
 
-dev = {
+dev: Dict[str, str] = {
 	'auth_host': 'https://auth-dev.kheina.com',
 }
 
-prod = {
+prod: Dict[str, str] = {
 	'auth_host': 'https://auth.kheina.com',
 }
 
 assert local.keys() == dev.keys() == prod.keys()
 
-env_vars = locals().get(environment, local)
+env_vars: Dict[str, str] = locals().get(environment, local)
 
 # add the variables from the environment to the module
 locals().update(env_vars)

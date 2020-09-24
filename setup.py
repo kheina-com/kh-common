@@ -7,7 +7,7 @@ setup(
 	version=kh_version,
 	description='common libraries for kheina.com',
 	author='kheina',
-	url='https://github.com/kheina/kh-common',
+	url='https://github.com/kheina-com/kh-common',
 	packages=find_packages(),
 	install_requires=[
 		'pika',
