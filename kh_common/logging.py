@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Iterator, List, Tuple
+from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 from kh_common.config.repo import name, short_hash
 from kh_common import getFullyQualifiedClassName
 from traceback import format_tb
