@@ -47,7 +47,7 @@ def JsonErrorHandler(request_index:int=0) -> Callable :
 
 	def decorator(func: Callable) -> Callable :
 		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			request: Request = args[index]
+			request: Request = args[request_index]
 			try :
 				return func(*args, **kwargs)
 			except :

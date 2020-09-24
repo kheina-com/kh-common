@@ -104,7 +104,7 @@ def Authenticated(request_index:int=0) -> Callable :
 
 	def decorator(func: Callable) -> Callable :
 		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			request: Request = args[index]
+			request: Request = args[request_index]
 			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
 			return func(*args, **kwargs)
 		return wrapper
@@ -117,7 +117,7 @@ def AuthenticatedAsync(request_index:int=0) -> Callable :
 
 	def decorator(func: Callable) -> Callable :
 		async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			request: Request = args[index]
+			request: Request = args[request_index]
 			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
 			return await func(*args, **kwargs)
 		return wrapper
