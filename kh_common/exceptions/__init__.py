@@ -51,6 +51,6 @@ def JsonErrorHandler(request_index:int=0) -> Callable :
 			try :
 				return await func(*args, **kwargs)
 			except :
-				return jsonErrorHandler(req)
+				return jsonErrorHandler(request)
 		return wrapper
 	return decorator
