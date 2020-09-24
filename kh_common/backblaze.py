@@ -158,36 +158,39 @@ class B2Interface :
 
 	async def _obtain_upload_url_async(self) -> Dict[str, Any] :
 		backoff: float = 1
-		response: Union[Response, type(None)] = None
+		content: Union[str, type(None)] = None
+		status: Union[int, type(None)] = None
 
 		for _ in range(self.b2_max_retries) :
 			try :
-				response = await asyncRequest(
+				async with asyncRequest(
 					'POST',
 					self.b2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
 					json=self.b2['upload_url_load'],
 					headers={ 'Authorization': self.b2['authorizationToken'] },
 					timeout=self.b2_timeout,
-				)
+				) as r :
+					if int(response.status / 100) == 2 :
+						return json.loads(await response.read())
+
+					elif response.status == 401 :
+						# obtain new auth token
+						self.authorize_b2()
+
+					else :
+						content = await response.read()
+						status = response.status
 
 			except :
 				pass
-
-			else :
-				if int(response.status / 100) == 2 :
-					return json.loads(await response.read())
-
-				elif response.status == 401 :
-					# obtain new auth token
-					self.authorize_b2()
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
 
 		raise B2AuthorizationError(
 			f'Unable to obtain b2 upload url, max retries exceeded: {self.b2_max_retries}.',
-			response=json.loads(await response.read()) if response else None,
-			status=response.status if response else None,
+			response=json.loads(content) if content else None,
+			status=status,
 		)
 
 
@@ -207,30 +210,33 @@ class B2Interface :
 		}
 
 		backoff: float = 1
-		response: Union[Response, type(None)] = None
+		content: Union[str, type(None)] = None
+		status: Union[int, type(None)] = None
 
 		for _ in range(self.b2_max_retries) :
 			try :
-				response = await asyncRequest(
+				async with asyncRequest(
 					'POST',
 					upload_url['uploadUrl'],
 					headers=headers,
 					data=file_data,
 					timeout=self.b2_timeout,
-				)
+				) as response :
+					if int(response.status / 100) == 2 :
+						return json.loads(await response.read())
+
+					else :
+						content = await response.read()
+						status = response.status
 
 			except :
 				pass
-
-			else :
-				if int(response.status / 100) == 2 :
-					return json.loads(await response.read())
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
 
 		raise B2UploadError(
 			f'Upload to b2 failed, max retries exceeded: {self.b2_max_retries}.',
-			response=json.loads(await response.read()) if response else None,
-			status=response.status if response else None,
+			response=json.loads(content) if content else None,
+			status=status,
 		)
