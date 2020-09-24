@@ -181,7 +181,7 @@ class B2Interface :
 					# obtain new auth token
 					self.authorize_b2()
 
-			await sleep_sync(backoff)
+			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
 
 		raise B2AuthorizationError(
