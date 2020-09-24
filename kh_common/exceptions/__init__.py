@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, List, Tuple, Union
+from kh_common.exceptions.http_error import BadRequest
 from kh_common import getFullyQualifiedClassName
 from starlette.responses import UJSONResponse
 from starlette.requests import Request
@@ -54,3 +55,10 @@ def JsonErrorHandler(request_index:int=0) -> Callable :
 				return jsonErrorHandler(request)
 		return wrapper
 	return decorator
+
+
+def checkJsonKeys(json_body: Dict[str, Any], keys: List[str]) :
+	missing_keys = [key for key in keys if key in json_body]
+
+	if missing_keys :
+		raise BadRequest(f'request body is missing required keys: {", ".join(missing_keys)}.', keys=missing_keys)
