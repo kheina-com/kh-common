@@ -23,7 +23,7 @@ class B2UploadError(BaseError) :
 class B2Interface :
 
 	def __init__(self, timeout:float=300, max_backoff:float=30, max_retries:float=15, mime_types:Dict[str, str]={ }) -> type(None) :
-		self.logger: Logger = getLogger(f'{name}.{short_hash}')
+		self.logger: Logger = getLogger()
 		self.b2_timeout: float = timeout
 		self.b2_max_backoff: float = max_backoff
 		self.b2_max_retries: float = max_retries

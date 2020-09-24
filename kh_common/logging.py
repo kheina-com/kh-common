@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, Iterator, List, Tuple
+from kh_common.config.repo import name, short_hash
 from kh_common import getFullyQualifiedClassName
 from traceback import format_tb
 from types import ModuleType
@@ -76,7 +77,8 @@ class LogHandler(logging.Handler) :
 Logger: type = logging.Logger
 
 
-def getLogger(name: str, *args: Tuple[Any], level:int=logging.INFO, filter:Callable=lambda x : x, disable:List[str]=[], **kwargs:[str, Any]) -> Logger :
+def getLogger(name: Union[str, type(None)]=None, level:int=logging.INFO, filter:Callable=lambda x : x, disable:List[str]=[], **kwargs:[str, Any]) -> Logger :
+	name: str = name or f'{name}.{short_hash}'
 	for loggerName in disable :
 		logging.getLogger(loggerName).propagate = False
 	logging.root.setLevel(logging.NOTSET)

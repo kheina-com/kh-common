@@ -15,7 +15,7 @@ from sys import exc_info
 class SqlInterface :
 
 	def __init__(self) -> type(None) :
-		self.logger: Logger = getLogger(f'{name}.{short_hash}')
+		self.logger: Logger = getLogger()
 		self._sql_connect()
 
 
