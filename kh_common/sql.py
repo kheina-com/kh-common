@@ -1,11 +1,11 @@
 from psycopg2.extensions import connection as Connection, cursor as Cursor
 from psycopg2.errors import UniqueViolation, ConnectionException
+from typing import Any, Callable, Dict, List, Tuple, Union
 from kh_common.config.repo import name, short_hash
 from psycopg2 import Binary, connect as dbConnect
 from kh_common import getFullyQualifiedClassName
 from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import db
-from typing import Any, List, Tuple, Union
 from traceback import format_tb
 from types import TracebackType
 from sys import exc_info
@@ -14,9 +14,12 @@ from sys import exc_info
 
 class SqlInterface :
 
-	def __init__(self) -> type(None) :
+	def __init__(self, conversions:Dict[type, Callable]={ }) -> type(None) :
 		self.logger: Logger = getLogger()
 		self._sql_connect()
+		self._conversions = {
+			tuple: list,
+		}
 
 
 	def _sql_connect(self) -> type(None) :
@@ -30,7 +33,15 @@ class SqlInterface :
 			self.logger.info('connected to database.')
 
 
+	def _convert_item(self, item) :
+		item_type = type(item)
+		if item_type in self._conversions :
+			return self._conversions[item_type](item)
+		return item
+
+
 	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[type(None), List[Any]] :
+		params = tuple(map(self._convert_item, params))
 		try :
 			cur: Cursor = self._conn.cursor()
 			cur.execute(sql, params)
