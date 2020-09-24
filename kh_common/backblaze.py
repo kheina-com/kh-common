@@ -144,7 +144,11 @@ class B2Interface :
 
 			else :
 				if response.ok :
-					return json.loads(response.content)
+					response_data: Dict[str, Any] = json.loads(response.content)
+					assert content_type == response_data['contentType']
+					assert sha1 == response_data['contentSha1']
+					assert filename == response_data['fileName']
+					return response_data
 
 			sleep(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
@@ -223,7 +227,11 @@ class B2Interface :
 					timeout=ClientTimeout(self.b2_timeout),
 				) as response :
 					if int(response.status / 100) == 2 :
-						return json.loads(await response.read())
+						response_data: Dict[str, Any] = json.loads(await response.read())
+						assert content_type == response_data['contentType']
+						assert sha1 == response_data['contentSha1']
+						assert filename == response_data['fileName']
+						return response_data
 
 					else :
 						content = await response.read()

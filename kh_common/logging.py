@@ -8,7 +8,7 @@ import logging
 
 class TerminalAgent :
 
-	loggable: List[type] = (str, int, float, type(None))
+	loggable: Tuple[type] = (str, int, float, type(None))
 
 	def __init__(self) -> type(None) :
 		import time
