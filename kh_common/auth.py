@@ -12,7 +12,6 @@ from time import time
 import ujson as json
 
 
-
 @ArgsCache(60 * 60 * 24)  # 24 hour cache
 def _fetchPublicKey(key_id: int, algorithm: str) -> Dict[str, Union[str, int]] :
 	response: Response = requests_post(f'{auth_host}/v1/key', json={ 'key_id': key_id, 'algorithm': algorithm })
@@ -39,14 +38,15 @@ def v1token(token: str) -> Dict[str, Union[str, int, Dict[str, Any]]] :
 	version: str
 	load: str
 
+	content, signature = token.rsplit('.', 1)
+	version, load = tuple(map(b64decode, content.split('.')))
+
 	algorithm: bytes
 	key_id: bytes
 	expires: bytes
 	guid: bytes
 	data: bytes
 
-	content, signature = token.rsplit('.', 1)
-	version, load = tuple(map(b64decode, content.split('.')))
 	algorithm, key_id, expires, guid, data = load.split(b'.', 4)
 
 	algorithm: str = algorithm.decode()
@@ -57,7 +57,7 @@ def v1token(token: str) -> Dict[str, Union[str, int, Dict[str, Any]]] :
 	if time() > expires :
 		raise Unauthorized('Key has expired.')
 
-	key: Dict[str, Union[str, int]] = _fetchPublicKey(key_id, algorithm)
+	key: Dict[str, Union[str, int, Ed25519PublicKey]] = _fetchPublicKey(key_id, algorithm)
 
 	if time() > key['expires'] :
 		raise Unauthorized('Key has expired.')
@@ -105,7 +105,10 @@ def Authenticated(index:int=0) -> Callable :
 	def decorator(func: Callable) -> Callable :
 		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 			request: Request = args[index]
-			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
+			try :
+				kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
+			except :
+				return jsonErrorHandler(request)
 			return func(*args, **kwargs)
 		return wrapper
 	return decorator
@@ -118,7 +121,10 @@ def AuthenticatedAsync(index:int=0) -> Callable :
 	def decorator(func: Callable) -> Callable :
 		async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 			request: Request = args[index]
-			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
+			try :
+				kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
+			except :
+				return jsonErrorHandler(request)
 			return await func(*args, **kwargs)
 		return wrapper
 	return decorator
