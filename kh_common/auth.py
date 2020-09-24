@@ -99,32 +99,26 @@ def retrieveTokenData(request: Request) -> Dict[str, Union[str, int, Dict[str, A
 
 
 # PascalCase because these are technically classes
-def Authenticated(index:int=0) -> Callable :
+def Authenticated(request_index:int=0) -> Callable :
 	# injects token data into the token_data kwarg
 
 	def decorator(func: Callable) -> Callable :
 		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 			request: Request = args[index]
-			try :
-				kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
-			except :
-				return jsonErrorHandler(request)
+			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
 			return func(*args, **kwargs)
 		return wrapper
 	return decorator
 
 
 # PascalCase because these are technically classes
-def AuthenticatedAsync(index:int=0) -> Callable :
+def AuthenticatedAsync(request_index:int=0) -> Callable :
 	# injects token data into the token_data kwarg
 
 	def decorator(func: Callable) -> Callable :
 		async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 			request: Request = args[index]
-			try :
-				kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
-			except :
-				return jsonErrorHandler(request)
+			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
 			return await func(*args, **kwargs)
 		return wrapper
 	return decorator

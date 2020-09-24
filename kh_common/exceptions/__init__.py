@@ -39,3 +39,18 @@ def jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stackt
 		error,
 		status_code=status,
 	)
+
+
+# PascalCase because these are technically classes
+def JsonErrorHandler(request_index:int=0) -> Callable :
+	# handles any errors occurring during request responses
+
+	def decorator(func: Callable) -> Callable :
+		def wrapper(*args, **kwargs):
+			request: Request = args[index]
+			try :
+				return func(*args, **kwargs)
+			except :
+				return jsonErrorHandler(req)
+		return wrapper
+	return decorator
