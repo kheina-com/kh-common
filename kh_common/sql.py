@@ -17,7 +17,7 @@ class SqlInterface :
 	def __init__(self, conversions:Dict[type, Callable]={ }) -> type(None) :
 		self.logger: Logger = getLogger()
 		self._sql_connect()
-		self._conversions = {
+		self._conversions: Dict[type, Callable] = {
 			tuple: list,
 			**conversions,
 		}
@@ -34,7 +34,7 @@ class SqlInterface :
 			self.logger.info('connected to database.')
 
 
-	def _convert_item(self, item) :
+	def _convert_item(self, item: Any) -> Any :
 		item_type = type(item)
 		if item_type in self._conversions :
 			return self._conversions[item_type](item)
