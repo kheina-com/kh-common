@@ -65,6 +65,9 @@ class Receiver :
 				channel.basic_ack(delivery_tag=ack, multiple=True)
 
 			channel.cancel()
+		
+		except :
+			self.logger.warning('message queue crashed unexpectedly.', exc_info=True)
 
 		finally :
 			# don't channel.cancel here since, if it fails, we want the messages to remain in the queue
