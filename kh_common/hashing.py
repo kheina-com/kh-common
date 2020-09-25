@@ -1,6 +1,5 @@
 from kh_common import getFullyQualifiedClassName
 from hashlib import sha1
-from math import ceil
 
 
 class Hashable :

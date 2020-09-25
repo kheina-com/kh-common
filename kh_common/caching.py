@@ -1,5 +1,20 @@
-from typing import Any, Callable, Dict, Tuple
+from typing import Any, Callable, Dict, Hashable, Tuple, Union
 from time import time
+
+
+class CalcDict(dict) :
+
+	def __init__(self, default: Callable[[Hashable], Any]) -> type(None) :
+		self.default: Callable = default
+
+
+	def setdefault(self, default: Callable[[Hashable], Any]) -> type(None) :
+		self.default = default
+
+
+	def __missing__(self, key: Hashable) -> Any:
+		self[key] = self.default(key)
+		return self[key]
 
 
 # PascalCase because these are technically classes
@@ -26,7 +41,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	def decorator(func: Callable) -> Callable :
-		def wrapper(*args: Tuple[Any]) -> Any :
+		def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Any]) -> Any :
 			now: float = time()
 
 			if decorator.cache :
@@ -45,7 +60,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 					return decorator.cache[args]
 
 			decorator.keys.append((now + TTL, args))
-			data: Any = func(*args)
+			data: Any = func(*args, **kwargs)
 			decorator.cache[args]: Any = data
 
 			return data
@@ -68,7 +83,7 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 
 
 	def decorator(func: Callable) -> Callable :
-		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+		def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 			cache_key: Tuple[Any] = create_key(args, kwargs)
 			now: float = time()
 
