@@ -43,7 +43,7 @@ def jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stackt
 
 
 # PascalCase because these are technically classes
-def JsonErrorHandler(request_index:int=0) -> Callable :
+def JsonErrorHandler(request_index:int=0, logger:Union[Logger, type(None)]=None) -> Callable :
 	# handles any errors occurring during request responses
 
 	def decorator(func: Callable) -> Callable :
@@ -52,7 +52,7 @@ def JsonErrorHandler(request_index:int=0) -> Callable :
 			try :
 				return await func(*args, **kwargs)
 			except :
-				return jsonErrorHandler(request)
+				return jsonErrorHandler(request, logger)
 		return wrapper
 	return decorator
 
