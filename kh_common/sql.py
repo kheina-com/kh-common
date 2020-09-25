@@ -19,6 +19,7 @@ class SqlInterface :
 		self._sql_connect()
 		self._conversions = {
 			tuple: list,
+			**conversions,
 		}
 
 
