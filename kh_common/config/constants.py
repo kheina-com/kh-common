@@ -24,7 +24,7 @@ env_vars: Dict[str, str] = locals().get(environment, local)
 locals().update(env_vars)
 
 # delete extraneous data
-del local, dev, prod, env_vars, environment, environ
+del local, dev, prod, env_vars, environ
 
 
 # put other variables/constants here (these will overwrite the env-specific configs above!)
