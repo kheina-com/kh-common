@@ -15,6 +15,7 @@ def validatedJson(func: Callable) -> Callable :
 	if request_index is None :
 		raise TypeError("request object must contain 'req' in its name")
 
+	@wraps(func)
 	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 		request: Request = args[request_index]
 

@@ -9,6 +9,7 @@ from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
 from starlette.requests import Request
 from dataclasses import dataclass
+from functools import wraps
 from time import time
 import ujson as json
 
@@ -106,7 +107,6 @@ def retrieveTokenData(request: Request) -> TokenData :
 	return verifyToken(token.split()[-1])
 
 
-
 def authenticated(func: Callable) -> Callable :
 	request_index: Union[int, type(None)] = None
 	token_index: Union[int, type(None)] = None
@@ -129,6 +129,7 @@ def authenticated(func: Callable) -> Callable :
 	if token_index is None :
 		raise TypeError("token object must be typed as a subclass of kh_common.auth.TokenData or contain 'token' in its name")
 
+	@wraps(func)
 	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 		request: Request = args[request_index]
 		args[request_index]: TokenData = retrieveTokenData(request)

@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, Hashable, Tuple, Union
+from functools import wraps
 from time import time
 
 
@@ -23,6 +24,7 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	def decorator(func: Callable) -> Callable :
+		@wraps(func)
 		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 			now: float = time()
 			if now > decorator.expire :
@@ -41,6 +43,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	def decorator(func: Callable) -> Callable :
+		@wraps(func)
 		def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Any]) -> Any :
 			now: float = time()
 
@@ -83,6 +86,7 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 
 
 	def decorator(func: Callable) -> Callable :
+		@wraps(func)
 		def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 			cache_key: Tuple[Any] = create_key(args, kwargs)
 			now: float = time()

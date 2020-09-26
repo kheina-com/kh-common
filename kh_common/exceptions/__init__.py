@@ -6,6 +6,7 @@ from starlette.requests import Request
 from kh_common.logging import Logger
 from traceback import format_tb
 from types import TracebackType
+from functools import wraps
 from sys import exc_info
 from uuid import uuid4
 
@@ -56,6 +57,7 @@ def jsonErrorHandler(func: Callable) -> Callable :
 	if request_index is None :
 		raise TypeError("request object must be typed as a subclass of starlette.requests.Request or contain 'req' in its name")
 
+	@wraps(func)
 	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 		request: Request = args[request_index]
 		try :
