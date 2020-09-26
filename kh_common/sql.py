@@ -59,7 +59,7 @@ class SqlInterface :
 		except ConnectionException :
 			if maxretry > 1 :
 				self.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=True)
-				self.connect()
+				self._sql_connect()
 				return self.query(sql, params, commit, fetch_one, fetch_all, maxretry - 1)
 
 			else :
@@ -96,9 +96,11 @@ class Transaction :
 		for _ in range(2) :
 			try :
 				self.cur: Cursor = self._sql._conn.cursor()
+				return
 
 			except ConnectionException :
 				self._sql.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=True)
+				self._sql._sql_connect()
 
 		self._sql.logger.critical('failed to reconnect to db.', exc_info=True)
 		raise ConnectionException('failed to reconnect to db.')
@@ -117,7 +119,7 @@ class Transaction :
 
 
 	def query(self, sql: str, params:Tuple[Any]=(), fetch_one:bool=False, fetch_all:bool=False) -> Union[type(None), List[Any]] :
-		params = tuple(map(self._convert_item, params))
+		params = tuple(map(self._sql._convert_item, params))
 		try :
 			self.cur.execute(sql, params)
 
