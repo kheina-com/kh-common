@@ -3,6 +3,7 @@ from typing import Any, Callable, Dict, Tuple, Union
 from pydantic.error_wrappers import ValidationError
 from starlette.requests import Request
 from pydantic import BaseModel
+from functools import wraps
 
 
 def validatedJson(func: Callable) -> Callable :
