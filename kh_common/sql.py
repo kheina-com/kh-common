@@ -96,7 +96,7 @@ class Transaction :
 		for _ in range(2) :
 			try :
 				self.cur: Cursor = self._sql._conn.cursor()
-				return
+				return self
 
 			except ConnectionException :
 				self._sql.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=True)
