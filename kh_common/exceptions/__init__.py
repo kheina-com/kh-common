@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 from kh_common.exceptions.http_error import BadRequest
 from kh_common.config.constants import environment
 from kh_common import getFullyQualifiedClassName
+from inspect import FullArgSpec, getfullargspec
 from starlette.responses import UJSONResponse
 from starlette.requests import Request
 from kh_common.logging import Logger
@@ -45,7 +46,7 @@ def _jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stack
 
 
 def jsonErrorHandler(func: Callable) -> Callable :
-	request_index: Union[int, type(None)] = None
+	get_request: Union[Callable, type(None)] = None
 
 	for i, (k, v) in enumerate(func.__annotations__.items()) :
 		if 'req' in k.lower() :
@@ -54,12 +55,12 @@ def jsonErrorHandler(func: Callable) -> Callable :
 		if issubclass(v, Request) :
 			request_index = i
 
-	if request_index is None :
+	if get_request is None :
 		raise TypeError("request object must be typed as a subclass of starlette.requests.Request or contain 'req' in its name")
 
 	@wraps(func)
 	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-		request: Request = args[request_index]
+		request: Request = get_request(args, kwargs)
 		try :
 			return await func(*args, **kwargs)
 		except :
