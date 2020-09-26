@@ -130,8 +130,7 @@ def authenticated(func: Callable) -> Callable :
 
 	@wraps(func)
 	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-		args = list(args)
 		request: Request = args[request_index]
-		args[token_index]: TokenData = retrieveTokenData(request)
+		kwargs[token_key]: TokenData = retrieveTokenData(request)
 		return await func(*args, **kwargs)
 	return wrapper
