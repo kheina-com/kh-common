@@ -1,4 +1,4 @@
-__version__: str = '0.3.3'
+__version__: str = '0.4.0'
 
 
 def getFullyQualifiedClassName(obj: object) -> str :

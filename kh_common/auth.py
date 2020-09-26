@@ -8,8 +8,16 @@ from requests import post as requests_post
 from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
 from starlette.requests import Request
+from dataclasses import dataclass
 from time import time
 import ujson as json
+
+
+@dataclass
+class TokenData :
+	guid: str
+	expires: int
+	data: Dict[str, Any]
 
 
 @ArgsCache(60 * 60 * 24)  # 24 hour cache
@@ -32,7 +40,7 @@ def _fetchPublicKey(key_id: int, algorithm: str) -> Dict[str, Union[str, int]] :
 	}
 
 
-def v1token(token: str) -> Dict[str, Union[str, int, Dict[str, Any]]] :
+def v1token(token: str) -> TokenData :
 	content: str
 	signature: str
 	version: str
@@ -68,11 +76,11 @@ def v1token(token: str) -> Dict[str, Union[str, int, Dict[str, Any]]] :
 	except :
 		raise Unauthorized('Key validation failed.')
 
-	return {
-		'guid': guid,
-		'expires': expires,
-		'data': json.loads(data),
-	}
+	return TokenData(
+		guid=guid,
+		expires=expires,
+		data=json.loads(data),
+	)
 
 
 tokenVersionSwitch: Dict[bytes, Callable] = {
@@ -80,7 +88,7 @@ tokenVersionSwitch: Dict[bytes, Callable] = {
 }
 
 
-def verifyToken(token: str) -> Dict[str, Union[str, int, Dict[str, Any]]] :
+def verifyToken(token: str) -> TokenData :
 	version: bytes = b64decode(token[:token.find('.')])
 
 	if version in tokenVersionSwitch :
@@ -89,7 +97,7 @@ def verifyToken(token: str) -> Dict[str, Union[str, int, Dict[str, Any]]] :
 	raise ValueError('The given token uses a version that is unable to be decoded.')
 
 
-def retrieveTokenData(request: Request) -> Dict[str, Union[str, int, Dict[str, Any]]] :
+def retrieveTokenData(request: Request) -> TokenData :
 	token: str = request.headers.get('Authorization') or request.cookies.get('kh_auth')
 
 	if not token :
@@ -98,27 +106,31 @@ def retrieveTokenData(request: Request) -> Dict[str, Union[str, int, Dict[str, A
 	return verifyToken(token.split()[-1])
 
 
-# PascalCase because these are technically classes
-def Authenticated(request_index:int=0) -> Callable :
-	# injects token data into the token_data kwarg
 
-	def decorator(func: Callable) -> Callable :
-		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			request: Request = args[request_index]
-			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
-			return func(*args, **kwargs)
-		return wrapper
-	return decorator
+def authenticated(func: Callable) -> Callable :
+	request_index: Union[int, type(None)] = None
+	token_index: Union[int, type(None)] = None
 
+	for i, v in enumerate(func.__annotations__.keys()) :
+		if 'req' in v.lower() :
+			request_index = i
+		if 'token' in v.lower() :
+			token_index = i
 
-# PascalCase because these are technically classes
-def AuthenticatedAsync(request_index:int=0) -> Callable :
-	# injects token data into the token_data kwarg
+	for i, t in enumerate(func.__annotations__.values()) :
+		if issubclass(t, Request) :
+			request_index = i
+		if issubclass(t, TokenData) :
+			token_index = i
 
-	def decorator(func: Callable) -> Callable :
-		async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			request: Request = args[request_index]
-			kwargs['token_data']: Dict[str, Union[str, int, Dict[str, Any]]] = retrieveTokenData(request)
-			return await func(*args, **kwargs)
-		return wrapper
-	return decorator
+	if request_index is None :
+		raise TypeError("request object must be typed as a subclass of starlette.requests.Request or contain 'req' in its name")
+
+	if token_index is None :
+		raise TypeError("token object must be typed as a subclass of kh_common.auth.TokenData or contain 'token' in its name")
+
+	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+		request: Request = args[request_index]
+		args[request_index]: TokenData = retrieveTokenData(request)
+		return await func(*args, **kwargs)
+	return wrapper

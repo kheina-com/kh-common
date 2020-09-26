@@ -10,7 +10,7 @@ from sys import exc_info
 from uuid import uuid4
 
 
-def jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stacktrace:bool=False) :
+def _jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stacktrace:bool=False) :
 	e: ConnectionException
 	traceback: TracebackType
 	e, traceback = exc_info()[1:]
@@ -42,19 +42,28 @@ def jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stackt
 	)
 
 
-# PascalCase because these are technically classes
-def JsonErrorHandler(request_index:int=0) -> Callable :
-	# handles any errors occurring during request responses
+def jsonErrorHandler(func: Callable) -> Callable :
+	request_index: Union[int, type(None)] = None
 
-	def decorator(func: Callable) -> Callable :
-		async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			request: Request = args[request_index]
-			try :
-				return await func(*args, **kwargs)
-			except :
-				return jsonErrorHandler(request)
-		return wrapper
-	return decorator
+	for i, v in enumerate(func.__annotations__.keys()) :
+		if 'req' in v.lower() :
+			request_index = i
+
+	for i, t in enumerate(func.__annotations__.values()) :
+		if issubclass(t, Request) :
+			request_index = i
+
+	if request_index is None :
+		raise TypeError("request object must be typed as a subclass of starlette.requests.Request or contain 'req' in its name")
+
+	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+		request: Request = args[request_index]
+		try :
+			return await func(*args, **kwargs)
+		except :
+			return _jsonErrorHandler(request)
+
+	return wrapper
 
 
 def checkJsonKeys(json_body: Dict[str, Any], keys: List[str]) :

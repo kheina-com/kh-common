@@ -11,7 +11,6 @@ from types import TracebackType
 from sys import exc_info
 
 
-
 class SqlInterface :
 
 	def __init__(self, conversions:Dict[type, Callable]={ }) -> type(None) :
@@ -41,7 +40,7 @@ class SqlInterface :
 		return item
 
 
-	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, rollback:bool=True, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[type(None), List[Any]] :
+	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[type(None), List[Any]] :
 		params = tuple(map(self._convert_item, params))
 		try :
 			cur: Cursor = self._conn.cursor()
@@ -49,7 +48,7 @@ class SqlInterface :
 
 			if commit :
 				self._conn.commit()
-			elif rollback :
+			else :
 				self._conn.rollback()
 
 			if fetch_one :
@@ -58,18 +57,13 @@ class SqlInterface :
 				return cur.fetchall()
 
 		except ConnectionException :
-			self.connect()
 			if maxretry > 1 :
-				e: ConnectionException
-				traceback: TracebackType
-				e, traceback = exc_info()[1:]
-				self.logger.warning({
-					'message': f'{getFullyQualifiedClassName(e)}: {e}',
-					'stacktrace': format_tb(traceback),
-				})
-				return self.query(sql, params, commit, rollback, fetch_one, fetch_all, maxretry - 1)
+				self.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=True)
+				self.connect()
+				return self.query(sql, params, commit, fetch_one, fetch_all, maxretry - 1)
+
 			else :
-				self.logger.exception({ })
+				self.logger.critical('failed to reconnect to db.', exc_info=True)
 				raise
 
 		except :
@@ -82,6 +76,57 @@ class SqlInterface :
 			cur.close()
 
 
+	def transaction(self) :
+		return Transaction(self)
+
+
 	def close(self) -> int :
 		self._conn.close()
 		return self._conn.closed
+
+
+class Transaction :
+
+	def __init__(self, sql: SqlInterface) :
+		self._sql: SqlInterface = sql
+		self.cur: Union[Cursor, type(None)] = None
+
+
+	def __enter__(self) :
+		for _ in range(2) :
+			try :
+				self.cur: Cursor = self._sql._conn.cursor()
+
+			except ConnectionException :
+				self._sql.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=True)
+
+		self._sql.logger.critical('failed to reconnect to db.', exc_info=True)
+		raise ConnectionException('failed to reconnect to db.')
+
+
+	def __exit__(self, exc_type, exc_obj, exc_tb) :
+		self.cur.close()
+
+
+	def commit(self) :
+		self._sql._conn.commit()
+
+
+	def rollback(self) :
+		self._sql._conn.rollback()
+
+
+	def query(self, sql: str, params:Tuple[Any]=(), fetch_one:bool=False, fetch_all:bool=False) -> Union[type(None), List[Any]] :
+		params = tuple(map(self._convert_item, params))
+		try :
+			self.cur.execute(sql, params)
+
+			if fetch_one :
+				return cur.fetchone()
+
+			elif fetch_all :
+				return cur.fetchall()
+
+		except :
+			self._sql.logger.warning('unexpected error encountered during sql query.', exc_info=True)
+			raise
