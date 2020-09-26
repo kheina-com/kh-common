@@ -41,7 +41,7 @@ class SqlInterface :
 		return item
 
 
-	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[type(None), List[Any]] :
+	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, rollback:bool=True, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[type(None), List[Any]] :
 		params = tuple(map(self._convert_item, params))
 		try :
 			cur: Cursor = self._conn.cursor()
@@ -49,7 +49,7 @@ class SqlInterface :
 
 			if commit :
 				self._conn.commit()
-			else :
+			elif rollback :
 				self._conn.rollback()
 
 			if fetch_one :
@@ -67,7 +67,7 @@ class SqlInterface :
 					'message': f'{getFullyQualifiedClassName(e)}: {e}',
 					'stacktrace': format_tb(traceback),
 				})
-				return self.query(sql, params, commit, fetch_one, fetch_all, maxretry - 1)
+				return self.query(sql, params, commit, rollback, fetch_one, fetch_all, maxretry - 1)
 			else :
 				self.logger.exception({ })
 				raise
