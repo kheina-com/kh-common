@@ -107,6 +107,8 @@ class Transaction :
 
 
 	def __exit__(self, exc_type, exc_obj, exc_tb) :
+		if exc_type :
+			self.rollback()
 		self.cur.close()
 
 
