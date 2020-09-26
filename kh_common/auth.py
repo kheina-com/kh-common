@@ -109,19 +109,18 @@ def retrieveTokenData(request: Request) -> TokenData :
 
 def authenticated(func: Callable) -> Callable :
 	request_index: Union[int, type(None)] = None
-	token_index: Union[int, type(None)] = None
+	token_key: Union[str, type(None)] = None
 
-	for i, v in enumerate(func.__annotations__.keys()) :
-		if 'req' in v.lower() :
+	for i, (k, v) in enumerate(func.__annotations__.items()) :
+		if 'req' in k.lower() :
 			request_index = i
-		if 'token' in v.lower() :
-			token_index = i
+		if 'token' in k.lower() :
+			token_key = k
 
-	for i, t in enumerate(func.__annotations__.values()) :
-		if issubclass(t, Request) :
+		if issubclass(v, Request) :
 			request_index = i
 		if issubclass(t, TokenData) :
-			token_index = i
+			token_key = k
 
 	if request_index is None :
 		raise TypeError("request object must be typed as a subclass of starlette.requests.Request or contain 'req' in its name")

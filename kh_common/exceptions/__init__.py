@@ -47,12 +47,11 @@ def _jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stack
 def jsonErrorHandler(func: Callable) -> Callable :
 	request_index: Union[int, type(None)] = None
 
-	for i, v in enumerate(func.__annotations__.keys()) :
-		if 'req' in v.lower() :
+	for i, (k, v) in enumerate(func.__annotations__.items()) :
+		if 'req' in k.lower() :
 			request_index = i
 
-	for i, t in enumerate(func.__annotations__.values()) :
-		if issubclass(t, Request) :
+		if issubclass(v, Request) :
 			request_index = i
 
 	if request_index is None :
