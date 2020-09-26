@@ -9,7 +9,7 @@ from functools import wraps
 def validatedJson(func: Callable) -> Callable :
 	request_index: Union[int, type(None)] = None
 	request_object: Union[type, type(None)] = None
-	print(func.__annotations__)
+
 	for i, v in enumerate(func.__annotations__.keys()) :
 		if 'req' in v.lower() :
 			request_index = i
@@ -17,8 +17,6 @@ def validatedJson(func: Callable) -> Callable :
 
 	if request_index is None :
 		raise TypeError("request object must contain 'req' in its name")
-
-	print(request_index)
 
 	@wraps(func)
 	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :

@@ -46,7 +46,6 @@ def _jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stack
 
 def jsonErrorHandler(func: Callable) -> Callable :
 	request_index: Union[int, type(None)] = None
-	print(func.__annotations__)
 
 	for i, v in enumerate(func.__annotations__.keys()) :
 		if 'req' in v.lower() :
@@ -58,7 +57,6 @@ def jsonErrorHandler(func: Callable) -> Callable :
 
 	if request_index is None :
 		raise TypeError("request object must be typed as a subclass of starlette.requests.Request or contain 'req' in its name")
-	print(request_index)
 
 	@wraps(func)
 	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :

@@ -110,7 +110,6 @@ def retrieveTokenData(request: Request) -> TokenData :
 def authenticated(func: Callable) -> Callable :
 	request_index: Union[int, type(None)] = None
 	token_index: Union[int, type(None)] = None
-	print(func.__annotations__)
 
 	for i, v in enumerate(func.__annotations__.keys()) :
 		if 'req' in v.lower() :
@@ -123,7 +122,6 @@ def authenticated(func: Callable) -> Callable :
 			request_index = i
 		if issubclass(t, TokenData) :
 			token_index = i
-	print(request_index)
 
 	if request_index is None :
 		raise TypeError("request object must be typed as a subclass of starlette.requests.Request or contain 'req' in its name")
@@ -135,6 +133,6 @@ def authenticated(func: Callable) -> Callable :
 	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 		args = list(args)
 		request: Request = args[request_index]
-		args[request_index]: TokenData = retrieveTokenData(request)
+		args[token_index]: TokenData = retrieveTokenData(request)
 		return await func(*args, **kwargs)
 	return wrapper
