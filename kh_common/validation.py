@@ -8,10 +8,12 @@ from functools import wraps
 
 def validatedJson(func: Callable) -> Callable :
 	request_index: Union[int, type(None)] = None
+	request_object: Union[type, type(None)] = None
 	print(func.__annotations__)
 	for i, v in enumerate(func.__annotations__.keys()) :
 		if 'req' in v.lower() :
 			request_index = i
+			request_object = func.__annotations__[v]
 
 	if request_index is None :
 		raise TypeError("request object must contain 'req' in its name")
