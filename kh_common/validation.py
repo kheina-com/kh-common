@@ -18,6 +18,7 @@ def validatedJson(func: Callable) -> Callable :
 
 	@wraps(func)
 	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+		args = list(args)
 		request: Request = args[request_index]
 
 		data = await request.json()
