@@ -119,7 +119,7 @@ def authenticated(func: Callable) -> Callable :
 
 		if issubclass(v, Request) :
 			request_index = i
-		if issubclass(t, TokenData) :
+		if issubclass(v, TokenData) :
 			token_key = k
 
 	if request_index is None :
