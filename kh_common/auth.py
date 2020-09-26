@@ -125,7 +125,7 @@ def authenticated(func: Callable) -> Callable :
 	if request_index is None :
 		raise TypeError("request object must be typed as a subclass of starlette.requests.Request or contain 'req' in its name")
 
-	if token_index is None :
+	if token_key is None :
 		raise TypeError("token object must be typed as a subclass of kh_common.auth.TokenData or contain 'token' in its name")
 
 	@wraps(func)
