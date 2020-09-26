@@ -1,8 +1,8 @@
 from typing import Any, Callable, Dict, List, Tuple, Union
 from kh_common.exceptions.http_error import BadRequest
+from kh_common.config.constants import environment
 from kh_common import getFullyQualifiedClassName
 from starlette.responses import UJSONResponse
-from kh_common.constants import environment
 from starlette.requests import Request
 from kh_common.logging import Logger
 from traceback import format_tb
