@@ -124,10 +124,10 @@ class Transaction :
 			self.cur.execute(sql, params)
 
 			if fetch_one :
-				return cur.fetchone()
+				return self.cur.fetchone()
 
 			elif fetch_all :
-				return cur.fetchall()
+				return self.cur.fetchall()
 
 		except :
 			self._sql.logger.warning('unexpected error encountered during sql query.', exc_info=True)
