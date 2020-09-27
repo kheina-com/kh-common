@@ -2,6 +2,7 @@ from kh_common.exceptions.base_error import BaseError
 from inspect import FullArgSpec, getfullargspec
 from kh_common.logging import getLogger, Logger
 from typing import Any, Callable, Dict, Tuple
+from functools import wraps
 from uuid import uuid4
 
 
