@@ -84,7 +84,6 @@ def GenericErrorHandler(message: str) -> Callable :
 
 		@wraps(func)
 		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			request: Request = args[request_index]
 			try :
 				return func(*args, **kwargs)
 
