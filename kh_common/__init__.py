@@ -14,3 +14,14 @@ def stringSlice(string: str, start:str=None, end:str=None) -> str :
 	start = string.rfind(start) + len(start) if start else None
 	end = string.find(end) if end else None
 	return string[start:end]
+
+
+def flatten(it: Iterator[Any]) -> Iterator[Any] :
+	if isinstance(it, (tuple, list, set)) :
+		for i in it :
+			yield from flatten(i)
+	elif isinstance(it, dict) :
+		for v in it.values() :
+			yield from flatten(v)
+	else :
+		yield it

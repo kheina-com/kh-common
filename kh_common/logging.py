@@ -1,6 +1,6 @@
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
+from kh_common import flatten, getFullyQualifiedClassName
 from kh_common.config.repo import name, short_hash
-from kh_common import getFullyQualifiedClassName
 from traceback import format_tb
 from types import ModuleType
 import logging
@@ -16,21 +16,11 @@ class TerminalAgent :
 		self.time: ModuleType = time
 		self.json: ModuleType = json
 
-	def flatten(self, it: Iterator[Any]) -> Iterator[Any] :
-		if isinstance(it, (tuple, list, set)) :
-			for i in it :
-				yield from self.flatten(i)
-		elif isinstance(it, dict) :
-			for k, v in it.items() :
-				yield from self.flatten(v)
-		else :
-			yield it
-
 	def log_text(self, log: str, severity:str='INFO') -> type(None) :
 		print('[' + self.time.asctime(self.time.localtime(self.time.time())) + ']', severity, '>', log)
 
 	def log_struct(self, log: Dict[str, Any], severity:str='INFO') -> type(None) :
-		for i in self.flatten(log) :
+		for i in flatten(log) :
 			if not isinstance(i, TerminalAgent.loggable) :
 				print('WARNING:', i, 'may not be able to be logged.')
 		print('[' + self.time.asctime(self.time.localtime(self.time.time())) + ']', severity, '>', self.json.dumps(log, indent=4))

@@ -1,4 +1,3 @@
-from kh_common.exceptions import GenericErrorHandler
 from kh_common.caching import ArgsCache
 from kh_common.sql import SqlInterface
 from kh_common.hashing import Hashable
@@ -12,7 +11,6 @@ class UserBlocking(SqlInterface, Hashable) :
 		SqlInterface.__init__(self)
 
 
-	@GenericErrorHandler('fetching user blocked tags')
 	@ArgsCache(60)
 	def userBlockedTags(self, user_id: int) -> Set[str] :
 		data = self.query(
@@ -31,7 +29,6 @@ class UserBlocking(SqlInterface, Hashable) :
 		return set(data)
 
 
-	@GenericErrorHandler('fetching blocked users')
 	@ArgsCache(60)
 	def userBlockedUsers(self, user_id: int) -> Set[str] :
 		data = self.query(
