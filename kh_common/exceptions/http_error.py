@@ -4,6 +4,7 @@ from inspect import FullArgSpec, getfullargspec
 from kh_common.logging import getLogger, Logger
 from functools import wraps
 from uuid import uuid4
+from enum import Enum
 
 
 logger: Logger = getLogger()
@@ -76,7 +77,7 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 				kwargs.update(zip(arg_spec.args, args))
 				kwargs['refid']: str = uuid4().hex
 				logdata = {
-					key: kwargs[key]
+					key: (kwargs[key].name if isinstance(kwargs[key], Enum), else kwargs[key])
 					for key in kwargs.keys() - exclusions
 				}
 				logger.exception(logdata)
