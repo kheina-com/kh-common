@@ -1,4 +1,4 @@
-from typing import Iterable
+from typing import Any, Iterable
 
 
 __version__: str = '0.4.0'
