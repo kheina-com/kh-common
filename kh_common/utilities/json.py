@@ -5,8 +5,9 @@ from decimal import Decimal
 
 _conversions: Dict[type, Callable] = {
 	datetime: datetime.timestamp,
-	tuple: list,
 	Decimal: float,
+	tuple: lambda x : list(filter(None, x)),
+	list: lambda x : list(filter(None, x)),
 }
 
 

@@ -1,10 +1,11 @@
+from kh_common.exceptions.http_error import BadRequest, InternalServerError
 from typing import Any, Callable, Dict, List, Tuple, Union
-from kh_common.exceptions.http_error import BadRequest
 from kh_common.config.constants import environment
 from kh_common import getFullyQualifiedClassName
+from kh_common.logging import getLogger, Logger
+from inspect import FullArgSpec, getfullargspec
 from starlette.responses import UJSONResponse
 from starlette.requests import Request
-from kh_common.logging import Logger
 from traceback import format_tb
 from types import TracebackType
 from functools import wraps
@@ -12,7 +13,10 @@ from sys import exc_info
 from uuid import uuid4
 
 
-def _jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stacktrace:bool=False) :
+logger = getLogger()
+
+
+def _jsonErrorHandler(req: Request, log:bool=False, stacktrace:bool=False) :
 	e: ConnectionException
 	traceback: TracebackType
 	e, traceback = exc_info()[1:]
@@ -31,7 +35,7 @@ def _jsonErrorHandler(req: Request, logger:Union[Logger, type(None)]=None, stack
 	if stacktrace :
 		error['stacktrace']: List[str] = traceback
 
-	if logger :
+	if log :
 		logger.error({
 			**error,
 			'stacktrace': traceback,
@@ -66,6 +70,36 @@ def jsonErrorHandler(func: Callable) -> Callable :
 			return _jsonErrorHandler(request, stacktrace=(environment == 'local'))
 
 	return wrapper
+
+
+def GenericErrorHandler(message: str) -> Callable :
+	"""
+	raises internal server error from any unexpected errors
+	f'an unexpected error occurred while {message}.'
+	"""
+
+	def decorator(func: Callable) -> Callable :
+
+		arg_spec: FullArgSpec = getfullargspec(func)
+
+		@wraps(func)
+		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+			request: Request = args[request_index]
+			try :
+				return func(*args, **kwargs)
+
+			except HttpError :
+				raise
+
+			except :
+				kwargs.update(zip(arg_spec.args, args))
+				kwargs['refid']: str = uuid4().hex
+				logger.exception(kwargs)
+				raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=kwargs)
+
+		return wrapper
+	
+	return decorator
 
 
 def checkJsonKeys(json_body: Dict[str, Any], keys: List[str]) :
