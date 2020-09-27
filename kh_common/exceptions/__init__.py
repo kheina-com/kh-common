@@ -2,7 +2,6 @@ from typing import Any, Callable, Dict, List, Tuple, Union
 from kh_common.config.constants import environment
 from kh_common import getFullyQualifiedClassName
 from kh_common.logging import getLogger, Logger
-from inspect import FullArgSpec, getfullargspec
 from starlette.responses import UJSONResponse
 from starlette.requests import Request
 from traceback import format_tb
@@ -12,7 +11,7 @@ from sys import exc_info
 from uuid import uuid4
 
 
-logger = getLogger()
+logger: Logger = getLogger()
 
 
 def _jsonErrorHandler(req: Request, log:bool=False, stacktrace:bool=False) :
