@@ -1,3 +1,6 @@
+from typing import Iterable
+
+
 __version__: str = '0.4.0'
 
 
@@ -16,7 +19,7 @@ def stringSlice(string: str, start:str=None, end:str=None) -> str :
 	return string[start:end]
 
 
-def flatten(it: Iterator[Any]) -> Iterator[Any] :
+def flatten(it: Iterable[Any]) -> Iterable[Any] :
 	if isinstance(it, (tuple, list, set)) :
 		for i in it :
 			yield from flatten(i)

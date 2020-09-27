@@ -1,5 +1,5 @@
 from kh_common.exceptions.base_error import BaseError
-from typing import Any, Dict, Tuple
+from typing import Any, Callable, Dict, Tuple
 
 
 class HttpError(BaseError) :
@@ -43,3 +43,32 @@ class ResponseNotOk(HttpError) :
 
 class BadOrMalformedResponse(HttpError) :
 	pass
+
+
+def HttpErrorHandler(message: str) -> Callable :
+	"""
+	raises internal server error from any unexpected errors
+	f'an unexpected error occurred while {message}.'
+	"""
+
+	def decorator(func: Callable) -> Callable :
+
+		arg_spec: FullArgSpec = getfullargspec(func)
+
+		@wraps(func)
+		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+			try :
+				return func(*args, **kwargs)
+
+			except HttpError :
+				raise
+
+			except :
+				kwargs.update(zip(arg_spec.args, args))
+				kwargs['refid']: str = uuid4().hex
+				logger.exception(kwargs)
+				raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=kwargs)
+
+		return wrapper
+
+	return decorator

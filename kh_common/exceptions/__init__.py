@@ -1,4 +1,3 @@
-from kh_common.exceptions.http_error import HttpError, InternalServerError
 from typing import Any, Callable, Dict, List, Tuple, Union
 from kh_common.config.constants import environment
 from kh_common import getFullyQualifiedClassName
@@ -70,32 +69,3 @@ def jsonErrorHandler(func: Callable) -> Callable :
 			return _jsonErrorHandler(request, stacktrace=(environment == 'local'))
 
 	return wrapper
-
-
-def GenericErrorHandler(message: str) -> Callable :
-	"""
-	raises internal server error from any unexpected errors
-	f'an unexpected error occurred while {message}.'
-	"""
-
-	def decorator(func: Callable) -> Callable :
-
-		arg_spec: FullArgSpec = getfullargspec(func)
-
-		@wraps(func)
-		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			try :
-				return func(*args, **kwargs)
-
-			except HttpError :
-				raise
-
-			except :
-				kwargs.update(zip(arg_spec.args, args))
-				kwargs['refid']: str = uuid4().hex
-				logger.exception(kwargs)
-				raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=kwargs)
-
-		return wrapper
-
-	return decorator
