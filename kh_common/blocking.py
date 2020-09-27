@@ -24,7 +24,7 @@ class UserBlocking(SqlInterface, Hashable) :
 						AND tags.deprecated = false
 			WHERE user_id = %s;
 			""",
-			(user_id,)
+			(user_id,),
 			fetch_all=True,
 		)
 
@@ -42,7 +42,7 @@ class UserBlocking(SqlInterface, Hashable) :
 					ON users.user_id = blocked
 			WHERE user_id = %s;
 			""",
-			(user_id,)
+			(user_id,),
 			fetch_all=True,
 		)
 

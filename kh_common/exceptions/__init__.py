@@ -98,7 +98,7 @@ def GenericErrorHandler(message: str) -> Callable :
 				raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=kwargs)
 
 		return wrapper
-	
+
 	return decorator
 
 
