@@ -18,4 +18,4 @@ def _convert_item(self, item: Any) -> Any :
 
 
 def json_stream(stream: Iterable) :
-	map(_convert_item, stream)
+	return map(_convert_item, stream)
