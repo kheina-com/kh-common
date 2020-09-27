@@ -10,7 +10,7 @@ _conversions: Dict[type, Callable] = {
 }
 
 
-def _convert_item(self, item: Any) -> Any :
+def _convert_item(item: Any) -> Any :
 	item_type = type(item)
 	if item_type in _conversions :
 		return _conversions[item_type](item)
