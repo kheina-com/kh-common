@@ -1,7 +1,7 @@
+from typing import Any, Callable, Dict, Iterable, Set, Tuple
 from kh_common.exceptions.base_error import BaseError
 from inspect import FullArgSpec, getfullargspec
 from kh_common.logging import getLogger, Logger
-from typing import Any, Callable, Dict, Tuple
 from functools import wraps
 from uuid import uuid4
 
@@ -52,11 +52,13 @@ class BadOrMalformedResponse(HttpError) :
 	pass
 
 
-def HttpErrorHandler(message: str) -> Callable :
+def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callable :
 	"""
 	raises internal server error from any unexpected errors
 	f'an unexpected error occurred while {message}.'
 	"""
+
+	exclusions: Set[str] = set(exclusions)
 
 	def decorator(func: Callable) -> Callable :
 
@@ -73,6 +75,10 @@ def HttpErrorHandler(message: str) -> Callable :
 			except :
 				kwargs.update(zip(arg_spec.args, args))
 				kwargs['refid']: str = uuid4().hex
+				logdata = {
+					key: kwargs[key]
+					for key in kwargs.keys() - exclusions
+				}
 				logger.exception(kwargs)
 				raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=kwargs)
 
