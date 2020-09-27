@@ -79,8 +79,8 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 					key: kwargs[key]
 					for key in kwargs.keys() - exclusions
 				}
-				logger.exception(kwargs)
-				raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=kwargs)
+				logger.exception(logdata)
+				raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 
 		return wrapper
 
