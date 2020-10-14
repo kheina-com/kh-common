@@ -100,7 +100,7 @@ class B2Interface :
 
 				elif response.status_code == 401 :
 					# obtain new auth token
-					self.authorize_b2()
+					self._b2_authorize()
 
 			sleep(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
@@ -179,7 +179,7 @@ class B2Interface :
 
 					elif response.status == 401 :
 						# obtain new auth token
-						self.authorize_b2()
+						self._b2_authorize()
 
 					else :
 						content = await response.read()
