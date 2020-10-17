@@ -41,6 +41,9 @@ class SqlInterface :
 
 
 	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[type(None), List[Any]] :
+		if self._conn.closed :
+			self._sql_connect()
+
 		params = tuple(map(self._convert_item, params))
 		try :
 			cur: Cursor = self._conn.cursor()
@@ -67,7 +70,10 @@ class SqlInterface :
 				raise
 
 		except :
-			self.logger.warning('unexpected error encountered during sql query.', exc_info=True)
+			self.logger.warning({
+				'message': 'unexpected error encountered during sql query.',
+				'query': sql,
+			}, exc_info=True)
 			# now attempt to recover by rolling back
 			self._conn.rollback()
 			raise

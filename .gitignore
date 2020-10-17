@@ -31,18 +31,13 @@ databaseIDs.json
 # python files
 **/__pycache__
 **/Pipfile
+server.py
 
 # text files, except a requirements file, should it exist
 *.log
 *.txt
 *.out
 !requirements.txt
-
-# old web files from original iqdb clone
-**/web
-
-# stats files
-stats.json
 
 # back ups of files hosted remotely
 **/backups
