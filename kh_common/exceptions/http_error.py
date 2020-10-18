@@ -41,6 +41,11 @@ class UnsupportedMedia(HttpError) :
 		super().__init__(message, *args, status=415, **kwargs)
 
 
+class UnprocessableEntity(HttpError) :
+	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> type(None) :
+		super().__init__(message, *args, status=422, **kwargs)
+
+
 class InternalServerError(HttpError) :
 	pass
 
