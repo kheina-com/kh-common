@@ -139,5 +139,8 @@ class Transaction :
 				return self.cur.fetchall()
 
 		except :
-			self._sql.logger.warning('unexpected error encountered during sql query.', exc_info=True)
+			self._sql.logger.warning({
+				'message': 'unexpected error encountered during sql query.',
+				'query': sql,
+			}, exc_info=True)
 			raise
