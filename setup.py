@@ -9,11 +9,5 @@ setup(
 	author='kheina',
 	url='https://github.com/kheina-com/kh-common',
 	packages=find_packages(),
-	install_requires=[
-		'pika',
-		'ujson',
-		'cryptography',
-		'requests',
-		'google-cloud-logging',
-	],
+	install_requires=open('requirements.txt').read().split(),
 )
