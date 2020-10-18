@@ -70,7 +70,7 @@ def v1token(token: str) -> TokenData :
 	guid: bytes
 	data: bytes
 
-	algorithm, key_id, expires, user_id, guid, data = load.split(b'.', 4)
+	algorithm, key_id, expires, user_id, guid, data = load.split(b'.', 5)
 
 	algorithm: str = algorithm.decode()
 	key_id: int = int.from_bytes(b64decode(key_id), 'big')
