@@ -62,9 +62,9 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 				if args in decorator.cache :
 					return decorator.cache[args]
 
-			decorator.keys.append((now + TTL, args))
 			data: Any = func(*args, **kwargs)
 			decorator.cache[args]: Any = data
+			decorator.keys.append((now + TTL, args))
 
 			return data
 
@@ -106,9 +106,9 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 				if cache_key in decorator.cache :
 					return decorator.cache[cache_key]
 
-			decorator.keys.append((now + TTL, cache_key))
 			data: Any = func(*args, **kwargs)
 			decorator.cache[cache_key]: Any = data
+			decorator.keys.append((now + TTL, cache_key))
 
 			return data
 
