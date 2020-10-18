@@ -7,18 +7,31 @@ from kh_common.config.constants import auth_host
 from requests import post as requests_post
 from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
-from starlette.requests import Request
+from fastapi import Depends, Request
 from dataclasses import dataclass
+from datetime import datetime
 from functools import wraps
-from time import time
 import ujson as json
+
+
+from starlette.requests import HTTPConnection
+from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 @dataclass
 class TokenData :
 	guid: str
-	expires: int
+	user_id: int
+	expires: datetime
 	data: Dict[str, Any]
+
+
+@dataclass
+class KhUser :
+	user_id: int
+	token: TokenData
+	authenticed: bool
+	scope: Tuple[str]
 
 
 @ArgsCache(60 * 60 * 24)  # 24 hour cache
@@ -37,7 +50,7 @@ def _fetchPublicKey(key_id: int, algorithm: str) -> Dict[str, Union[str, int]] :
 		'key_id': key_id,
 		'algorithm': algorithm,
 		'public_key': public_key,
-		'expires': load['expires'],
+		'expires': datetime.fromtimestamp(load['expires']),
 	}
 
 
@@ -53,22 +66,24 @@ def v1token(token: str) -> TokenData :
 	algorithm: bytes
 	key_id: bytes
 	expires: bytes
+	user_id: bytes
 	guid: bytes
 	data: bytes
 
-	algorithm, key_id, expires, guid, data = load.split(b'.', 4)
+	algorithm, key_id, expires, user_id, guid, data = load.split(b'.', 4)
 
 	algorithm: str = algorithm.decode()
 	key_id: int = int.from_bytes(b64decode(key_id), 'big')
-	expires: int = int.from_bytes(b64decode(expires), 'big')
+	expires: datetime = datetime.fromtimestamp(int.from_bytes(b64decode(expires), 'big'))
+	user_id: int = int.from_bytes(b64decode(user_id), 'big')
 	guid: str = b64decode(guid).hex()
 
-	if time() > expires :
+	if datetime.now() > expires :
 		raise Unauthorized('Key has expired.')
 
 	key: Dict[str, Union[str, int, Ed25519PublicKey]] = _fetchPublicKey(key_id, algorithm)
 
-	if time() > key['expires'] :
+	if datetime.now() > key['expires'] :
 		raise Unauthorized('Key has expired.')
 
 	try :
@@ -79,6 +94,7 @@ def v1token(token: str) -> TokenData :
 
 	return TokenData(
 		guid=guid,
+		user_id=user_id,
 		expires=expires,
 		data=json.loads(data),
 	)
@@ -107,30 +123,39 @@ def retrieveTokenData(request: Request) -> TokenData :
 	return verifyToken(token.split()[-1])
 
 
-def authenticated(func: Callable) -> Callable :
-	request_index: Union[int, type(None)] = None
-	token_key: Union[str, type(None)] = None
+class KhAuthMiddleware:
 
-	for i, (k, v) in enumerate(func.__annotations__.items()) :
-		if 'req' in k.lower() :
-			request_index = i
-		if 'token' in k.lower() :
-			token_key = k
+	def __init__(self, app: ASGIApp, required: bool = True) -> type(None):
+		self.app = app
+		self.auth_required = required
 
-		if issubclass(v, Request) :
-			request_index = i
-		if issubclass(v, TokenData) :
-			token_key = k
 
-	if request_index is None :
-		raise TypeError("request object must be typed as a subclass of starlette.requests.Request or contain 'req' in its name")
+	async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+		if scope['type'] not in ['http', 'websocket']:
+			await self.app(scope, receive, send)
+			return
 
-	if token_key is None :
-		raise TypeError("token object must be typed as a subclass of kh_common.auth.TokenData or contain 'token' in its name")
+		conn = HTTPConnection(scope)
 
-	@wraps(func)
-	async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-		request: Request = args[request_index]
-		kwargs[token_key]: TokenData = retrieveTokenData(request)
-		return await func(*args, **kwargs)
-	return wrapper
+		try :
+			token_data: TokenData = retrieveTokenData(conn)
+
+			scope['user'] = KhUser(
+				user_id=token_data.user_id,
+				token=token_data,
+				authenticed=True,
+				scope=('user',),
+			)
+
+		except Unauthorized :
+			if self.auth_required :
+				raise
+
+			scope['user'] = KhUser(
+				user_id=None,
+				token=None,
+				authenticed=False,
+				scope=tuple(),
+			)
+
+		await self.app(scope, receive, send)
