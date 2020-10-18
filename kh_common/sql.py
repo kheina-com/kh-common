@@ -18,6 +18,7 @@ class SqlInterface :
 		self._sql_connect()
 		self._conversions: Dict[type, Callable] = {
 			tuple: list,
+			bytes: Binary,
 			**conversions,
 		}
 

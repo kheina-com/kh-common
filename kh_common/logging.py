@@ -28,16 +28,22 @@ class TerminalAgent :
 
 class LogHandler(logging.Handler) :
 
+	logging_available = True
+
 	def __init__(self, name: str, *args: Tuple[Any], structs:Tuple[type]=(dict, list, tuple), **kwargs:[str, Any]) -> type(None) :
 		logging.Handler.__init__(self, *args, **kwargs)
 		self._structs: Tuple[type] = structs
 		try :
+			if not LogHandler.logging_available :
+				raise ValueError('logging unavailable.')
+
 			from google.cloud import logging as google_logging
 			from google.auth import compute_engine
 			credentials: compute_engine.credentials.Credentials = compute_engine.Credentials()
 			logging_client: google_logging.client.Client = google_logging.Client(credentials=credentials)
 			self.agent: google_logging.logger.Logger = logging_client.logger(name)
 		except :
+			LogHandler.logging_available = False
 			self.agent: TerminalAgent = TerminalAgent()
 
 
