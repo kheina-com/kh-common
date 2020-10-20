@@ -1,32 +1,32 @@
-from subprocess import check_output
-from kh_common import stringSlice
 from typing import Any, Dict, Union
+from subprocess import PIPE, Popen
+from kh_common import stringSlice
 
 
 name: Union[str, type(None)] = None
 
-output: Union[bytes, type(None)] = check_output(['git', 'config', '--get', 'remote.origin.url'])
+output: Union[bytes, type(None)] = b''.join(Popen(['git', 'config', '--get', 'remote.origin.url'], stdout=PIPE, stderr=PIPE).communicate())
 if output and not output.startswith(b'fatal'):
 	name = stringSlice(output.decode(), '/', '.git')
 
 else :
-	output = check_output(['git', 'rev-parse', '--show-toplevel'])
+	output = b''.join(Popen(['git', 'rev-parse', '--show-toplevel'], stdout=PIPE, stderr=PIPE).communicate())
 	if output and not output.startswith(b'fatal'):
 		name = stringSlice(output.decode(), '/').strip()
 
 
 short_hash: Union[str, type(None)] = None
 
-output = check_output(['git', 'rev-parse', '--short', 'HEAD'])
+output = b''.join(Popen(['git', 'rev-parse', '--short', 'HEAD'], stdout=PIPE, stderr=PIPE).communicate())
 if output and not output.startswith(b'fatal'):
 	short_hash = output.decode().strip()
 
 
 full_hash: Union[str, type(None)] = None
 
-output = check_output(['git', 'rev-parse', 'HEAD'])
+output = b''.join(Popen(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE).communicate())
 if output and not output.startswith(b'fatal'):
 	full_hash = output.decode().strip()
 
 
-del output, stringSlice, check_output
+del output, stringSlice, PIPE, Popen
