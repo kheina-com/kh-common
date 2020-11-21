@@ -4,7 +4,7 @@ from starlette.exceptions import ExceptionMiddleware
 from kh_common.exceptions import jsonErrorHandler
 from fastapi.responses import UJSONResponse
 from kh_common.auth import KhAuthMiddleware
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
 
 
 def ServerApp(auth=True, auth_required=True, allowed_hosts={ 'localhost', '127.0.0.1', '*.kheina.com' }) -> FastAPI :
