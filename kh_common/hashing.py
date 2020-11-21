@@ -8,9 +8,9 @@ class Hashable :
 
 	def __init__(self) :
 		name = f"<class '{getFullyQualifiedClassName(self)}' {Hashable._hash}>"
-		self.hash = int.from_bytes(sha1(name.encode()).digest(), 'big')
+		self._hash = int.from_bytes(sha1(name.encode()).digest(), 'big')
 		Hashable._hash += 1
 
 
 	def __hash__(self) :
-		return self.hash
+		return self._hash

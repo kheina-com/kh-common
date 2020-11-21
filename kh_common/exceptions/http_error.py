@@ -1,6 +1,6 @@
+from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from typing import Any, Callable, Dict, Iterable, Set, Tuple
 from kh_common.exceptions.base_error import BaseError
-from inspect import FullArgSpec, getfullargspec
 from kh_common.logging import getLogger, Logger
 from functools import wraps
 from uuid import uuid4
@@ -70,24 +70,46 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 
 		arg_spec: FullArgSpec = getfullargspec(func)
 
-		@wraps(func)
-		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			try :
-				return func(*args, **kwargs)
+		if iscoroutinefunction(func) :
+			@wraps(func)
+			async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+				try :
+					return await func(*args, **kwargs)
 
-			except HttpError :
-				raise
+				except HttpError :
+					raise
 
-			except :
-				kwargs.update(zip(arg_spec.args, args))
-				kwargs['refid']: str = uuid4().hex
-				logdata = {
-					key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
-					for key in kwargs.keys() - exclusions
-				}
-				logger.exception(logdata)
-				raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
+				except :
+					kwargs.update(zip(arg_spec.args, args))
+					kwargs['refid']: str = uuid4().hex
+					logdata = {
+						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
+						for key in kwargs.keys() - exclusions
+					}
+					logger.exception(logdata)
+					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 
-		return wrapper
+			return wrapper
+
+		else :
+			@wraps(func)
+			def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+				try :
+					return func(*args, **kwargs)
+
+				except HttpError :
+					raise
+
+				except :
+					kwargs.update(zip(arg_spec.args, args))
+					kwargs['refid']: str = uuid4().hex
+					logdata = {
+						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
+						for key in kwargs.keys() - exclusions
+					}
+					logger.exception(logdata)
+					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
+
+			return wrapper
 
 	return decorator

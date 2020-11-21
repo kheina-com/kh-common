@@ -1,11 +1,10 @@
-from typing import Any, Callable, Dict, List, Tuple, Union
 from kh_common.exceptions.http_error import HttpError
-from kh_common.config.constants import environment
 from kh_common import getFullyQualifiedClassName
 from kh_common.logging import getLogger, Logger
 from starlette.responses import UJSONResponse
 from traceback import format_tb
 from types import TracebackType
+from typing import Dict, Union
 from fastapi import Request
 from sys import exc_info
 from uuid import uuid4
@@ -14,7 +13,7 @@ from uuid import uuid4
 logger: Logger = getLogger()
 
 
-def jsonErrorHandler(request: Request, e: Exception) :
+def jsonErrorHandler(request: Request, e: Exception) -> UJSONResponse :
 	status: int = getattr(e, 'status', 500)
 
 	error: Dict[str, Union[str, int]] = {
@@ -23,15 +22,11 @@ def jsonErrorHandler(request: Request, e: Exception) :
 	}
 
 	if isinstance(e, HttpError) :
-		error['error']: str = f'{status} {e.__class__.__name__}: {e}'
+		error['error']: str = f'{e.__class__.__name__}: {e}'
 
 	else :
-		logger.exception({
-			'error': f'{status} {getFullyQualifiedClassName(e)}: {e}',
-			**error,
-			**getattr(e, 'logdata', { }),
-		})
-		error['error']: str = f'500 Internal Server Error: {e}'
+		logger.error(error, exc_info=e)
+		error['error']: str = 'Internal Server Error'
 
 	return UJSONResponse(
 		error,

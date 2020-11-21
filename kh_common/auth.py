@@ -1,9 +1,12 @@
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
+from kh_common.exceptions.http_error import HttpError, Unauthorized
+from starlette.types import ASGIApp, Receive, Scope, Send
 from cryptography.hazmat.backends import default_backend
-from kh_common.exceptions.http_error import Unauthorized
 from typing import Any, Callable, Dict, Tuple, Union
+from kh_common.exceptions import jsonErrorHandler
 from kh_common.config.constants import auth_host
+from starlette.requests import HTTPConnection
 from requests import post as requests_post
 from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
@@ -12,10 +15,6 @@ from dataclasses import dataclass
 from datetime import datetime
 from functools import wraps
 import ujson as json
-
-
-from starlette.requests import HTTPConnection
-from starlette.types import ASGIApp, Receive, Scope, Send
 
 
 @dataclass
@@ -135,10 +134,10 @@ class KhAuthMiddleware:
 			await self.app(scope, receive, send)
 			return
 
-		conn = HTTPConnection(scope)
+		request = HTTPConnection(scope)
 
 		try :
-			token_data: TokenData = retrieveTokenData(conn)
+			token_data: TokenData = retrieveTokenData(request)
 
 			scope['user'] = KhUser(
 				user_id=token_data.user_id,
@@ -147,9 +146,11 @@ class KhAuthMiddleware:
 				scope=('user',),
 			)
 
-		except Unauthorized :
-			if self.auth_required :
-				raise
+		except HttpError as e :
+			if isinstance(e, Unauthorized) and self.auth_required :
+				response = jsonErrorHandler(request, e)
+				await response(scope, receive, send)
+				return
 
 			scope['user'] = KhUser(
 				user_id=None,
