@@ -1,4 +1,7 @@
 from typing import Any, Callable, Dict, Hashable, Iterable, Tuple, Union
+from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
+from collections import defaultdict
+from enum import Enum, unique
 from functools import wraps
 from time import time
 
@@ -47,13 +50,24 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	def decorator(func: Callable) -> Callable :
-		@wraps(func)
-		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			now: float = time()
-			if now > decorator.expire :
-				decorator.expire = now + TTL
-				decorator.data = func(*args, **kwargs)
-			return decorator.data
+		if iscoroutinefunction(func) :
+			@wraps(func)
+			async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+				now: float = time()
+				if now > decorator.expire :
+					decorator.expire = now + TTL
+					decorator.data = await func(*args, **kwargs)
+				return decorator.data
+
+		else :
+			@wraps(func)
+			def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+				now: float = time()
+				if now > decorator.expire :
+					decorator.expire = now + TTL
+					decorator.data = func(*args, **kwargs)
+				return decorator.data
+
 		return wrapper
 	decorator.expire: float = 0
 	decorator.data: Any = None
@@ -66,31 +80,60 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	def decorator(func: Callable) -> Callable :
-		@wraps(func)
-		def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-			now: float = time()
-			key = _cache_stream(args)
 
-			if decorator.cache :
-				i: int = 0
-				for expires, itemkey in decorator.keys :
-					if expires > now : break
-					del decorator.cache[itemkey]
-					i += 1
+		if iscoroutinefunction(func) :
+			@wraps(func)
+			async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+				now: float = time()
+				key = _cache_stream(args)
 
-				if i == len(decorator.keys) :
-					decorator.keys.clear()
-				elif i :
-					decorator.keys = decorator.keys[-len(decorator.cache):]
+				if decorator.cache :
+					i: int = 0
+					for expires, itemkey in decorator.keys :
+						if expires > now : break
+						del decorator.cache[itemkey]
+						i += 1
 
-				if key in decorator.cache :
-					return decorator.cache[key]
+					if i == len(decorator.keys) :
+						decorator.keys.clear()
+					elif i :
+						decorator.keys = decorator.keys[-len(decorator.cache):]
 
-			data: Any = func(*args, **kwargs)
-			decorator.cache[key]: Any = data
-			decorator.keys.append((now + TTL, key))
+					if key in decorator.cache :
+						return decorator.cache[key]
 
-			return data
+				data: Any = await func(*args, **kwargs)
+				decorator.cache[key]: Any = data
+				decorator.keys.append((now + TTL, key))
+
+				return data
+
+		else :
+			@wraps(func)
+			def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+				now: float = time()
+				key = _cache_stream(args)
+
+				if decorator.cache :
+					i: int = 0
+					for expires, itemkey in decorator.keys :
+						if expires > now : break
+						del decorator.cache[itemkey]
+						i += 1
+
+					if i == len(decorator.keys) :
+						decorator.keys.clear()
+					elif i :
+						decorator.keys = decorator.keys[-len(decorator.cache):]
+
+					if key in decorator.cache :
+						return decorator.cache[key]
+
+				data: Any = func(*args, **kwargs)
+				decorator.cache[key]: Any = data
+				decorator.keys.append((now + TTL, key))
+
+				return data
 
 		return wrapper
 
@@ -110,31 +153,60 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 
 
 	def decorator(func: Callable) -> Callable :
-		@wraps(func)
-		def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-			cache_key: Tuple[Any] = create_key(args, kwargs)
-			now: float = time()
 
-			if decorator.cache :
-				i: int = 0
-				for expires, key in decorator.keys :
-					if expires > now : break
-					del decorator.cache[key]
-					i += 1
+		if iscoroutinefunction(func) :
+			@wraps(func)
+			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
+				cache_key: Tuple[Any] = create_key(args, kwargs)
+				now: float = time()
 
-				if i == len(decorator.keys) :
-					decorator.keys.clear()
-				elif i :
-					decorator.keys = decorator.keys[-len(decorator.cache):]
+				if decorator.cache :
+					i: int = 0
+					for expires, key in decorator.keys :
+						if expires > now : break
+						del decorator.cache[key]
+						i += 1
 
-				if cache_key in decorator.cache :
-					return decorator.cache[cache_key]
+					if i == len(decorator.keys) :
+						decorator.keys.clear()
+					elif i :
+						decorator.keys = decorator.keys[-len(decorator.cache):]
 
-			data: Any = func(*args, **kwargs)
-			decorator.cache[cache_key]: Any = data
-			decorator.keys.append((now + TTL, cache_key))
+					if cache_key in decorator.cache :
+						return decorator.cache[cache_key]
 
-			return data
+				data: Any = await func(*args, **kwargs)
+				decorator.cache[cache_key]: Any = data
+				decorator.keys.append((now + TTL, cache_key))
+
+				return data
+
+		else :
+			@wraps(func)
+			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
+				cache_key: Tuple[Any] = create_key(args, kwargs)
+				now: float = time()
+
+				if decorator.cache :
+					i: int = 0
+					for expires, key in decorator.keys :
+						if expires > now : break
+						del decorator.cache[key]
+						i += 1
+
+					if i == len(decorator.keys) :
+						decorator.keys.clear()
+					elif i :
+						decorator.keys = decorator.keys[-len(decorator.cache):]
+
+					if cache_key in decorator.cache :
+						return decorator.cache[cache_key]
+
+				data: Any = func(*args, **kwargs)
+				decorator.cache[cache_key]: Any = data
+				decorator.keys.append((now + TTL, cache_key))
+
+				return data
 
 		return wrapper
 
@@ -143,5 +215,112 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 	return decorator
 
 
-def Aggregate(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0, count:int=-1) -> Callable :
-	raise NotImplementedError()
+@unique
+class Aggregator(Enum) :
+	Sum: str = 'sum'
+	Average: str = 'avg'
+
+
+class SumAggregator :
+	def __init__(self) :
+		self.data = defaultdict(lambda : 0)
+	
+	def update(self, data: Dict) :
+		for k in data.keys() :
+			self.data[k] += data[k]
+	
+	def result(self) :
+		value = self.data.copy()
+		self.data.clear()
+		return value
+
+
+class AverageAggregator :
+	def __init__(self) :
+		self.data = defaultdict(lambda : 0)
+		self.count = 0
+	
+	def update(self, data: Dict) :
+		self.count += 1
+		for k in data.keys() :
+			self.data[k] += data[k]
+	
+	def result(self) :
+		value = {
+			k: v / self.count
+			for k, v in self.data.items()
+		}
+		self.data.clear()
+		self.count = 0
+		return value
+
+
+_aggregators: Dict[Aggregator, Callable] = {
+	Aggregator.Average: AverageAggregator,
+	Aggregator.Sum: SumAggregator,
+}
+
+
+def Aggregate(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0, exclusions:Iterable[str]=['self'], aggregator:Aggregator=Aggregator.Average) -> Callable :
+	"""
+	aggregates numeric inputs for a given count or time span
+	"""
+
+	exclusions: Set[str] = set(exclusions)
+	aggregator = _aggregators[aggregator]()
+	TTL: float = TTL_seconds + TTL_minutes / 60 + TTL_hours / 3600 + TTL_days / 86400
+	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
+
+	def decorator(func: Callable) -> Callable :
+
+		arg_spec: FullArgSpec = getfullargspec(func)
+
+		if iscoroutinefunction(func) :
+			@wraps(func)
+			async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+				kwargs.update(zip(arg_spec.args, args))
+				keys: Set[str] = kwargs.keys() - exclusions
+				aggregator.update({
+					key: kwargs[key]
+					for key in keys
+				})
+
+				now: float = time()
+				if now > decorator.expire :
+					decorator.expire = now + TTL
+					kwargs.update(aggregator.result())
+					return await func(**kwargs)
+
+		else :
+			@wraps(func)
+			def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+				kwargs.update(zip(arg_spec.args, args))
+				keys: Set[str] = kwargs.keys() - exclusions
+				aggregator.update({
+					key: kwargs[key]
+					for key in keys
+				})
+
+				now: float = time()
+				if now > decorator.expire :
+					decorator.expire = now + TTL
+					kwargs.update(aggregator.result())
+					return func(**kwargs)
+
+		return wrapper
+
+	decorator.expire: float = time() + TTL
+	return decorator
+
+"""
+from kh_common.caching import Aggregate; from random import randrange
+a = [randrange(10) for i in range(10)]; b = [randrange(100) for i in range(10)]; c = [randrange(1000) for i in range(10)]
+@Aggregate(10)
+def t(a, b, c=5) :
+	print(a, b, c)
+
+for i in range(10) :
+	t(a[i], b[i], c[i])
+
+t(1,1,1)
+"""
