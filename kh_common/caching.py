@@ -28,9 +28,9 @@ _conversions: Dict[type, Callable] = {
 
 
 def _convert_item(item: Any) -> Any :
-	item_type = type(item)
-	if isinstance(item, Iterable) :
+	if isinstance(item, Iterable) and not isinstance(item, str) :
 		return _cache_stream(item)
+	item_type = type(item)
 	if item_type in _conversions :
 		return _conversions[item_type](item)
 	return item
