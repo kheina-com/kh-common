@@ -46,7 +46,7 @@ def _cache_stream(stream: Iterable) :
 
 # PascalCase because these are technically classes
 def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
-	TTL: float = TTL_seconds + TTL_minutes / 60 + TTL_hours / 3600 + TTL_days / 86400
+	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	def decorator(func: Callable) -> Callable :
@@ -76,7 +76,7 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 
 # PascalCase because these are technically classes
 def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
-	TTL: float = TTL_seconds + TTL_minutes / 60 + TTL_hours / 3600 + TTL_days / 86400
+	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	def decorator(func: Callable) -> Callable :
@@ -144,7 +144,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 
 # PascalCase because these are technically classes
 def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0, sort_keys:bool=False) -> Callable :
-	TTL: float = TTL_seconds + TTL_minutes / 60 + TTL_hours / 3600 + TTL_days / 86400
+	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	if sort_keys :
 		create_key: Callable = lambda a, k : tuple((key, k[key]) for key in sorted(k.keys())) + a
 	else :
@@ -268,7 +268,7 @@ def Aggregate(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 
 	exclusions: Set[str] = set(exclusions)
 	aggregator = _aggregators[aggregator]()
-	TTL: float = TTL_seconds + TTL_minutes / 60 + TTL_hours / 3600 + TTL_days / 86400
+	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	def decorator(func: Callable) -> Callable :
@@ -311,16 +311,3 @@ def Aggregate(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 
 	decorator.expire: float = time() + TTL
 	return decorator
-
-"""
-from kh_common.caching import Aggregate; from random import randrange
-a = [randrange(10) for i in range(10)]; b = [randrange(100) for i in range(10)]; c = [randrange(1000) for i in range(10)]
-@Aggregate(10)
-def t(a, b, c=5) :
-	print(a, b, c)
-
-for i in range(10) :
-	t(a[i], b[i], c[i])
-
-t(1,1,1)
-"""
