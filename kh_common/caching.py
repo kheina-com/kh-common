@@ -89,7 +89,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 				if decorator.cache :
 					i: int = 0
 					for expires, itemkey in decorator.keys :
-						if expires > now : break
+						if expires >= now : break
 						del decorator.cache[itemkey]
 						i += 1
 
@@ -116,7 +116,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 				if decorator.cache :
 					i: int = 0
 					for expires, itemkey in decorator.keys :
-						if expires > now : break
+						if expires >= now : break
 						del decorator.cache[itemkey]
 						i += 1
 
@@ -141,13 +141,9 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 	return decorator
 
 
-def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0, sort_keys:bool=False) -> Callable :
+def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
 	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
-	if sort_keys :
-		create_key: Callable = lambda a, k : tuple((key, k[key]) for key in sorted(k.keys())) + a
-	else :
-		create_key: Callable = lambda a, k : tuple(k.items()) + a
-	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days, sort_keys
+	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 
 	def decorator(func: Callable) -> Callable :
@@ -155,13 +151,13 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 		if iscoroutinefunction(func) :
 			@wraps(func)
 			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				cache_key: Tuple[Any] = create_key(args, kwargs)
+				cache_key: Tuple[Any] = _cache_stream([args, kwargs])
 				now: float = time()
 
 				if decorator.cache :
 					i: int = 0
 					for expires, key in decorator.keys :
-						if expires > now : break
+						if expires >= now : break
 						del decorator.cache[key]
 						i += 1
 
@@ -182,13 +178,13 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 		else :
 			@wraps(func)
 			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				cache_key: Tuple[Any] = create_key(args, kwargs)
+				cache_key: Tuple[Any] = _cache_stream([args, kwargs])
 				now: float = time()
 
 				if decorator.cache :
 					i: int = 0
 					for expires, key in decorator.keys :
-						if expires > now : break
+						if expires >= now : break
 						del decorator.cache[key]
 						i += 1
 
@@ -246,7 +242,7 @@ class AverageAggregator :
 
 class StandardDeviation :
 	def __init__(self, count, avg, q_value) :
-		self.avg: float = avg
+		self.average: float = avg
 		self.count: int = count
 		self.variance: float = q_value / (count - 1)
 		self.deviation: float = sqrt(self.variance)
