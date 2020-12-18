@@ -249,8 +249,7 @@ class TestAggregate :
 			result = aggregate_test(i, i)
 
 		# assert
-		assert expected == result[0].deviation
+		assert format(expected, '.12g') == format(result[0].deviation, '.12g')
 		assert len(data) == result[0].count
 		assert sum(data) / len(data) == result[0].average
-		assert expected == result[1].deviation
-
+		assert format(expected, '.12g') == format(result[1].deviation, '.12g')
