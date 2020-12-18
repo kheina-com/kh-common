@@ -1,8 +1,8 @@
 from typing import Any, Callable, Dict, Hashable, Iterable, Tuple, Union
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from collections import defaultdict
-from enum import Enum, unique
 from functools import wraps
+from math import sqrt
 from time import time
 
 
@@ -28,11 +28,12 @@ _conversions: Dict[type, Callable] = {
 
 
 def _convert_item(item: Any) -> Any :
-	if isinstance(item, Iterable) and not isinstance(item, str) :
+	if isinstance(item, str) :
+		return item
+	if isinstance(item, Iterable) :
 		return _cache_stream(item)
-	item_type = type(item)
-	if item_type in _conversions :
-		return _conversions[item_type](item)
+	if type(item) in _conversions :
+		return _conversions[type(item)](item)
 	return item
 
 
@@ -44,7 +45,6 @@ def _cache_stream(stream: Iterable) :
 		return tuple(map(_convert_item, stream))
 
 
-# PascalCase because these are technically classes
 def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
 	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
@@ -74,7 +74,6 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 	return decorator
 
 
-# PascalCase because these are technically classes
 def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
 	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
@@ -142,7 +141,6 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 	return decorator
 
 
-# PascalCase because these are technically classes
 def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0, sort_keys:bool=False) -> Callable :
 	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	if sort_keys :
@@ -215,19 +213,13 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 	return decorator
 
 
-@unique
-class Aggregator(Enum) :
-	Sum: str = 'sum'
-	Average: str = 'avg'
-
-
 class SumAggregator :
 	def __init__(self) :
 		self.data = defaultdict(lambda : 0)
 	
 	def update(self, data: Dict) :
-		for k in data.keys() :
-			self.data[k] += data[k]
+		for k, v in data.items() :
+			self.data[k] += v
 	
 	def result(self) :
 		value = self.data.copy()
@@ -242,32 +234,61 @@ class AverageAggregator :
 	
 	def update(self, data: Dict) :
 		self.count += 1
-		for k in data.keys() :
-			self.data[k] += data[k]
+		for k, v in data.items() :
+			self.data[k] += (v - self.data[k]) / self.count
 	
 	def result(self) :
-		value = {
-			k: v / self.count
-			for k, v in self.data.items()
-		}
+		value = self.data.copy()
 		self.data.clear()
 		self.count = 0
 		return value
 
 
-_aggregators: Dict[Aggregator, Callable] = {
-	Aggregator.Average: AverageAggregator,
-	Aggregator.Sum: SumAggregator,
-}
+class StandardDeviation :
+	def __init__(self, count, avg, q_value) :
+		self.avg: float = avg
+		self.count: int = count
+		self.variance: float = q_value / (count - 1)
+		self.deviation: float = sqrt(self.variance)
+
+
+class StandardDeviationAggregator :
+	def __init__(self) :
+		self.avg = defaultdict(lambda : 0)
+		self.variance = defaultdict(lambda : 0)
+		self.count = 0
+
+	def update(self, data: Dict) :
+		self.count += 1
+		for k, v in data.items() :
+			prev_avg = self.avg[k]
+			self.avg[k] += (v - prev_avg) / self.count
+			self.variance[k] += (v - prev_avg) * (v - self.avg[k])
+
+	def result(self) :
+		value = {
+			k: StandardDeviation(self.count, avg, self.variance[k])
+			for k, avg in self.avg.items()
+		}
+		self.count = 0
+		self.avg.clear()
+		self.variance.clear()
+		return value
+
+
+class Aggregator :
+	Sum: type = SumAggregator
+	Average: type = AverageAggregator
+	StandardDeviation: type = StandardDeviationAggregator
 
 
 def Aggregate(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0, exclusions:Iterable[str]=['self'], aggregator:Aggregator=Aggregator.Average) -> Callable :
 	"""
-	aggregates numeric inputs for a given count or time span
+	aggregates numeric inputs for a given time span
 	"""
 
 	exclusions: Set[str] = set(exclusions)
-	aggregator = _aggregators[aggregator]()
+	aggregator = aggregator()
 	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
