@@ -14,7 +14,7 @@ caching.time = fake_time
 class TestSimpleCache :
 
 	def test_simplecache_int(self) :
-		# setup
+		# arrange
 		@SimpleCache(1)
 		def simplecache_test(a) :
 			return a
@@ -26,7 +26,7 @@ class TestSimpleCache :
 
 
 	def test_simplecache_string(self) :
-		# setup
+		# arrange
 		@SimpleCache(1)
 		def simplecache_test(a) :
 			return a
@@ -38,7 +38,7 @@ class TestSimpleCache :
 
 
 	def test_simplecache_mixed(self) :
-		# setup
+		# arrange
 		@SimpleCache(1)
 		def simplecache_test(*a) :
 			return a
@@ -55,7 +55,7 @@ class TestArgsCache :
 	it = 0
 
 	def test_argscache_int(self) :
-		# setup
+		# arrange
 		TestArgsCache.it = 0
 
 		@ArgsCache(5)
@@ -78,7 +78,7 @@ class TestArgsCache :
 
 
 	def test_argscache_string(self) :
-		# setup
+		# arrange
 		TestArgsCache.it = 0
 
 		@ArgsCache(5)
@@ -101,10 +101,10 @@ class TestArgsCache :
 
 
 	def test_argscache_mixed(self) :
-		# setup
+		# arrange
 		TestArgsCache.it = 0
 		data1 = (1, '2', 3.1, (1, 2), { 'a': 1 }, [1, 2, 3])
-		data2 = (5, '2', 3.1, (1, 2), { 'a': 2 }, [1, 2, 3])
+		data2 = (1, '2', 3.1, (1, 2), { 'a': 2 }, [1, 2, 3])
 
 		@ArgsCache(3)
 		def argscache_test(*a) :
@@ -113,13 +113,13 @@ class TestArgsCache :
 
 		# assert
 		assert 1 == argscache_test(*data1)
-		assert 6 == argscache_test(*data2)
+		assert 2 == argscache_test(*data2)
 
 		assert 1 == argscache_test(*data1)
-		assert 6 == argscache_test(*data2)
+		assert 2 == argscache_test(*data2)
 
 		assert 3 == argscache_test(*data1)
-		assert 8 == argscache_test(*data2)
+		assert 4 == argscache_test(*data2)
 
 class TestKwargsCache :
 

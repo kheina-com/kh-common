@@ -91,8 +91,8 @@ class B2Interface :
 					timeout=self.b2_timeout,
 				)
 
-			except :
-				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=True)
+			except Exception as e :
+				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=e)
 
 			else :
 				if response.ok :
@@ -139,8 +139,8 @@ class B2Interface :
 					timeout=self.b2_timeout,
 				)
 
-			except :
-				self.logger.warning('error encountered during b2 upload.', exc_info=True)
+			except Exception as e :
+				self.logger.warning('error encountered during b2 upload.', exc_info=e)
 
 			else :
 				if response.ok :
@@ -174,7 +174,7 @@ class B2Interface :
 					headers={ 'Authorization': self.b2['authorizationToken'] },
 					timeout=ClientTimeout(self.b2_timeout),
 				) as response :
-					if int(response.status / 100) == 2 :
+					if response.ok :
 						return json.loads(await response.read())
 
 					elif response.status == 401 :
@@ -185,8 +185,8 @@ class B2Interface :
 						content = await response.read()
 						status = response.status
 
-			except :
-				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=True)
+			except Exception as e :
+				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=e)
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
@@ -226,8 +226,8 @@ class B2Interface :
 					data=file_data,
 					timeout=ClientTimeout(self.b2_timeout),
 				) as response :
-					if int(response.status / 100) == 2 :
-						response_data: Dict[str, Any] = json.loads(await response.read())
+					if response.ok :
+						response_data: Dict[str, Any] = await response.json()
 						assert content_type == response_data['contentType']
 						assert sha1 == response_data['contentSha1']
 						assert filename == response_data['fileName']
@@ -237,8 +237,8 @@ class B2Interface :
 						content = await response.read()
 						status = response.status
 
-			except :
-				self.logger.warning('error encountered during b2 upload.', exc_info=True)
+			except Exception as e :
+				self.logger.warning('error encountered during b2 upload.', exc_info=e)
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)

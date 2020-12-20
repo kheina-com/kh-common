@@ -1,8 +1,15 @@
+from enum import Enum, unique
 from typing import Dict
 from os import environ
 
+@unique
+class Environment(Enum) :
+	prod: str = 'prod'
+	dev: str = 'dev'
+	local: str = 'local'
 
-environment: str = environ.get('ENVIRONMENT', 'LOCAL').lower()
+
+environment: str = Environment[environ.get('ENVIRONMENT', 'LOCAL').lower()]
 
 local: Dict[str, str] = {
 	'auth_host': 'http://127.0.0.1:5000',
@@ -18,7 +25,7 @@ prod: Dict[str, str] = {
 
 assert local.keys() == dev.keys() == prod.keys()
 
-env_vars: Dict[str, str] = locals().get(environment, local)
+env_vars: Dict[str, str] = locals().get(environment.name, local)
 
 # add the variables from the environment to the module
 locals().update(env_vars)

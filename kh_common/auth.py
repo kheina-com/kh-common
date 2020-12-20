@@ -3,7 +3,7 @@ from cryptography.hazmat.primitives.serialization import load_der_public_key
 from kh_common.exceptions.http_error import HttpError, Unauthorized
 from starlette.types import ASGIApp, Receive, Scope, Send
 from cryptography.hazmat.backends import default_backend
-from typing import Any, Callable, Dict, Tuple, Union
+from typing import Any, Callable, Dict, Set, Union
 from kh_common.exceptions import jsonErrorHandler
 from kh_common.config.constants import auth_host
 from starlette.requests import HTTPConnection
@@ -27,10 +27,16 @@ class TokenData :
 
 @dataclass
 class KhUser :
+
 	user_id: int
 	token: TokenData
 	authenticed: bool
-	scope: Tuple[str]
+	scope: Set[str]
+
+	def VerifyAuthentication(self) :
+		if not self.authenticed :
+			raise Unauthorized('User is not authenticated.')
+		return True
 
 
 @ArgsCache(60 * 60 * 24)  # 24 hour cache
@@ -119,7 +125,12 @@ def retrieveTokenData(request: Request) -> TokenData :
 	if not token :
 		raise Unauthorized('An authentication token was not provided.')
 
-	return verifyToken(token.split()[-1])
+	token_data = verifyToken(token.split()[-1])
+
+	if 'ip' in token_data.data and token_data.data['ip'] != request.client.host :
+		raise Unauthorized('The authentication token provided is not valid from this device or location.')
+
+	return token_data
 
 
 class KhAuthMiddleware:
@@ -130,7 +141,7 @@ class KhAuthMiddleware:
 
 
 	async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
-		if scope['type'] not in ['http', 'websocket']:
+		if scope['type'] not in {'http', 'websocket'} :
 			await self.app(scope, receive, send)
 			return
 
@@ -143,7 +154,7 @@ class KhAuthMiddleware:
 				user_id=token_data.user_id,
 				token=token_data,
 				authenticed=True,
-				scope=('user',),
+				scope={'user'} | set(token_data.data.get('scope', set())),
 			)
 
 		except HttpError as e :
@@ -156,7 +167,7 @@ class KhAuthMiddleware:
 				user_id=None,
 				token=None,
 				authenticed=False,
-				scope=tuple(),
+				scope=set(),
 			)
 
 		await self.app(scope, receive, send)

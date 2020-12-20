@@ -24,10 +24,6 @@ databaseIDs.json
 **/*.ico
 **/*.svg
 
-# test files
-*test.*
-*test
-
 # python files
 **/__pycache__
 **/Pipfile
@@ -47,6 +43,7 @@ libparseform.so
 parseform.cpp
 parseform.py
 cf
+ignore*
 
 # grab template files
 !*template.*

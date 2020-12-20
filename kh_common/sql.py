@@ -27,8 +27,8 @@ class SqlInterface :
 		try :
 			self._conn: Connection = dbConnect(**db)
 
-		except :
-			self.logger.critical(f'failed to connect to database!', exc_info=True)
+		except Exception as e :
+			self.logger.critical(f'failed to connect to database!', exc_info=e)
 
 		else :
 			self.logger.info('connected to database.')
@@ -60,21 +60,21 @@ class SqlInterface :
 			elif fetch_all :
 				return cur.fetchall()
 
-		except ConnectionException :
+		except ConnectionException as e :
 			if maxretry > 1 :
-				self.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=True)
+				self.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=e)
 				self._sql_connect()
 				return self.query(sql, params, commit, fetch_one, fetch_all, maxretry - 1)
 
 			else :
-				self.logger.critical('failed to reconnect to db.', exc_info=True)
+				self.logger.critical('failed to reconnect to db.', exc_info=e)
 				raise
 
-		except :
+		except Exception as e :
 			self.logger.warning({
 				'message': 'unexpected error encountered during sql query.',
 				'query': sql,
-			}, exc_info=True)
+			}, exc_info=e)
 			# now attempt to recover by rolling back
 			self._conn.rollback()
 			raise
@@ -105,11 +105,10 @@ class Transaction :
 				self.cur: Cursor = self._sql._conn.cursor()
 				return self
 
-			except ConnectionException :
-				self._sql.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=True)
+			except ConnectionException as e :
+				self._sql.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=e)
 				self._sql._sql_connect()
 
-		self._sql.logger.critical('failed to reconnect to db.', exc_info=True)
 		raise ConnectionException('failed to reconnect to db.')
 
 
@@ -138,9 +137,9 @@ class Transaction :
 			elif fetch_all :
 				return self.cur.fetchall()
 
-		except :
+		except Exception as e :
 			self._sql.logger.warning({
 				'message': 'unexpected error encountered during sql query.',
 				'query': sql,
-			}, exc_info=True)
+			}, exc_info=e)
 			raise

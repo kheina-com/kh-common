@@ -89,8 +89,6 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 					logger.exception(logdata)
 					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 
-			return wrapper
-
 		else :
 			@wraps(func)
 			def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
@@ -110,6 +108,6 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 					logger.exception(logdata)
 					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 
-			return wrapper
+		return wrapper
 
 	return decorator
