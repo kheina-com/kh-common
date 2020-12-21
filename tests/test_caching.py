@@ -13,7 +13,7 @@ caching.time = fake_time
 
 class TestSimpleCache :
 
-	def test_simplecache_int(self) :
+	def test_SimpleCache_int(self) :
 		# arrange
 		@SimpleCache(1)
 		def simplecache_test(a) :
@@ -25,7 +25,7 @@ class TestSimpleCache :
 		assert 3 == simplecache_test(3)
 
 
-	def test_simplecache_string(self) :
+	def test_SimpleCache_string(self) :
 		# arrange
 		@SimpleCache(1)
 		def simplecache_test(a) :
@@ -37,7 +37,7 @@ class TestSimpleCache :
 		assert '3' == simplecache_test('3')
 
 
-	def test_simplecache_mixed(self) :
+	def test_SimpleCache_mixed(self) :
 		# arrange
 		@SimpleCache(1)
 		def simplecache_test(*a) :
@@ -54,7 +54,7 @@ class TestArgsCache :
 
 	it = 0
 
-	def test_argscache_int(self) :
+	def test_ArgsCache_int(self) :
 		# arrange
 		TestArgsCache.it = 0
 
@@ -77,7 +77,7 @@ class TestArgsCache :
 		assert 8 == argscache_test(3)
 
 
-	def test_argscache_string(self) :
+	def test_ArgsCache_string(self) :
 		# arrange
 		TestArgsCache.it = 0
 
@@ -100,7 +100,7 @@ class TestArgsCache :
 		assert '8' == argscache_test('3')
 
 
-	def test_argscache_mixed(self) :
+	def test_ArgsCache_mixed(self) :
 		# arrange
 		TestArgsCache.it = 0
 		data1 = (1, '2', 3.1, (1, 2), { 'a': 1 }, [1, 2, 3])
@@ -125,7 +125,7 @@ class TestKwargsCache :
 
 	it = 0
 
-	def test_kwargscache_int(self) :
+	def test_KwargscCache_int(self) :
 		# setup
 		TestArgsCache.it = 0
 		kwargs = { 'a': 1, 'b': '2', 'c': 3.1 }
@@ -149,7 +149,7 @@ class TestKwargsCache :
 		assert 8 == kwargscache_test(3, **kwargs)
 
 
-	def test_kwargscache_string(self) :
+	def test_KwargsCache_string(self) :
 		# setup
 		TestArgsCache.it = 0
 		kwargs = { 'a': 1, 'b': '2', 'c': 3.1 }
@@ -173,7 +173,7 @@ class TestKwargsCache :
 		assert '8' == kwargscache_test('3', **kwargs)
 
 
-	def test_kwargscache_mixed(self) :
+	def test_KwargsCache_mixed(self) :
 		# setup
 		TestArgsCache.it = 0
 		data = (1, '2', 3.1, (1, 2), { 'a': 1 }, [1, 2, 3])
@@ -198,7 +198,7 @@ class TestKwargsCache :
 
 class TestAggregate :
 
-	def test_aggregate_sum(self) :
+	def test_Aggregate_Sum(self) :
 		# setup
 		count = 100
 		data1 = list(range(count))
@@ -217,7 +217,7 @@ class TestAggregate :
 		assert sum(data2) == result[1]
 
 
-	def test_aggregate_average(self) :
+	def test_Aggregate_Average(self) :
 		# setup
 		count = 100
 		data1 = list(range(count))
@@ -236,7 +236,7 @@ class TestAggregate :
 		assert sum(data2) / count == result[1]
 
 
-	def test_aggregate_standarddeviation(self) :
+	def test_Aggregate_StandardDeviation(self) :
 		# setup
 		data = [727.7, 1086.5, 1091.0, 1361.3, 1490.5, 1956.1]
 		expected = 420.962489619522557404707185924053192138671875

@@ -1,6 +1,8 @@
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 from kh_common.config.repo import short_hash, name as repo_name
 from kh_common import flatten, getFullyQualifiedClassName
+from google.cloud import logging as google_logging
+from google.auth import compute_engine
 from traceback import format_tb
 from types import ModuleType
 import logging
@@ -36,9 +38,6 @@ class LogHandler(logging.Handler) :
 		try :
 			if not LogHandler.logging_available :
 				raise ValueError('logging unavailable.')
-
-			from google.cloud import logging as google_logging
-			from google.auth import compute_engine
 			credentials: compute_engine.credentials.Credentials = compute_engine.Credentials()
 			logging_client: google_logging.client.Client = google_logging.Client(credentials=credentials)
 			self.agent: google_logging.logger.Logger = logging_client.logger(name)
