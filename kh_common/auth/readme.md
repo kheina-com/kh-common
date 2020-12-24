@@ -1,7 +1,7 @@
 ## Tokens
 
-tokens consist of three parts joined by periods  
-ex: `MQ.ZWQyNTUxOS5BUS5YLVM3YkEuQVEuOHcwSHdyRlRRdWFZSV9ILTZSME5pUS57ImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIn0.khpagUnfuMdzpwGlz-qGxNCqxBqPv02-1Xe4x5qdMCq33JX9p-3GnpgOTdqU-n6-nxMchZ5TjBXsPVfzJtYtCQ`
+tokens consist of three parts joined by periods
+- ex: `MQ.ZWQyNTUxOS5BUS5YLVM3YkEuQVEuOHcwSHdyRlRRdWFZSV9ILTZSME5pUS57ImlwIjoiMTI3LjAuMC4xIiwiZW1haWwiOiJ1c2VyQGV4YW1wbGUuY29tIn0.khpagUnfuMdzpwGlz-qGxNCqxBqPv02-1Xe4x5qdMCq33JX9p-3GnpgOTdqU-n6-nxMchZ5TjBXsPVfzJtYtCQ`
 
 
 1. base64 encoded version number
@@ -20,6 +20,6 @@ ex: `MQ.ZWQyNTUxOS5BUS5YLVM3YkEuQVEuOHcwSHdyRlRRdWFZSV9ILTZSME5pUS57ImlwIjoiMTI3
 
 
 tokens can be used outside login context  
-	- verifying emails
-	- signin links
-	- any data that needs to be sent outside the server and checked for authenticity
+- verifying emails
+- signin links
+- any data that needs to be sent outside the server and checked for authenticity
