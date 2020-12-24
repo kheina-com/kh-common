@@ -1,8 +1,8 @@
 from pika import BaseConnection, BlockingConnection, ConnectionParameters
 from typing import Any, Dict, Iterator, List, Tuple, Union
+from kh_common.utilities import getFullyQualifiedClassName
 from kh_common.config.credentials import message_queue
 from kh_common.config.repo import name, short_hash
-from kh_common import getFullyQualifiedClassName
 from kh_common.logging import getLogger, Logger
 from pika.channel import Channel
 from traceback import format_tb

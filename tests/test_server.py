@@ -1,12 +1,11 @@
-from kh_common.logging import LogHandler
-LogHandler.logging_available = False
-
+from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
+from tests.utilities.requests import MockResponse
 from kh_common.base64 import b64encode, b64decode
 from kh_common.server import Request, ServerApp
 from fastapi.testclient import TestClient
-from dataclasses import dataclass
+from kh_common.auth import Scope
 from uuid import uuid4
 from time import time
 from math import ceil
@@ -20,9 +19,6 @@ public_key = private_key.public_key().public_bytes(
 )
 pk_signature = private_key.sign(public_key)
 
-@dataclass
-class test_response :
-	text: str
 
 endpoint = '/'
 base_url = 'test.kheina.com'
@@ -34,26 +30,31 @@ issued = time()
 class TestAppServer :
 
 	def mock_pk(self, mocker) :
-		mocker.patch('kh_common.auth.requests_post', side_effect=lambda *a, **kv : None if kv['json'] != { 'key_id': 1, 'algorithm': 'ed25519' } else test_response( text = json.dumps({
-			'signature': b64encode(pk_signature).decode(),
-			'key': b64encode(public_key).decode(),
-			'algorithm': 'ed25519',
-			'expires': expires,
-			'issued': issued,
-		})))
+		mocker.patch(
+			'kh_common.auth.requests_post',
+			side_effect=lambda *a, **kv : (
+				None if kv['json'] != { 'key_id': 1, 'algorithm': 'ed25519' }
+				else MockResponse({
+					'signature': b64encode(pk_signature).decode(),
+					'key': b64encode(public_key).decode(),
+					'algorithm': 'ed25519',
+					'expires': expires,
+					'issued': issued,
+				})
+			)
+		)
 
 
-	def mock_token(self, user_id, token_data={ }) :
+	def mock_token(self, user_id, token_data={ }, version=b'1') :
 		load = b'.'.join([
-			b'ed25519',
-			b64encode((1).to_bytes(1, 'big')),
+			b'ed25519',                         # algorithm
+			b64encode((1).to_bytes(1, 'big')),  # key_id
 			b64encode(expires.to_bytes(ceil(expires.bit_length() / 8), 'big')),
 			b64encode(user_id.to_bytes(ceil(user_id.bit_length() / 8), 'big')),
-			b64encode(uuid4().bytes),
-			json.dumps(token_data).encode(),
+			b64encode(uuid4().bytes),           # guid
+			json.dumps(token_data).encode(),    # load
 		])
 
-		version = b'1'
 		content = b64encode(version) + b'.' + b64encode(load)
 		return (content + b'.' + b64encode(private_key.sign(content))).decode()
 
@@ -125,7 +126,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			req.user.VerifyAuthentication()
+			req.user.VerifyAuthenticated()
 
 		client = TestClient(app, base_url=base_url)
 
@@ -182,7 +183,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			return { 'user_id': req.user.user_id }
+			return { 'user_id': req.user.user_id, 'scope': [x.name for x in req.user.scope] }
 
 		client = TestClient(app, base_url=base_url)
 
@@ -193,7 +194,7 @@ class TestAppServer :
 
 		# assert
 		assert 200 == response.status_code
-		assert { 'user_id': 1 } == response.json()
+		assert { 'user_id': 1, 'scope': ['user'] } == response.json()
 
 
 	def test_ServerApp_GetRequiresScope_Authorized(self, mocker) :
@@ -205,11 +206,11 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope) }
+			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'data': req.user.token.data }
 
 		client = TestClient(app, base_url=base_url)
 
-		token = self.mock_token(1000000, { 'scope': ['test'] })
+		token = self.mock_token(1000000, { 'scope': [Scope.default.name] })
 
 		# act
 		response = client.get(schema + base_url + endpoint, cookies={ 'kh_auth': token })
@@ -217,5 +218,5 @@ class TestAppServer :
 		# assert
 		assert 200 == response.status_code
 		response_json = response.json()
-		response_json['scope'] = set(response_json['scope'])
-		assert { 'user_id': 1000000, 'scope': {'user', 'test'} } == response_json
+		response_json['scope'] = set(response_json.get('scope', []))
+		assert { 'user_id': 1000000, 'scope': { Scope.default, Scope.user }, 'data': { 'scope': ['default'] } } == response_json

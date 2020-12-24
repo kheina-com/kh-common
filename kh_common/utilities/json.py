@@ -12,13 +12,12 @@ _conversions: Dict[type, Callable] = {
 
 
 def _convert_item(item: Any) -> Any :
-	if isinstance(item, Iterable) and not isinstance(item, str) :
+	if isinstance(item, str) :
+		return item
+	if isinstance(item, Iterable) :
 		return json_stream(item)
-
-	item_type = type(item)
-	if item_type in _conversions :
-		return _conversions[item_type](item)
-
+	if type(item) in _conversions :
+		return _conversions[type(item)](item)
 	return item
 
 

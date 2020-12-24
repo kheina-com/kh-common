@@ -1,4 +1,4 @@
-from kh_common import getFullyQualifiedClassName
+from kh_common.utilities import getFullyQualifiedClassName
 from hashlib import sha1
 
 

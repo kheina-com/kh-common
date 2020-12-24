@@ -1,5 +1,5 @@
+from kh_common.utilities import getFullyQualifiedClassName
 from kh_common.exceptions.http_error import HttpError
-from kh_common import getFullyQualifiedClassName
 from kh_common.logging import getLogger, Logger
 from starlette.responses import UJSONResponse
 from traceback import format_tb

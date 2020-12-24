@@ -1,7 +1,7 @@
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
+from kh_common.exceptions.http_error import Forbidden, HttpError, Unauthorized
 from cryptography.hazmat.primitives.serialization import load_der_public_key
-from kh_common.exceptions.http_error import HttpError, Unauthorized
-from starlette.types import ASGIApp, Receive, Scope, Send
+from starlette.types import ASGIApp, Receive, Send, Scope as request_scope
 from cryptography.hazmat.backends import default_backend
 from typing import Any, Callable, Dict, Set, Union
 from kh_common.exceptions import jsonErrorHandler
@@ -12,6 +12,7 @@ from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
 from fastapi import Depends, Request
 from dataclasses import dataclass
+from enum import IntEnum, unique
 from datetime import datetime
 from functools import wraps
 import ujson as json
@@ -25,17 +26,34 @@ class TokenData :
 	data: Dict[str, Any]
 
 
+@unique
+class Scope(IntEnum) :
+	default: int = 0
+	admin: int = 4
+	user: int = 2
+	mod: int = 3
+	bot: int = 1
+
+
 @dataclass
 class KhUser :
 
 	user_id: int
 	token: TokenData
 	authenticed: bool
-	scope: Set[str]
+	scope: Set[Scope]
 
-	def VerifyAuthentication(self) :
+
+	def VerifyAuthenticated(self) :
 		if not self.authenticed :
 			raise Unauthorized('User is not authenticated.')
+		return True
+
+
+	def VerifyScope(self, scope: Scope) :
+		self.VerifyAuthenticated()
+		if scope not in self.scope :
+			raise Forbidden('User is not authorized to access this resource.')
 		return True
 
 
@@ -140,7 +158,7 @@ class KhAuthMiddleware:
 		self.auth_required = required
 
 
-	async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
+	async def __call__(self, scope: request_scope, receive: Receive, send: Send) -> None:
 		if scope['type'] not in {'http', 'websocket'} :
 			await self.app(scope, receive, send)
 			return
@@ -154,7 +172,7 @@ class KhAuthMiddleware:
 				user_id=token_data.user_id,
 				token=token_data,
 				authenticed=True,
-				scope={'user'} | set(token_data.data.get('scope', set())),
+				scope={ Scope.user } | set(map(Scope.__getitem__, token_data.data.get('scope', []))),
 			)
 
 		except HttpError as e :
@@ -167,7 +185,7 @@ class KhAuthMiddleware:
 				user_id=None,
 				token=None,
 				authenticed=False,
-				scope=set(),
+				scope={ Scope.default },
 			)
 
 		await self.app(scope, receive, send)
