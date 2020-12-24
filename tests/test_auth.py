@@ -109,7 +109,7 @@ class TestAuthMiddleware :
 		app.add_middleware(KhAuthMiddleware, required=False)
 
 		@app.get('/')
-		async def test_func(req: Request) :
+		async def app_func(req: Request) :
 			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'data': req.user.token.data, 'authenticated': req.user.authenticated }
 
 		client = TestClient(app)
@@ -132,7 +132,7 @@ class TestAuthMiddleware :
 		app.add_middleware(KhAuthMiddleware, required=False)
 
 		@app.get('/')
-		async def test_func(req: Request) :
+		async def app_func(req: Request) :
 			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'token': req.user.token, 'authenticated': req.user.authenticated }
 
 		client = TestClient(app)
@@ -156,7 +156,7 @@ class TestAuthMiddleware :
 		app.add_middleware(KhAuthMiddleware, required=True)
 
 		@app.get('/')
-		async def test_func(req: Request) :
+		async def app_func(req: Request) :
 			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'data': req.user.token.data, 'authenticated': req.user.authenticated }
 
 		client = TestClient(app)
@@ -180,7 +180,7 @@ class TestAuthMiddleware :
 		app.add_middleware(KhAuthMiddleware, required=True)
 
 		@app.get('/')
-		async def test_func(req: Request) :
+		async def app_func(req: Request) :
 			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'data': req.user.token.data, 'authenticated': req.user.authenticated }
 
 		client = TestClient(app)
@@ -204,7 +204,7 @@ class TestAuthMiddleware :
 		app.add_middleware(KhAuthMiddleware, required=True)
 
 		@app.get('/')
-		async def test_func(req: Request) :
+		async def app_func(req: Request) :
 			pass
 
 		client = TestClient(app)
@@ -230,7 +230,7 @@ class TestAuthMiddleware :
 		app.add_middleware(KhAuthMiddleware, required=True)
 
 		@app.get('/')
-		async def test_func(req: Request) :
+		async def app_func(req: Request) :
 			pass
 
 		client = TestClient(app)
@@ -252,7 +252,7 @@ class TestAuthMiddleware :
 		app.add_middleware(KhAuthMiddleware, required=True)
 
 		@app.get('/')
-		async def test_func(req: Request) :
+		async def app_func(req: Request) :
 			pass
 
 		client = TestClient(app)
@@ -278,7 +278,7 @@ class TestAuthMiddleware :
 		app.add_middleware(KhAuthMiddleware, required=True)
 
 		@app.get('/')
-		async def test_func(req: Request) :
+		async def app_func(req: Request) :
 			req.user.VerifyScope(Scope.mod)
 			req.user.VerifyScope(Scope.admin)
 			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated })
@@ -304,7 +304,7 @@ class TestAuthMiddleware :
 		app.add_middleware(KhAuthMiddleware, required=True)
 
 		@app.get('/')
-		async def test_func(req: Request) :
+		async def app_func(req: Request) :
 			req.user.VerifyScope(Scope.mod)
 			req.user.VerifyScope(Scope.admin)
 
