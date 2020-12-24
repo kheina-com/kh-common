@@ -1,6 +1,0 @@
-{
-	"upload": "http://localhost:5001",
-	"tags": "http://localhost:5002",
-	"posts": "http://localhost:5003",
-	"account": "http://localhost:5004"
-}
