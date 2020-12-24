@@ -2,6 +2,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 from cryptography.hazmat.primitives import serialization
 from tests.utilities.requests import MockResponse
 from kh_common.config.constants import auth_host
+from kh_common.utilities.json import json_stream
 from kh_common.utilities import int_to_bytes
 from kh_common.base64 import b64encode
 from uuid import UUID, uuid4
@@ -44,7 +45,7 @@ def mock_token(user_id: int, token_data:dict={ }, version:bytes=b'1', key_id=1, 
 		b64encode(int_to_bytes(expires)),                  # expires timestamp
 		b64encode(int_to_bytes(user_id)),                  # user id
 		b64encode(guid.bytes if guid else uuid4().bytes),  # guid
-		json.dumps(token_data).encode(),                   # load
+		json.dumps(json_stream(token_data)).encode(),      # load
 	])
 
 	content = b64encode(version) + b'.' + b64encode(load)

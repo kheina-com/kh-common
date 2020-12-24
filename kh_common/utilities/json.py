@@ -1,6 +1,7 @@
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
 from datetime import datetime
 from decimal import Decimal
+from enum import Enum
 
 
 _conversions: Dict[type, Callable] = {
@@ -8,6 +9,7 @@ _conversions: Dict[type, Callable] = {
 	Decimal: float,
 	tuple: lambda x : list(filter(None, x)),
 	list: lambda x : list(filter(None, x)),
+	Enum: lambda x : x.name,
 }
 
 
@@ -16,8 +18,9 @@ def _convert_item(item: Any) -> Any :
 		return item
 	if isinstance(item, Iterable) :
 		return json_stream(item)
-	if type(item) in _conversions :
-		return _conversions[type(item)](item)
+	for cls in type(item).__mro__ :
+		if cls in _conversions :
+			return _conversions[cls](item)
 	return item
 
 

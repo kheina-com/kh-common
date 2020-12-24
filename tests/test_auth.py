@@ -2,6 +2,7 @@ from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.auth import KhAuthMiddleware, KhUser, verifyToken, Scope
 from kh_common.exceptions.http_error import Forbidden, Unauthorized
 from tests.utilities.auth import mock_pk, mock_token, expires
+from kh_common.utilities.json import json_stream
 from fastapi.testclient import TestClient
 from fastapi import FastAPI, Request
 from datetime import datetime
@@ -204,7 +205,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def test_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'token': req.user.token, 'authenticated': req.user.authenticated }
+			pass
 
 		client = TestClient(app)
 
@@ -230,7 +231,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def test_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'token': req.user.token, 'authenticated': req.user.authenticated }
+			pass
 
 		client = TestClient(app)
 
@@ -252,7 +253,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def test_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'token': req.user.token, 'authenticated': req.user.authenticated }
+			pass
 
 		client = TestClient(app)
 
@@ -264,3 +265,51 @@ class TestAuthMiddleware :
 		response_json = result.json()
 		assert 32 == len(response_json.pop('refid'))
 		assert { 'error': 'Unauthorized: An authentication token was not provided.', 'status': 401 } == response_json
+
+
+	def test_AuthMiddleware_AuthRequiredTokenWithScopes_200Authorized(self, mocker) :
+
+		# arrange
+		mock_pk(mocker, key_id=54321)
+		user_id = 9876543210
+		token = mock_token(user_id, key_id=54321, token_data={ 'scope': [ Scope.mod, Scope.admin ] })
+
+		app = FastAPI()
+		app.add_middleware(KhAuthMiddleware, required=True)
+
+		@app.get('/')
+		async def test_func(req: Request) :
+			req.user.VerifyScope(Scope.mod)
+			req.user.VerifyScope(Scope.admin)
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated })
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/', headers={ 'authorization': f'bearer {token}' })
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'user_id': user_id, 'scope': [Scope.user.name, Scope.mod.name, Scope.admin.name], 'data': { 'scope': [Scope.mod.name, Scope.admin.name] }, 'authenticated': True } == result.json()
+
+
+	def test_AuthMiddleware_AuthRequiredTokenWithScopes_RaisesForbidden(self, mocker) :
+
+		# arrange
+		mock_pk(mocker, key_id=54321)
+		user_id = 9876543210
+		token = mock_token(user_id, key_id=54321, token_data={ 'scope': [ Scope.mod ] })
+
+		app = FastAPI()
+		app.add_middleware(KhAuthMiddleware, required=True)
+
+		@app.get('/')
+		async def test_func(req: Request) :
+			req.user.VerifyScope(Scope.mod)
+			req.user.VerifyScope(Scope.admin)
+
+		client = TestClient(app)
+
+		# act
+		with raises(Forbidden) :
+			result = client.get('/', headers={ 'authorization': f'bearer {token}' })

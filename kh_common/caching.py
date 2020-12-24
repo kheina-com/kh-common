@@ -32,8 +32,9 @@ def _convert_item(item: Any) -> Any :
 		return item
 	if isinstance(item, Iterable) :
 		return _cache_stream(item)
-	if type(item) in _conversions :
-		return _conversions[type(item)](item)
+	for cls in type(item).__mro__ :
+		if cls in _conversions :
+			return _conversions[cls](item)
 	return item
 
 

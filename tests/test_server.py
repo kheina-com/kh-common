@@ -1,5 +1,6 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from tests.utilities.auth import mock_pk, mock_token
+from kh_common.utilities.json import json_stream
 from kh_common.server import Request, ServerApp
 from fastapi.testclient import TestClient
 from kh_common.auth import Scope
@@ -137,7 +138,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': [i.name for i in req.user.scope] }
+			return { 'user_id': req.user.user_id, 'scope': json_stream(req.user.scope) }
 
 		client = TestClient(app, base_url=base_url)
 
