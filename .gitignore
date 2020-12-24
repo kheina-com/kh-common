@@ -2,11 +2,8 @@
 **/credentials.*
 **/credentials
 credentials
-**/notifier
-notifier
 
 # executables
-iqdb/iqdb
 **/*.o
 
 # config files
@@ -15,7 +12,6 @@ iqdb/iqdb
 # database files
 **/*.db
 **/*.sql
-databaseIDs.json
 
 # images
 **/*.jpg
@@ -27,6 +23,7 @@ databaseIDs.json
 # python files
 **/__pycache__
 **/Pipfile
+**/.py*
 server.py
 
 # text files, except a requirements file, should it exist
@@ -39,10 +36,6 @@ server.py
 **/backups
 
 # experimental things
-libparseform.so
-parseform.cpp
-parseform.py
-cf
 ignore*
 
 # grab template files
