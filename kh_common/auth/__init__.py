@@ -15,12 +15,13 @@ from dataclasses import dataclass
 from enum import IntEnum, unique
 from datetime import datetime
 from functools import wraps
+from uuid import UUID
 import ujson as json
 
 
 @dataclass
 class TokenData :
-	guid: str
+	guid: UUID
 	user_id: int
 	expires: datetime
 	data: Dict[str, Any]
@@ -40,18 +41,17 @@ class KhUser :
 
 	user_id: int
 	token: TokenData
-	authenticed: bool
+	authenticated: bool
 	scope: Set[Scope]
 
 
 	def VerifyAuthenticated(self) :
-		if not self.authenticed :
+		if not self.authenticated :
 			raise Unauthorized('User is not authenticated.')
 		return True
 
 
 	def VerifyScope(self, scope: Scope) :
-		self.VerifyAuthenticated()
 		if scope not in self.scope :
 			raise Forbidden('User is not authorized to access this resource.')
 		return True
@@ -99,7 +99,7 @@ def v1token(token: str) -> TokenData :
 	key_id: int = int.from_bytes(b64decode(key_id), 'big')
 	expires: datetime = datetime.fromtimestamp(int.from_bytes(b64decode(expires), 'big'))
 	user_id: int = int.from_bytes(b64decode(user_id), 'big')
-	guid: str = b64decode(guid).hex()
+	guid: UUID = UUID(bytes=b64decode(guid))
 
 	if datetime.now() > expires :
 		raise Unauthorized('Key has expired.')
@@ -171,7 +171,7 @@ class KhAuthMiddleware:
 			scope['user'] = KhUser(
 				user_id=token_data.user_id,
 				token=token_data,
-				authenticed=True,
+				authenticated=True,
 				scope={ Scope.user } | set(map(Scope.__getitem__, token_data.data.get('scope', []))),
 			)
 
@@ -184,7 +184,7 @@ class KhAuthMiddleware:
 			scope['user'] = KhUser(
 				user_id=None,
 				token=None,
-				authenticed=False,
+				authenticated=False,
 				scope={ Scope.default },
 			)
 
