@@ -8,6 +8,6 @@ setup(
 	description='common libraries for kheina.com',
 	author='kheina',
 	url='https://github.com/kheina-com/kh-common',
-	packages=find_packages(),
+	packages=find_packages(exclude=['tests']),
 	install_requires=open('requirements.txt').read().split(),
 )
