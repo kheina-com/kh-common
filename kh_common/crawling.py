@@ -1,5 +1,5 @@
 from re import compile as re_compile, _pattern_type as Pattern
-from typing import Callable, Dict, Iterator, List
+from typing import Callable, Dict, Iterable, Iterator, List
 from collections import defaultdict
 
 
@@ -20,5 +20,55 @@ def normalizeTag(tag: str) -> str :
 	return _repetitionRegex.sub(lambda x: x.group(1) * _repetitionCount, _tagReplaceRegex.sub('_', '_'.join(tag.split())).strip('-_').lower())
 
 
+def stripTags(tags: Iterable[str]) -> Iterator[str] :
+	for tag in tags :
+		yield tag
+		tag = tag.rstrip('s')
+		yield tag
+		yield tag.rstrip('e')
+
+
 def tagSplit(tags: List[str]) -> Iterator[str] :
 	return map(lambda x : _tagOperators[x[-2:]](x), filter(None, map(str.strip, tags.split(','))))
+
+
+"""
+-ed
+-es
+-ing
+-tion
+-sion
+-acy
+al
+ance
+ence
+dom
+er
+or
+ism
+ist
+ity
+ty
+ment
+ness
+ship
+ate
+en
+ify
+fy
+ize
+ise
+able
+ible
+al
+esque
+ful
+ic
+ical
+ious
+ous
+ish
+ive
+less
+y
+"""

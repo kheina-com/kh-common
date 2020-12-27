@@ -110,7 +110,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'data': req.user.token.data, 'authenticated': req.user.authenticated }
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated })
 
 		client = TestClient(app)
 
@@ -119,7 +119,7 @@ class TestAuthMiddleware :
 
 		# assert
 		assert 200 == result.status_code
-		assert { 'user_id': user_id, 'scope': [Scope.user], 'data': { }, 'authenticated': True } == result.json()
+		assert { 'user_id': user_id, 'scope': [Scope.user.name], 'data': { }, 'authenticated': True } == result.json()
 
 
 	def test_AuthMiddleware_AuthNotRequiredInvalidToken_200Unauthorized(self, mocker) :
@@ -133,7 +133,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'token': req.user.token, 'authenticated': req.user.authenticated }
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'token': req.user.token, 'authenticated': req.user.authenticated })
 
 		client = TestClient(app)
 
@@ -142,7 +142,7 @@ class TestAuthMiddleware :
 
 		# assert
 		assert 200 == result.status_code
-		assert { 'user_id': None, 'scope': [Scope.default], 'token': None, 'authenticated': False } == result.json()
+		assert { 'user_id': None, 'scope': [Scope.default.name], 'token': None, 'authenticated': False } == result.json()
 
 
 	def test_AuthMiddleware_AuthRequiredValidTokenFromHeader_200Authenticated(self, mocker) :
@@ -157,7 +157,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'data': req.user.token.data, 'authenticated': req.user.authenticated }
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated })
 
 		client = TestClient(app)
 
@@ -166,7 +166,7 @@ class TestAuthMiddleware :
 
 		# assert
 		assert 200 == result.status_code
-		assert { 'user_id': user_id, 'scope': [Scope.user], 'data': { }, 'authenticated': True } == result.json()
+		assert { 'user_id': user_id, 'scope': [Scope.user.name], 'data': { }, 'authenticated': True } == result.json()
 
 
 	def test_AuthMiddleware_AuthRequiredValidTokenFromCookie_200Authenticated(self, mocker) :
@@ -181,7 +181,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'data': req.user.token.data, 'authenticated': req.user.authenticated }
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated })
 
 		client = TestClient(app)
 
@@ -190,7 +190,7 @@ class TestAuthMiddleware :
 
 		# assert
 		assert 200 == result.status_code
-		assert { 'user_id': user_id, 'scope': [Scope.user], 'data': { }, 'authenticated': True } == result.json()
+		assert { 'user_id': user_id, 'scope': [Scope.user.name], 'data': { }, 'authenticated': True } == result.json()
 
 
 	def test_AuthMiddleware_AuthRequiredInvalidTokenFromHeader_401Unauthorized(self, mocker) :
@@ -262,9 +262,9 @@ class TestAuthMiddleware :
 
 		# assert
 		assert 401 == result.status_code
-		response_json = result.json()
-		assert 32 == len(response_json.pop('refid'))
-		assert { 'error': 'Unauthorized: An authentication token was not provided.', 'status': 401 } == response_json
+		result_json = result.json()
+		assert 32 == len(result_json.pop('refid'))
+		assert { 'error': 'Unauthorized: An authentication token was not provided.', 'status': 401 } == result_json
 
 
 	def test_AuthMiddleware_AuthRequiredTokenWithScopes_200Authorized(self, mocker) :
@@ -290,7 +290,9 @@ class TestAuthMiddleware :
 
 		# assert
 		assert 200 == result.status_code
-		assert { 'user_id': user_id, 'scope': [Scope.user.name, Scope.mod.name, Scope.admin.name], 'data': { 'scope': [Scope.mod.name, Scope.admin.name] }, 'authenticated': True } == result.json()
+		result_json = result.json()
+		result_json['scope'] = set(result_json['scope'])
+		assert { 'user_id': user_id, 'scope': {Scope.user.name, Scope.mod.name, Scope.admin.name}, 'data': { 'scope': [Scope.mod.name, Scope.admin.name] }, 'authenticated': True } == result_json
 
 
 	def test_AuthMiddleware_AuthRequiredTokenWithScopes_RaisesForbidden(self, mocker) :

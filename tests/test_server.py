@@ -138,7 +138,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': json_stream(req.user.scope) }
+			return { 'user_id': req.user.user_id }
 
 		client = TestClient(app, base_url=base_url)
 
@@ -149,7 +149,7 @@ class TestAppServer :
 
 		# assert
 		assert 200 == response.status_code
-		assert { 'user_id': 1, 'scope': ['user'] } == response.json()
+		assert { 'user_id': 1 } == response.json()
 
 
 	def test_ServerApp_GetRequiresScope_Authorized(self, mocker) :
@@ -161,11 +161,12 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			return { 'user_id': req.user.user_id, 'scope': list(req.user.scope), 'data': req.user.token.data }
+			req.user.VerifyScope(Scope.mod)
+			return { 'user_id': req.user.user_id, 'data': req.user.token.data }
 
 		client = TestClient(app, base_url=base_url)
 
-		token = mock_token(1000000, { 'scope': [Scope.default.name] })
+		token = mock_token(1000000, { 'scope': [Scope.mod] })
 
 		# act
 		response = client.get(schema + base_url + endpoint, cookies={ 'kh_auth': token })
@@ -173,5 +174,4 @@ class TestAppServer :
 		# assert
 		assert 200 == response.status_code
 		response_json = response.json()
-		response_json['scope'] = set(response_json.get('scope', []))
-		assert { 'user_id': 1000000, 'scope': { Scope.default, Scope.user }, 'data': { 'scope': ['default'] } } == response_json
+		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response_json

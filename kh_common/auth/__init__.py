@@ -12,8 +12,8 @@ from kh_common.caching import ArgsCache
 from kh_common.base64 import b64decode
 from fastapi import Depends, Request
 from dataclasses import dataclass
-from enum import IntEnum, unique
 from datetime import datetime
+from enum import Enum, unique
 from functools import wraps
 from uuid import UUID
 import ujson as json
@@ -28,7 +28,7 @@ class TokenData :
 
 
 @unique
-class Scope(IntEnum) :
+class Scope(Enum) :
 	default: int = 0
 	admin: int = 4
 	user: int = 2
