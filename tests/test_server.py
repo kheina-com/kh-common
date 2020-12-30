@@ -1,4 +1,5 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
+from kh_common.exceptions.http_error import Unauthorized
 from tests.utilities.auth import mock_pk, mock_token
 from kh_common.utilities.json import json_stream
 from kh_common.server import Request, ServerApp
@@ -81,7 +82,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			req.user.VerifyAuthenticated()
+			req.user.authenticated()
 
 		client = TestClient(app, base_url=base_url)
 
@@ -99,7 +100,10 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			return { 'authenticated': req.user.authenticated }
+			try : authenticated = req.user.authenticated()
+			except Unauthorized :
+				authenticated = False
+			return { 'authenticated': authenticated }
 
 		client = TestClient(app, base_url=base_url)
 
@@ -161,7 +165,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			req.user.VerifyScope(Scope.mod)
+			req.user.verify_scope(Scope.mod)
 			return { 'user_id': req.user.user_id, 'data': req.user.token.data }
 
 		client = TestClient(app, base_url=base_url)

@@ -1,11 +1,11 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
-from kh_common.auth import KhAuthMiddleware, KhUser, verifyToken, Scope
+from kh_common.auth import AuthToken, KhAuthMiddleware, KhUser, verifyToken, Scope
 from kh_common.exceptions.http_error import Forbidden, Unauthorized
 from tests.utilities.auth import mock_pk, mock_token, expires
 from kh_common.utilities.json import json_stream
 from fastapi.testclient import TestClient
+from datetime import datetime, timezone
 from fastapi import FastAPI, Request
-from datetime import datetime
 from pytest import raises
 from uuid import uuid4
 
@@ -27,7 +27,7 @@ class TestAuthToken :
 		# assert
 		assert user_id == result.user_id
 		assert guid == result.guid
-		assert datetime.fromtimestamp(expires) == result.expires
+		assert datetime.fromtimestamp(expires, timezone.utc) == result.expires
 		assert token_data == result.data
 
 
@@ -44,23 +44,45 @@ class TestAuthToken :
 		with raises(Unauthorized) :
 			result = verifyToken(token)
 
-	def test_VerifyAuthenticated_UserNotAuthenticated_RaisesUnauthorized(self) :
+
+	def test_VerifyToken_TamperedToken_RaisesUnauthorized(self, mocker) :
 
 		# arrange
-		user = KhUser(1, None, False, set([Scope.default]))
+		mock_pk(mocker, key_id=12345)
+		user_id = 1234567890
+		guid = uuid4()
+		token_data = { 'ip': '127.0.0.1', 'email': 'user@example.com' }
+		token_signature = mock_token(user_id, token_data=token_data, guid=guid, key_id=12345, valid_signature=True).rsplit('.', 1)[-1]
+		token_data = { 'ip': '192.168.1.1', 'email': 'user@example.com' }
+		token_body = mock_token(user_id, token_data=token_data, guid=guid, key_id=12345, valid_signature=True).rsplit('.', 1)[0]
+		token = token_body + '.' + token_signature
 
 		# act
 		with raises(Unauthorized) :
-			result = user.VerifyAuthenticated()
+			result = verifyToken(token)
 
 
-	def test_VerifyAuthenticated_UserAuthenticated_ReturnsTrue(self) :
+	def test_Authenticated_UserNotAuthenticated_RaisesUnauthorized(self) :
 
 		# arrange
-		user = KhUser(1, None, True, set([Scope.user]))
+		user = KhUser(1, None, set([Scope.default]))
 
 		# act
-		result = user.VerifyAuthenticated()
+		with raises(Unauthorized) :
+			result = user.authenticated()
+
+
+	def test_Authenticated_UserAuthenticated_ReturnsTrue(self, mocker) :
+
+		# arrange
+		mock_pk(mocker, key_id=123456)
+		user_id = 1234567890
+		guid = uuid4()
+		token = mock_token(user_id, guid=guid, key_id=123456)
+		user = KhUser(1, AuthToken(user_id, datetime.fromtimestamp(expires, timezone.utc), guid, {}, token), set([Scope.user]))
+
+		# act
+		result = user.authenticated()
 
 		assert True == result
 
@@ -68,30 +90,30 @@ class TestAuthToken :
 	def test_VerifyScope_UserNotAuthorized_RaisesForbidden(self) :
 
 		# arrange
-		user = KhUser(1, None, False, set([Scope.default]))
+		user = KhUser(1, None, set([Scope.default]))
 
 		# act
 		with raises(Forbidden) :
-			result = user.VerifyScope(Scope.user)
+			result = user.verify_scope(Scope.user)
 
 
 	def test_VerifyScope_AuthenticatedUserNotAuthorized_RaisesForbidden(self) :
 
 		# arrange
-		user = KhUser(1, None, True, set([Scope.user]))
+		user = KhUser(1, None, set([Scope.user]))
 
 		# act
 		with raises(Forbidden) :
-			result = user.VerifyScope(Scope.admin)
+			result = user.verify_scope(Scope.admin)
 
 
 	def test_VerifyScope_AuthenticatedUserAuthorized_ReturnsTrue(self) :
 
 		# arrange
-		user = KhUser(1, None, True, set([Scope.admin]))
+		user = KhUser(1, None, set([Scope.admin]))
 
 		# act
-		result = user.VerifyScope(Scope.admin)
+		result = user.verify_scope(Scope.admin)
 
 		assert True == result
 
@@ -110,7 +132,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated })
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated() })
 
 		client = TestClient(app)
 
@@ -133,7 +155,10 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'token': req.user.token, 'authenticated': req.user.authenticated })
+			try : authenticated = req.user.authenticated()
+			except Unauthorized :
+				authenticated = False
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'token': req.user.token, 'authenticated': authenticated })
 
 		client = TestClient(app)
 
@@ -157,7 +182,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated })
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated() })
 
 		client = TestClient(app)
 
@@ -181,7 +206,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated })
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated() })
 
 		client = TestClient(app)
 
@@ -279,9 +304,9 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			req.user.VerifyScope(Scope.mod)
-			req.user.VerifyScope(Scope.admin)
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated })
+			req.user.verify_scope(Scope.mod)
+			req.user.verify_scope(Scope.admin)
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated() })
 
 		client = TestClient(app)
 
@@ -307,8 +332,8 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			req.user.VerifyScope(Scope.mod)
-			req.user.VerifyScope(Scope.admin)
+			req.user.verify_scope(Scope.mod)
+			req.user.verify_scope(Scope.admin)
 
 		client = TestClient(app)
 

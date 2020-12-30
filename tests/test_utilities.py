@@ -1,6 +1,6 @@
 from kh_common.utilities import int_from_bytes, int_to_bytes
 from kh_common.utilities.json import json_stream
-from datetime import datetime
+from datetime import datetime, timezone
 from enum import Enum
 
 
@@ -28,7 +28,7 @@ class TestJson :
 
 	def test_JsonStream(self) :
 		# arrange
-		date = datetime.now()
+		date = datetime.now(timezone.utc)
 		data = (1, '2', date, (1, 2), { 'a': 1, 'b': (1,) }, { 1, 2, 3 }, AnEnum.value_a)
 		expected = [1, '2', date.timestamp(), [1, 2], { 'a': 1, 'b': [1] }, [1, 2, 3], 'value_a']
 

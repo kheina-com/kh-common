@@ -12,7 +12,7 @@ class UserBlocking(SqlInterface, Hashable) :
 
 
 	@ArgsCache(60)
-	def userBlockedTags(self, user_id: int) -> Set[str] :
+	def user_blocked_tags(self, user_id: int) -> Set[str] :
 		data = self.query(
 			"""
 			SELECT tags.tag
@@ -30,7 +30,7 @@ class UserBlocking(SqlInterface, Hashable) :
 
 
 	@ArgsCache(60)
-	def userBlockedUsers(self, user_id: int) -> Set[str] :
+	def user_blocked_users(self, user_id: int) -> Set[str] :
 		data = self.query(
 			"""
 			SELECT users.handle

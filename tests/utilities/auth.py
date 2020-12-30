@@ -22,7 +22,7 @@ expires = int(time() + 1000)
 issued = time()
 
 
-def mock_pk(mocker, key_id=1) :
+def mock_pk(mocker, key_id=1) -> None :
 	mocker.patch(
 		'kh_common.auth.requests_post',
 		side_effect=lambda *a, **kv : (
@@ -38,7 +38,7 @@ def mock_pk(mocker, key_id=1) :
 	)
 
 
-def mock_token(user_id: int, token_data:dict={ }, version:bytes=b'1', key_id=1, guid:UUID=None, valid_signature=True) :
+def mock_token(user_id: int, token_data:dict={ }, version:bytes=b'1', key_id=1, guid:UUID=None, valid_signature=True) -> str :
 	load = b'.'.join([
 		b'ed25519',                                        # algorithm
 		b64encode(int_to_bytes(key_id)),                   # key_id
