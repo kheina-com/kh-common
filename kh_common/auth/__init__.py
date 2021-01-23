@@ -6,6 +6,7 @@ from typing import Any, Callable, Dict, NamedTuple, Set, Union
 from cryptography.hazmat.backends import default_backend
 from kh_common.exceptions import jsonErrorHandler
 from kh_common.config.constants import auth_host
+from kh_common.utilities import int_from_bytes
 from starlette.requests import HTTPConnection
 from requests import post as requests_post
 from kh_common.caching import ArgsCache
@@ -35,6 +36,9 @@ class Scope(Enum) :
 	mod: int = 3
 	admin: int = 4
 
+	def all_included_scopes(self) :
+		return [v for v in Scope.__members__.values() if Scope.user.value <= v.value <= self.value] or [self]
+
 
 class KhUser(NamedTuple) :
 	user_id: int
@@ -53,7 +57,7 @@ class KhUser(NamedTuple) :
 
 
 @ArgsCache(60 * 60 * 24)  # 24 hour cache
-def _fetchPublicKey(key_id: int, algorithm: str) -> Dict[str, Union[str, int]] :
+def _fetchPublicKey(key_id: int, algorithm: str) -> Dict[str, Union[str, int, Ed25519PublicKey]] :
 	response: Response = requests_post(f'{auth_host}/v1/key', json={ 'key_id': key_id, 'algorithm': algorithm })
 	load: Dict[str, Union[str, float, int]] = json.loads(response.text)
 
@@ -91,9 +95,9 @@ def v1token(token: str) -> AuthToken :
 	algorithm, key_id, expires, user_id, guid, data = load.split(b'.', 5)
 
 	algorithm: str = algorithm.decode()
-	key_id: int = int.from_bytes(b64decode(key_id), 'big')
-	expires: datetime = datetime.fromtimestamp(int.from_bytes(b64decode(expires), 'big'), timezone.utc)
-	user_id: int = int.from_bytes(b64decode(user_id), 'big')
+	key_id: int = int_from_bytes(b64decode(key_id))
+	expires: datetime = datetime.fromtimestamp(int_from_bytes(b64decode(expires)), timezone.utc)
+	user_id: int = int_from_bytes(b64decode(user_id))
 	guid: UUID = UUID(bytes=b64decode(guid))
 
 	if datetime.now(timezone.utc) > expires :

@@ -47,6 +47,10 @@ def _cache_stream(stream: Iterable) :
 
 
 def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
+	"""
+	stores single result for all arguments used to call.
+	any arguments/keywords can be used.
+	"""
 	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
@@ -76,6 +80,10 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 
 
 def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
+	"""
+	stores results for every argument used to call.
+	requires all arguments to be hashable, keywords are not included in the cache key.
+	"""
 	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
@@ -85,7 +93,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 			@wraps(func)
 			async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 				now: float = time()
-				key = _cache_stream(args)
+				key = args
 
 				if decorator.cache :
 					i: int = 0
@@ -112,7 +120,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 			@wraps(func)
 			def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 				now: float = time()
-				key = _cache_stream(args)
+				key = args
 
 				if decorator.cache :
 					i: int = 0
@@ -143,6 +151,10 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 
 
 def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
+	"""
+	stores results for every argument used to call.
+	recursively converts all arguments/keywords into hashable types, if possible.
+	"""
 	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 

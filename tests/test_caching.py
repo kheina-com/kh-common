@@ -1,5 +1,6 @@
 from kh_common.caching import SimpleCache, ArgsCache, KwargsCache, Aggregate, Aggregator
 from kh_common import caching
+from pytest import raises
 
 
 # global setup
@@ -103,8 +104,7 @@ class TestArgsCache :
 	def test_ArgsCache_mixed(self) :
 		# arrange
 		TestArgsCache.it = 0
-		data1 = (1, '2', 3.1, (1, 2), { 'a': 1 }, [1, 2, 3])
-		data2 = (1, '2', 3.1, (1, 2), { 'a': 2 }, [1, 2, 3])
+		data = (1, '2', 3.1, (1, 2), { 'a': 1 }, [1, 2, 3])
 
 		@ArgsCache(3)
 		def argscache_test(*a) :
@@ -112,14 +112,8 @@ class TestArgsCache :
 			return int(a[0]) + TestArgsCache.it - 1
 
 		# assert
-		assert 1 == argscache_test(*data1)
-		assert 2 == argscache_test(*data2)
-
-		assert 1 == argscache_test(*data1)
-		assert 2 == argscache_test(*data2)
-
-		assert 3 == argscache_test(*data1)
-		assert 4 == argscache_test(*data2)
+		with raises(TypeError) :
+			argscache_test(*data)
 
 class TestKwargsCache :
 

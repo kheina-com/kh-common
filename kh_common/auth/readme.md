@@ -16,7 +16,7 @@ tokens consist of three parts joined by periods
 
 3. base64 encoded signature
 	- includes both the load and the version number
-	- ex: `private_key.sign(b64encode(b'1') + b64encode(load))`
+	- ex: `private_key.sign(b64encode(b'1') + b'.' + b64encode(load))`
 
 
 tokens can be used outside login context  
