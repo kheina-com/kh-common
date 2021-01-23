@@ -10,7 +10,7 @@ class BaseError(Exception) :
 
 		if isinstance(self.refid, (str, bytes)) :
 
-			if len(self.refid) == 32
+			if len(self.refid) == 32 :
 				self.refid = UUID(hex=self.refid)
 
 			elif len(self.refid) == 16 :
