@@ -75,11 +75,5 @@ class Receiver :
 				if connection :
 					connection.close()
 
-			except :
-				e: Exception
-				traceback: TracebackType
-				e, traceback = exc_info()[1:]
-				self.logger.warning({
-					'message': f'{GetFullyQualifiedClassName(e)}: {e}',
-					'stacktrace': format_tb(traceback),
-				})
+			except Exception as e :
+				self.logger.warning('unexpected exception occurred during message queue close.', exc_info=e)

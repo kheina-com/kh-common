@@ -1,5 +1,5 @@
 from kh_common.utilities import getFullyQualifiedClassName
-from kh_common.exceptions.http_error import HttpError
+from kh_common.exceptions.base_error import BaseError
 from kh_common.logging import getLogger, Logger
 from starlette.responses import UJSONResponse
 from traceback import format_tb
@@ -18,10 +18,10 @@ def jsonErrorHandler(request: Request, e: Exception) -> UJSONResponse :
 
 	error: Dict[str, Union[str, int]] = {
 		'status': status,
-		'refid': getattr(e, 'refid', uuid4().hex),
+		'refid': getattr(e, 'refid', uuid4()).hex,
 	}
 
-	if isinstance(e, HttpError) :
+	if isinstance(e, BaseError) :
 		error['error']: str = f'{e.__class__.__name__}: {e}'
 
 	else :

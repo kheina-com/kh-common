@@ -2,8 +2,8 @@ from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from typing import Any, Callable, Dict, Iterable, Set, Tuple
 from kh_common.exceptions.base_error import BaseError
 from kh_common.logging import getLogger, Logger
+from uuid import UUID, uuid4
 from functools import wraps
-from uuid import uuid4
 from enum import Enum
 
 
@@ -81,7 +81,7 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 
 				except :
 					kwargs.update(zip(arg_spec.args, args))
-					kwargs['refid']: str = uuid4().hex
+					kwargs['refid']: UUID = uuid4()
 					logdata = {
 						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
 						for key in kwargs.keys() - exclusions
@@ -100,7 +100,7 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 
 				except :
 					kwargs.update(zip(arg_spec.args, args))
-					kwargs['refid']: str = uuid4().hex
+					kwargs['refid']: UUID = uuid4()
 					logdata = {
 						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
 						for key in kwargs.keys() - exclusions

@@ -47,14 +47,15 @@ class LogHandler(logging.Handler) :
 
 
 	def emit(self, record: logging.LogRecord) -> type(None) :
-		if record.args and isinstance(record.msg, str) and len(record.args) == record.msg.count('%') :
+		if record.args and isinstance(record.msg, str) :
 			record.msg: str = record.msg % record.args
 		if record.exc_info :
 			e: Exception = record.exc_info[1]
+			refid = getattr(e, 'refid', None)
 			errorinfo: Dict[str, Any] = {
 				'error': f'{getFullyQualifiedClassName(e)}: {e}',
-				'stacktrace': format_tb(record.exc_info[2]),
-				'refid': getattr(e, 'refid', None),
+				'stacktrace': list(map(str.strip, format_tb(record.exc_info[2]))),
+				'refid': refid.hex if refid else None,
 				**getattr(e, 'logdata', { }),
 			}
 			if isinstance(record.msg, dict) :
