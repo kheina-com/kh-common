@@ -81,7 +81,7 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 
 				except :
 					kwargs.update(zip(arg_spec.args, args))
-					kwargs['refid']: UUID = uuid4()
+					kwargs['refid']: UUID = uuid4().hex
 					logdata = {
 						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
 						for key in kwargs.keys() - exclusions
@@ -100,7 +100,7 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 
 				except :
 					kwargs.update(zip(arg_spec.args, args))
-					kwargs['refid']: UUID = uuid4()
+					kwargs['refid']: UUID = uuid4().hex
 					logdata = {
 						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
 						for key in kwargs.keys() - exclusions
