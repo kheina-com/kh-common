@@ -4,6 +4,7 @@ from collections import defaultdict
 from functools import wraps
 from math import sqrt
 from time import time
+from copy import copy
 
 
 class CalcDict(dict) :
@@ -62,7 +63,7 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 				if now > decorator.expire :
 					decorator.expire = now + TTL
 					decorator.data = await func(*args, **kwargs)
-				return decorator.data
+				return copy(decorator.data)
 
 		else :
 			@wraps(func)
@@ -71,7 +72,7 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 				if now > decorator.expire :
 					decorator.expire = now + TTL
 					decorator.data = func(*args, **kwargs)
-				return decorator.data
+				return copy(decorator.data)
 
 		return wrapper
 	decorator.expire: float = 0
@@ -108,13 +109,13 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 						decorator.keys = decorator.keys[-len(decorator.cache):]
 
 					if key in decorator.cache :
-						return decorator.cache[key]
+						return copy(decorator.cache[key])
 
 				data: Any = await func(*args, **kwargs)
 				decorator.cache[key]: Any = data
 				decorator.keys.append((now + TTL, key))
 
-				return data
+				return copy(data)
 
 		else :
 			@wraps(func)
@@ -135,13 +136,13 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 						decorator.keys = decorator.keys[-len(decorator.cache):]
 
 					if key in decorator.cache :
-						return decorator.cache[key]
+						return copy(decorator.cache[key])
 
 				data: Any = func(*args, **kwargs)
 				decorator.cache[key]: Any = data
 				decorator.keys.append((now + TTL, key))
 
-				return data
+				return copy(data)
 
 		return wrapper
 
@@ -180,13 +181,13 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 						decorator.keys = decorator.keys[-len(decorator.cache):]
 
 					if cache_key in decorator.cache :
-						return decorator.cache[cache_key]
+						return copy(decorator.cache[cache_key])
 
 				data: Any = await func(*args, **kwargs)
 				decorator.cache[cache_key]: Any = data
 				decorator.keys.append((now + TTL, cache_key))
 
-				return data
+				return copy(data)
 
 		else :
 			@wraps(func)
@@ -207,13 +208,13 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 						decorator.keys = decorator.keys[-len(decorator.cache):]
 
 					if cache_key in decorator.cache :
-						return decorator.cache[cache_key]
+						return copy(decorator.cache[cache_key])
 
 				data: Any = func(*args, **kwargs)
 				decorator.cache[cache_key]: Any = data
 				decorator.keys.append((now + TTL, cache_key))
 
-				return data
+				return copy(data)
 
 		return wrapper
 
