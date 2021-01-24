@@ -1,6 +1,7 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.exceptions.http_error import BadRequest, Forbidden, Unauthorized
 from kh_common.server.middleware.auth import KhAuthMiddleware
+from kh_common.server.middleware.cors import KhCorsMiddleware
 from tests.utilities.auth import mock_pk, mock_token
 from kh_common.utilities.json import json_stream
 from fastapi.testclient import TestClient
@@ -238,12 +239,8 @@ class TestCorsMiddleware :
 	def test_CorsMiddleware_ValidOrigin_Success(self, mocker) :
 
 		# arrange
-		mock_pk(mocker, key_id=54321)
-		user_id = 9876543210
-		token = mock_token(user_id, key_id=54321)
-
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -257,17 +254,14 @@ class TestCorsMiddleware :
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
+		assert { 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' }.issubset(result.headers.keys())
 
 
 	def test_CorsMiddleware_NoOrigin_Success(self, mocker) :
 
 		# arrange
-		mock_pk(mocker, key_id=54321)
-		user_id = 9876543210
-		token = mock_token(user_id, key_id=54321)
-
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -281,17 +275,14 @@ class TestCorsMiddleware :
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
+		assert not ({ 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' } & result.headers.keys())
 
 
 	def test_CorsMiddleware_InvalidOrigin_BadRequest(self, mocker) :
 
 		# arrange
-		mock_pk(mocker, key_id=54321)
-		user_id = 9876543210
-		token = mock_token(user_id, key_id=54321)
-
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -307,17 +298,14 @@ class TestCorsMiddleware :
 		response_json = result.json()
 		assert 32 == len(response_json.pop('refid'))
 		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
+		assert not ({ 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' } & result.headers.keys())
 
 
 	def test_CorsMiddleware_UnknownOrigin_BadRequest(self, mocker) :
 
 		# arrange
-		mock_pk(mocker, key_id=54321)
-		user_id = 9876543210
-		token = mock_token(user_id, key_id=54321)
-
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -333,17 +321,14 @@ class TestCorsMiddleware :
 		response_json = result.json()
 		assert 32 == len(response_json.pop('refid'))
 		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
+		assert not ({ 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' } & result.headers.keys())
 
 
 	def test_CorsMiddleware_InvalidProtocol_BadRequest(self, mocker) :
 
 		# arrange
-		mock_pk(mocker, key_id=54321)
-		user_id = 9876543210
-		token = mock_token(user_id, key_id=54321)
-
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' }, allowed_protocols={ 'http' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' }, allowed_protocols={ 'http' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -359,17 +344,14 @@ class TestCorsMiddleware :
 		response_json = result.json()
 		assert 32 == len(response_json.pop('refid'))
 		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
+		assert not ({ 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' } & result.headers.keys())
 
 
 	def test_CorsMiddleware_ValidProtocol_Success(self, mocker) :
 
 		# arrange
-		mock_pk(mocker, key_id=54321)
-		user_id = 9876543210
-		token = mock_token(user_id, key_id=54321)
-
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' }, allowed_protocols={ 'http' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' }, allowed_protocols={ 'http' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -383,3 +365,35 @@ class TestCorsMiddleware :
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
+		assert { 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' }.issubset(result.headers.keys())
+
+
+	def test_CorsMiddleware_ValidRequest_HeadersAccurate(self, mocker) :
+
+		# arrange
+		app = FastAPI()
+		app.add_middleware(
+			KhCorsMiddleware,
+			allowed_origins=['dev.kheina.com', 'localhost'],
+			allowed_protocols=['https'],
+			allowed_methods=['delete', 'post', 'eggs'],
+			allowed_headers=['biscuit'],
+			max_age=123456,
+		)
+
+		@app.get('/')
+		async def app_func(req: Request) :
+			return { 'success': True }
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/', headers={ 'origin': 'https://localhost' })
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+		assert 'https://localhost' == result.headers['access-control-allow-origin']
+		assert 'DELETE, POST, EGGS' == result.headers['access-control-allow-methods']
+		assert 'biscuit' == result.headers['access-control-allow-headers']
+		assert '123456' == result.headers['access-control-max-age']

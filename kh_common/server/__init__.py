@@ -6,20 +6,38 @@ from fastapi.responses import PlainTextResponse, UJSONResponse
 from starlette.exceptions import ExceptionMiddleware
 from kh_common.exceptions import jsonErrorHandler
 from fastapi import FastAPI, Request
+from typing import Iterable
 
 
-def ServerApp(auth=True, auth_required=True, cors=True, allowed_hosts={ 'localhost', '127.0.0.1', '*.kheina.com', 'kheina.com' }, allowed_protocols={ 'https' }) -> FastAPI :
+def ServerApp(
+	auth: bool = True,
+	auth_required: bool = True,
+	cors: bool = True,
+	allowed_hosts: Iterable[str] = ['localhost', '127.0.0.1', '*.kheina.com', 'kheina.com'],
+	allowed_origins: Iterable[str] = ['localhost', '127.0.0.1', 'dev.kheina.com', 'kheina.com'],
+	allowed_protocols: Iterable[str] = ['https'],
+	allowed_methods: Iterable[str] = ['GET', 'POST'],
+	allowed_headers: Iterable[str] = ['*'],
+	max_age: int = 86400,
+) -> FastAPI :
 	app = FastAPI()
 	app.add_middleware(ExceptionMiddleware, handlers={ Exception: jsonErrorHandler }, debug=False)
 	app.add_exception_handler(BaseError, jsonErrorHandler)
 
+	if cors :
+		app.add_middleware(
+			KhCorsMiddleware,
+			allowed_origins = set(allowed_origins),
+			allowed_protocols = set(allowed_protocols),
+			allowed_headers = allowed_headers,
+			allowed_methods = allowed_methods,
+			max_age = max_age,
+		)
+
 	if allowed_hosts :
-		app.add_middleware(TrustedHostMiddleware, allowed_hosts=allowed_hosts)
+		app.add_middleware(TrustedHostMiddleware, allowed_hosts=set(allowed_hosts))
 
 	if auth :
 		app.add_middleware(KhAuthMiddleware, required=auth_required)
-
-	if cors :
-		app.add_middleware(KhCorsMiddleware, allowed_hosts=allowed_hosts, allowed_protocols=allowed_protocols)
 
 	return app

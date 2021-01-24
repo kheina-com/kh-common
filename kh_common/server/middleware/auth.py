@@ -2,7 +2,7 @@ from starlette.types import ASGIApp, Receive, Send, Scope as request_scope
 from kh_common.auth import AuthToken, KhUser, retrieveAuthToken, Scope
 from kh_common.exceptions.http_error import HttpError, Unauthorized
 from kh_common.exceptions import jsonErrorHandler
-from starlette.requests import HTTPConnection
+from starlette.requests import Request
 
 
 class KhAuthMiddleware:
@@ -13,10 +13,10 @@ class KhAuthMiddleware:
 
 
 	async def __call__(self, scope: request_scope, receive: Receive, send: Send) -> None :
-		if scope['type'] not in {'http', 'websocket'} :
+		if scope['type'] not in { 'http', 'websocket' } :
 			raise NotImplementedError()
 
-		request: HTTPConnection = HTTPConnection(scope)
+		request: Request = Request(scope, receive, send)
 
 		try :
 			token_data: AuthToken = retrieveAuthToken(request)

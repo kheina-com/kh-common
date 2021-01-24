@@ -183,6 +183,7 @@ class TestAppServer :
 		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response_json
 
 
+	"""
 	def test_ServerApp_ValidOrigin_Success(self) :
 
 		# arrange
@@ -203,7 +204,6 @@ class TestAppServer :
 		assert { 'success': True } == result.json()
 
 
-	"""
 	def test_CorsMiddleware_NoOrigin_Success(self, mocker) :
 
 		# arrange

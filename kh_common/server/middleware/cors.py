@@ -1,31 +1,82 @@
-from starlette.types import ASGIApp, Receive, Send, Scope as request_scope
+from starlette.types import ASGIApp, Receive, Send, Message, Scope as request_scope
 from kh_common.auth import AuthToken, KhUser, retrieveAuthToken, Scope
 from kh_common.exceptions.http_error import HttpError, BadRequest
 from kh_common.exceptions import jsonErrorHandler
-from starlette.requests import HTTPConnection
+from starlette.datastructures import Headers, MutableHeaders
+from starlette.requests import Request
+from fastapi.responses import PlainTextResponse, Response
 from urllib.parse import urlparse
+from functools import partial
 from typing import Iterable
-
 
 class KhCorsMiddleware:
 
-	def __init__(self, app: ASGIApp, allowed_hosts: Iterable[str], allowed_protocols: Iterable[str] = ['https']) -> None :
+	def __init__(
+		self,
+		app: ASGIApp,
+		allowed_origins: Iterable[str],
+		allowed_protocols: Iterable[str] = ['https'],
+		allowed_headers: Iterable[str] = [],
+		allowed_methods: Iterable[str] = [],
+		max_age: int=86400,
+	) -> None :
 		self.app = app
-		self.allowed_hosts = set(allowed_hosts)
+		self.allowed_origins = set(allowed_origins)
 		self.allowed_protocols = set(allowed_protocols)
+		self.allowed_headers = ', '.join(allowed_headers)
+		self.allowed_methods = ', '.join(map(str.upper, allowed_methods))
+		self.max_age = str(max_age)
 
 
 	async def __call__(self, scope: request_scope, receive: Receive, send: Send) -> None :
-		if scope['type'] not in { 'http', 'websocket' } :
-			raise NotImplementedError()
+		if scope['type'] != 'http' :
+			await self.app(scope, receive, send)
+			return
 
-		request: HTTPConnection = HTTPConnection(scope)
+		request: Request = Request(scope, receive, send)
+		origin = None
 
 		if 'origin' in request.headers :
 			origin = urlparse(request.headers['origin'])
-			if origin.scheme not in self.allowed_protocols or origin.netloc.split(':')[0] not in self.allowed_hosts :
+
+			if origin.scheme not in self.allowed_protocols or origin.netloc.split(':')[0] not in self.allowed_origins :
 				response = jsonErrorHandler(request, BadRequest('Origin not allowed.'))
 				await response(scope, receive, send)
 				return
 
+			if request.method == 'OPTIONS' and 'access-control-request-method' in request.headers :
+				await Response(
+					None,
+					status_code=204,
+					headers={
+						'access-control-allow-origin': origin.geturl(),
+						'access-control-allow-methods': self.allowed_methods,
+						'access-control-allow-headers': self.allowed_headers,
+						'access-control-max-age': self.max_age,
+					},
+				)(scope, receive, send)
+				return
+
+		if origin :
+			send = partial(self.send, send=send, headers=request.headers)
+
 		await self.app(scope, receive, send)
+
+
+	async def send(self, message: Message, send: Send, headers: Headers) -> None :
+		if message['type'] != 'http.response.start':
+			await send(message)
+			return
+
+		origin = headers['origin']
+		message.setdefault('headers', [])
+		headers = MutableHeaders(scope=message)
+
+		headers.update({
+			'access-control-allow-origin': origin,
+			'access-control-allow-methods': self.allowed_methods,
+			'access-control-allow-headers': self.allowed_headers,
+			'access-control-max-age': self.max_age,
+		})
+
+		await send(message)
