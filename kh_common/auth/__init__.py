@@ -1,21 +1,16 @@
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from kh_common.exceptions.http_error import Forbidden, HttpError, Unauthorized
 from cryptography.hazmat.primitives.serialization import load_der_public_key
-from starlette.types import ASGIApp, Receive, Send, Scope as request_scope
+from kh_common.exceptions.http_error import Forbidden, Unauthorized
 from typing import Any, Callable, Dict, NamedTuple, Set, Union
 from cryptography.hazmat.backends import default_backend
-from kh_common.exceptions import jsonErrorHandler
 from kh_common.config.constants import auth_host
 from kh_common.utilities import int_from_bytes
-from starlette.requests import HTTPConnection
 from requests import post as requests_post
 from kh_common.caching import ArgsCache
 from datetime import datetime, timezone
 from kh_common.base64 import b64decode
-from fastapi import Depends, Request
-from dataclasses import dataclass
 from enum import Enum, unique
-from functools import wraps
+from fastapi import Request
 from uuid import UUID
 import ujson as json
 
@@ -149,40 +144,3 @@ def retrieveAuthToken(request: Request) -> AuthToken :
 		raise Unauthorized('The authentication token provided is not valid from this device or location.')
 
 	return token_data
-
-
-class KhAuthMiddleware:
-
-	def __init__(self, app: ASGIApp, required: bool = True) -> type(None):
-		self.app = app
-		self.auth_required = required
-
-
-	async def __call__(self, scope: request_scope, receive: Receive, send: Send) -> None:
-		if scope['type'] not in {'http', 'websocket'} :
-			raise NotImplementedError()
-
-		request = HTTPConnection(scope)
-
-		try :
-			token_data: AuthToken = retrieveAuthToken(request)
-
-			scope['user'] = KhUser(
-				user_id=token_data.user_id,
-				token=token_data,
-				scope={ Scope.user } | set(map(Scope.__getitem__, token_data.data.get('scope', []))),
-			)
-
-		except HttpError as e :
-			if isinstance(e, Unauthorized) and self.auth_required :
-				response = jsonErrorHandler(request, e)
-				await response(scope, receive, send)
-				return
-
-			scope['user'] = KhUser(
-				user_id=None,
-				token=None,
-				scope={ Scope.default },
-			)
-
-		await self.app(scope, receive, send)

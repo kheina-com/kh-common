@@ -5,6 +5,7 @@ from kh_common.utilities.json import json_stream
 from kh_common.server import Request, ServerApp
 from fastapi.testclient import TestClient
 from kh_common.auth import Scope
+from uuid import uuid4
 import ujson as json
 
 
@@ -39,10 +40,11 @@ class TestAppServer :
 		# arrange
 		from kh_common.exceptions.http_error import HttpError
 		app = ServerApp(auth=False)
+		refid = uuid4()
 
 		@app.get(endpoint)
 		async def test_func() :
-			raise HttpError('test', refid='abc123')
+			raise HttpError('test', refid=refid)
 
 		client = TestClient(app, base_url=base_url)
 
@@ -51,7 +53,7 @@ class TestAppServer :
 
 		# assert
 		assert 500 == response.status_code
-		assert { 'status': 500, 'refid': 'abc123', 'error': 'HttpError: test' } == response.json()
+		assert { 'status': 500, 'refid': refid.hex, 'error': 'HttpError: test' } == response.json()
 
 
 	def test_ServerApp_GetRaisesValueError_CorrectErrorFormat(self) :
