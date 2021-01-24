@@ -1,6 +1,7 @@
 from starlette.middleware.trustedhost import TrustedHostMiddleware
 from kh_common.server.middleware.auth import KhAuthMiddleware
 from kh_common.exceptions.base_error import BaseError
+from fastapi.responses import PlainTextResponse, UJSONResponse
 from starlette.exceptions import ExceptionMiddleware
 from fastapi.middleware.cors import CORSMiddleware
 from kh_common.exceptions import jsonErrorHandler

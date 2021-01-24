@@ -1,7 +1,6 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.exceptions.http_error import BadRequest, Forbidden, Unauthorized
 from kh_common.server.middleware.auth import KhAuthMiddleware
-from kh_common.server.middleware.cors import KhCorsMiddleware
 from tests.utilities.auth import mock_pk, mock_token
 from kh_common.utilities.json import json_stream
 from fastapi.testclient import TestClient

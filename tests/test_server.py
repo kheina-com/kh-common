@@ -181,3 +181,151 @@ class TestAppServer :
 		assert 200 == response.status_code
 		response_json = response.json()
 		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response_json
+
+
+	def test_ServerApp_ValidOrigin_Success(self) :
+
+		# arrange
+		app = ServerApp(auth=False, cors=True)
+
+		@app.get(endpoint)
+		async def app_func() :
+			return { 'success': True }
+
+		client = TestClient(app, base_url='localhost')
+
+		# act
+		result = client.get(schema + 'localhost' + endpoint, headers={ 'Origin': 'base_url' })
+		print(result.text)
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+
+
+	"""
+	def test_CorsMiddleware_NoOrigin_Success(self, mocker) :
+
+		# arrange
+		mock_pk(mocker, key_id=54321)
+		user_id = 9876543210
+		token = mock_token(user_id, key_id=54321)
+
+		app = FastAPI()
+		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+
+		@app.get('/')
+		async def app_func(req: Request) :
+			return { 'success': True }
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/')
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+
+
+	def test_CorsMiddleware_InvalidOrigin_BadRequest(self, mocker) :
+
+		# arrange
+		mock_pk(mocker, key_id=54321)
+		user_id = 9876543210
+		token = mock_token(user_id, key_id=54321)
+
+		app = FastAPI()
+		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+
+		@app.get('/')
+		async def app_func(req: Request) :
+			return { 'success': True }
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/', headers={ 'origin': 'huh' })
+
+		# assert
+		assert 400 == result.status_code
+		response_json = result.json()
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
+
+
+	def test_CorsMiddleware_UnknownOrigin_BadRequest(self, mocker) :
+
+		# arrange
+		mock_pk(mocker, key_id=54321)
+		user_id = 9876543210
+		token = mock_token(user_id, key_id=54321)
+
+		app = FastAPI()
+		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+
+		@app.get('/')
+		async def app_func(req: Request) :
+			return { 'success': True }
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/', headers={ 'origin': 'https://google.com' })
+
+		# assert
+		assert 400 == result.status_code
+		response_json = result.json()
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
+
+
+	def test_CorsMiddleware_InvalidProtocol_BadRequest(self, mocker) :
+
+		# arrange
+		mock_pk(mocker, key_id=54321)
+		user_id = 9876543210
+		token = mock_token(user_id, key_id=54321)
+
+		app = FastAPI()
+		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' }, allowed_protocols={ 'http' })
+
+		@app.get('/')
+		async def app_func(req: Request) :
+			return { 'success': True }
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/', headers={ 'origin': 'https://kheina.com' })
+
+		# assert
+		assert 400 == result.status_code
+		response_json = result.json()
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
+
+
+	def test_CorsMiddleware_ValidProtocol_Success(self, mocker) :
+
+		# arrange
+		mock_pk(mocker, key_id=54321)
+		user_id = 9876543210
+		token = mock_token(user_id, key_id=54321)
+
+		app = FastAPI()
+		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' }, allowed_protocols={ 'http' })
+
+		@app.get('/')
+		async def app_func(req: Request) :
+			return { 'success': True }
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/', headers={ 'origin': 'http://kheina.com' })
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+	"""
