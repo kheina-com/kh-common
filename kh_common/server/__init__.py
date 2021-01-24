@@ -4,6 +4,7 @@ from kh_common.server.middleware.cors import KhCorsMiddleware
 from kh_common.exceptions.base_error import BaseError
 from fastapi.responses import PlainTextResponse, UJSONResponse
 from starlette.exceptions import ExceptionMiddleware
+from kh_common.config.constants import environment
 from kh_common.exceptions import jsonErrorHandler
 from fastapi import FastAPI, Request
 from typing import Iterable
@@ -15,7 +16,6 @@ def ServerApp(
 	cors: bool = True,
 	allowed_hosts: Iterable[str] = ['localhost', '127.0.0.1', '*.kheina.com', 'kheina.com'],
 	allowed_origins: Iterable[str] = ['localhost', '127.0.0.1', 'dev.kheina.com', 'kheina.com'],
-	allowed_protocols: Iterable[str] = ['https'],
 	allowed_methods: Iterable[str] = ['GET', 'POST'],
 	allowed_headers: Iterable[str] = ['*'],
 	max_age: int = 86400,
@@ -23,6 +23,8 @@ def ServerApp(
 	app = FastAPI()
 	app.add_middleware(ExceptionMiddleware, handlers={ Exception: jsonErrorHandler }, debug=False)
 	app.add_exception_handler(BaseError, jsonErrorHandler)
+
+	allowed_protocols = ['http', 'https'] if environment.is_local() else ['https']
 
 	if cors :
 		app.add_middleware(

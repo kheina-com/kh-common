@@ -1,10 +1,10 @@
 from starlette.types import ASGIApp, Receive, Send, Message, Scope as request_scope
 from kh_common.auth import AuthToken, KhUser, retrieveAuthToken, Scope
 from kh_common.exceptions.http_error import HttpError, BadRequest
-from kh_common.exceptions import jsonErrorHandler
 from starlette.datastructures import Headers, MutableHeaders
+from kh_common.exceptions import jsonErrorHandler
 from starlette.requests import Request
-from fastapi.responses import PlainTextResponse, Response
+from fastapi.responses import Response
 from urllib.parse import urlparse
 from functools import partial
 from typing import Iterable

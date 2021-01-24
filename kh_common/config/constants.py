@@ -4,12 +4,21 @@ from os import environ
 
 @unique
 class Environment(Enum) :
-	prod: str = 'prod'
-	dev: str = 'dev'
 	local: str = 'local'
+	dev: str = 'dev'
+	prod: str = 'prod'
+
+	def is_local(self) :
+		return self == Environment.local
+
+	def is_dev(self) :
+		return self == Environment.dev
+
+	def is_prod(self) :
+		return self == Environment.prod
 
 
-environment: str = Environment[environ.get('ENVIRONMENT', 'LOCAL').lower()]
+environment: Environment = Environment[environ.get('ENVIRONMENT', 'LOCAL').lower()]
 
 local: Dict[str, str] = {
 	'auth_host': 'http://127.0.0.1:5000',
