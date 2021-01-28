@@ -41,9 +41,11 @@ class KhUser(NamedTuple) :
 	token: AuthToken
 	scope: Set[Scope]
 
-	def authenticated(self) :
+	def authenticated(self, raise_error=True) :
 		if not self.token or self.token != verifyToken(self.token.token_string) :
-			raise Unauthorized('User is not authenticated.')
+			if raise_error :
+				raise Unauthorized('User is not authenticated.')
+			return False
 		return True
 
 	def verify_scope(self, scope: Scope) :
