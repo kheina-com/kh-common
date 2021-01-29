@@ -404,6 +404,6 @@ class TestCorsMiddleware :
 		assert { 'success': True } == result.json()
 		assert 'https://localhost' == result.headers['access-control-allow-origin']
 		assert 'DELETE, POST, EGGS' == result.headers['access-control-allow-methods']
-		assert 'biscuit' == result.headers['access-control-allow-headers']
+		assert 'biscuit' in result.headers['access-control-allow-headers']
 		assert '123456' == result.headers['access-control-max-age']
 		assert 'false' == result.headers['access-control-allow-credentials']

@@ -17,8 +17,24 @@ def ServerApp(
 	allowed_hosts: Iterable[str] = ['localhost', '127.0.0.1', '*.kheina.com', 'kheina.com'],
 	allowed_origins: Iterable[str] = ['localhost', '127.0.0.1', 'dev.kheina.com', 'kheina.com'],
 	allowed_methods: Iterable[str] = ['GET', 'POST'],
-	allowed_headers: Iterable[str] = ['*'],
 	max_age: int = 86400,
+	allowed_headers: Iterable[str] = [
+		'authorization',
+		'cache-control',
+		'content-encoding',
+		'content-length',
+		'content-security-policy',
+		'cookie',
+		'referer',
+		'host',
+		'referrer-policy',
+		'location',
+		'set-cookie',
+		'user-agent',
+		'x-xss-protection',
+		'x-frame-options',
+		'www-authenticate',
+	],
 ) -> FastAPI :
 	app = FastAPI()
 	app.add_middleware(ExceptionMiddleware, handlers={ Exception: jsonErrorHandler }, debug=False)
