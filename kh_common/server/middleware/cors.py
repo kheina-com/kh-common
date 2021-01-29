@@ -18,6 +18,7 @@ class KhCorsMiddleware:
 		allowed_protocols: Iterable[str] = ['https'],
 		allowed_headers: Iterable[str] = [],
 		allowed_methods: Iterable[str] = [],
+		allow_credentials: bool = True,
 		max_age: int=86400,
 	) -> None :
 		self.app = app
@@ -25,6 +26,7 @@ class KhCorsMiddleware:
 		self.allowed_protocols = set(allowed_protocols)
 		self.allowed_headers = ', '.join(allowed_headers)
 		self.allowed_methods = ', '.join(map(str.upper, allowed_methods))
+		self.allow_credentials = str(allow_credentials).lower()
 		self.max_age = str(max_age)
 
 
@@ -34,7 +36,6 @@ class KhCorsMiddleware:
 			return
 
 		request: Request = Request(scope, receive, send)
-		origin = None
 
 		if 'origin' in request.headers :
 			origin = urlparse(request.headers['origin'])
@@ -52,12 +53,12 @@ class KhCorsMiddleware:
 						'access-control-allow-origin': origin.geturl(),
 						'access-control-allow-methods': self.allowed_methods,
 						'access-control-allow-headers': self.allowed_headers,
+						'access-control-allow-credentials': self.allow_credentials,
 						'access-control-max-age': self.max_age,
 					},
 				)(scope, receive, send)
 				return
 
-		if origin :
 			send = partial(self.send, send=send, headers=request.headers)
 
 		await self.app(scope, receive, send)
@@ -76,6 +77,7 @@ class KhCorsMiddleware:
 			'access-control-allow-origin': origin,
 			'access-control-allow-methods': self.allowed_methods,
 			'access-control-allow-headers': self.allowed_headers,
+			'access-control-allow-credentials': self.allow_credentials,
 			'access-control-max-age': self.max_age,
 		})
 

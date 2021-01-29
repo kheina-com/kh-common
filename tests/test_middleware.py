@@ -236,6 +236,14 @@ class TestAuthMiddleware :
 
 class TestCorsMiddleware :
 
+	CorsHeaders = {
+		'access-control-allow-origin',
+		'access-control-allow-methods',
+		'access-control-allow-headers',
+		'access-control-allow-credentials',
+		'access-control-max-age',
+	}
+
 	def test_CorsMiddleware_ValidOrigin_Success(self, mocker) :
 
 		# arrange
@@ -254,7 +262,7 @@ class TestCorsMiddleware :
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
-		assert { 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' }.issubset(result.headers.keys())
+		assert self.CorsHeaders.issubset(result.headers.keys())
 
 
 	def test_CorsMiddleware_NoOrigin_Success(self, mocker) :
@@ -275,7 +283,7 @@ class TestCorsMiddleware :
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
-		assert not ({ 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' } & result.headers.keys())
+		assert not (self.CorsHeaders & result.headers.keys())
 
 
 	def test_CorsMiddleware_InvalidOrigin_BadRequest(self, mocker) :
@@ -298,7 +306,7 @@ class TestCorsMiddleware :
 		response_json = result.json()
 		assert 32 == len(response_json.pop('refid'))
 		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
-		assert not ({ 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' } & result.headers.keys())
+		assert not (self.CorsHeaders & result.headers.keys())
 
 
 	def test_CorsMiddleware_UnknownOrigin_BadRequest(self, mocker) :
@@ -321,7 +329,7 @@ class TestCorsMiddleware :
 		response_json = result.json()
 		assert 32 == len(response_json.pop('refid'))
 		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
-		assert not ({ 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' } & result.headers.keys())
+		assert not (self.CorsHeaders & result.headers.keys())
 
 
 	def test_CorsMiddleware_InvalidProtocol_BadRequest(self, mocker) :
@@ -344,7 +352,7 @@ class TestCorsMiddleware :
 		response_json = result.json()
 		assert 32 == len(response_json.pop('refid'))
 		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
-		assert not ({ 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' } & result.headers.keys())
+		assert not (self.CorsHeaders & result.headers.keys())
 
 
 	def test_CorsMiddleware_ValidProtocol_Success(self, mocker) :
@@ -365,7 +373,7 @@ class TestCorsMiddleware :
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
-		assert { 'access-control-allow-origin', 'access-control-allow-methods', 'access-control-allow-headers', 'access-control-max-age' }.issubset(result.headers.keys())
+		assert self.CorsHeaders.issubset(result.headers.keys())
 
 
 	def test_CorsMiddleware_ValidRequest_HeadersAccurate(self, mocker) :
@@ -378,6 +386,7 @@ class TestCorsMiddleware :
 			allowed_protocols=['https'],
 			allowed_methods=['delete', 'post', 'eggs'],
 			allowed_headers=['biscuit'],
+			allow_credentials=False,
 			max_age=123456,
 		)
 
@@ -397,3 +406,4 @@ class TestCorsMiddleware :
 		assert 'DELETE, POST, EGGS' == result.headers['access-control-allow-methods']
 		assert 'biscuit' == result.headers['access-control-allow-headers']
 		assert '123456' == result.headers['access-control-max-age']
+		assert 'false' == result.headers['access-control-allow-credentials']
