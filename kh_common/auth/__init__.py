@@ -3,6 +3,7 @@ from cryptography.hazmat.primitives.serialization import load_der_public_key
 from kh_common.exceptions.http_error import Forbidden, Unauthorized
 from typing import Any, Callable, Dict, NamedTuple, Set, Union
 from cryptography.hazmat.backends import default_backend
+from kh_common.models import AuthToken, KhUser, Scope
 from kh_common.config.constants import auth_host
 from kh_common.utilities import int_from_bytes
 from requests import post as requests_post
@@ -16,31 +17,7 @@ from uuid import UUID
 import ujson as json
 
 
-class AuthToken(NamedTuple) :
-	user_id: int
-	expires: datetime
-	guid: UUID
-	data: Dict[str, Any]
-	token_string: str
-
-
-@unique
-class Scope(Enum) :
-	default: int = 0
-	bot: int = 1
-	user: int = 2
-	mod: int = 3
-	admin: int = 4
-
-	def all_included_scopes(self) :
-		return [v for v in Scope.__members__.values() if Scope.user.value <= v.value <= self.value] or [self]
-
-
-class KhUser(NamedTuple) :
-	user_id: int
-	token: AuthToken
-	scope: Set[Scope]
-
+class KhUser(KhUser) :
 	def authenticated(self, raise_error=True) :
 		if not self.token or self.token != verifyToken(self.token.token_string) :
 			if raise_error :
@@ -139,7 +116,7 @@ def verifyToken(token: str) -> AuthToken :
 
 
 def retrieveAuthToken(request: Request) -> AuthToken :
-	token: str = request.headers.get('Authorization') or request.cookies.get('kh_auth')
+	token: str = request.headers.get('Authorization') or request.cookies.get('kh-auth')
 
 	if not token :
 		raise Unauthorized('An authentication token was not provided.')

@@ -1,6 +1,7 @@
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from typing import Any, Callable, Dict, Iterable, Set, Tuple
 from kh_common.exceptions.base_error import BaseError
+from kh_common.utilities.json import json_stream
 from kh_common.logging import getLogger, Logger
 from uuid import UUID, uuid4
 from functools import wraps
@@ -86,7 +87,7 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
 						for key in kwargs.keys() - exclusions
 					}
-					logger.exception(logdata)
+					logger.exception(json_stream(logdata))
 					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 
 		else :
@@ -105,7 +106,7 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self']) -> Callabl
 						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
 						for key in kwargs.keys() - exclusions
 					}
-					logger.exception(logdata)
+					logger.exception(json_stream(logdata))
 					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 
 		return wrapper

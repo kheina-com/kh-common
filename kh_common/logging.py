@@ -61,7 +61,7 @@ class LogHandler(logging.Handler) :
 			if isinstance(record.msg, dict) :
 				errorinfo.update(record.msg)
 			else :
-				errorinfo.update({ 'message': record.msg })
+				errorinfo['message'] = record.msg
 			self.agent.log_struct(errorinfo, severity=record.levelname)
 		else :
 			if isinstance(record.msg, self._structs) :

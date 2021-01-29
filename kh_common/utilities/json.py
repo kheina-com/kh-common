@@ -1,4 +1,5 @@
 from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
+from kh_common.models import KhUser
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
@@ -10,6 +11,15 @@ _conversions: Dict[type, Callable] = {
 	tuple: lambda x : list(filter(None, x)),
 	list: lambda x : list(filter(None, x)),
 	Enum: lambda x : x.name,
+	KhUser: lambda x : {
+		'user_id': x.user_id,
+		'scope': list(x.scope),
+		'token': {
+			'expires': x.token.expires,
+			'guid': x.token.guid,
+			'data': x.token.data,
+		},
+	}
 }
 
 
