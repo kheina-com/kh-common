@@ -9,13 +9,14 @@ from uuid import UUID
 _conversions: Dict[type, Callable] = {
 	datetime: datetime.timestamp,
 	Decimal: float,
-	tuple: lambda x : list(filter(None, x)),
-	list: lambda x : list(filter(None, x)),
+	tuple: lambda x : list(map(_convert_item, filter(None, x))),
+	set: lambda x : list(map(_convert_item, filter(None, x))),
+	list: lambda x : list(map(_convert_item, filter(None, x))),
 	Enum: lambda x : x.name,
 	UUID: lambda x : x.hex,
 	KhUser: lambda x : {
 		'user_id': x.user_id,
-		'scope': list(x.scope),
+		'scope': json_stream(x.scope),
 		'token': {
 			'expires': x.token.expires,
 			'guid': x.token.guid.hex,
@@ -31,6 +32,8 @@ def _convert_item(item: Any) -> Any :
 	for cls in type(item).__mro__ :
 		if cls in _conversions :
 			return _conversions[cls](item)
+	if isinstance(item, Iterable) :
+		return json_stream(item)
 	return item
 
 
