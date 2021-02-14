@@ -21,7 +21,7 @@ class KhUser(KhUser) :
 	def authenticated(self, raise_error=True) :
 		if not self.token or self.token != verifyToken(self.token.token_string) :
 			if raise_error :
-				raise Unauthorized('User is not authenticated.', token=self.token)
+				raise Unauthorized('User is not authenticated.')
 			return False
 		return True
 
