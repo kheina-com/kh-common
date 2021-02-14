@@ -21,7 +21,7 @@ _conversions: Dict[type, Callable] = {
 			'expires': x.token.expires,
 			'guid': x.token.guid.hex,
 			'data': x.token.data,
-		},
+		} if x.token else None,
 	},
 }
 
