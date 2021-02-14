@@ -60,7 +60,7 @@ class LogHandler(logging.Handler) :
 				**json_stream(getattr(e, 'logdata', { })),
 			}
 			if isinstance(record.msg, dict) :
-				errorinfo.update(record.msg)
+				errorinfo.update(json_stream(record.msg))
 			else :
 				errorinfo['message'] = record.msg
 			self.agent.log_struct(errorinfo, severity=record.levelname)
