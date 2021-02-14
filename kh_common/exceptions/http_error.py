@@ -1,7 +1,7 @@
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from typing import Any, Callable, Dict, Iterable, Set, Tuple
 from kh_common.exceptions.base_error import BaseError
-sfrom kh_common.logging import getLogger, Logger
+from kh_common.logging import getLogger, Logger
 from uuid import UUID, uuid4
 from functools import wraps
 from enum import Enum
