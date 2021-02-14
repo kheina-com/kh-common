@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
 from kh_common.utilities import flatten, getFullyQualifiedClassName
 from kh_common.config.repo import short_hash, name as repo_name
 from google.cloud import logging as google_logging
+from kh_common.utilities.json import json_stream
 from google.auth import compute_engine
 from traceback import format_tb
 from types import ModuleType
@@ -56,7 +57,7 @@ class LogHandler(logging.Handler) :
 				'error': f'{getFullyQualifiedClassName(e)}: {e}',
 				'stacktrace': list(map(str.strip, format_tb(record.exc_info[2]))),
 				'refid': refid.hex if refid else None,
-				**getattr(e, 'logdata', { }),
+				**json_stream(getattr(e, 'logdata', { })),
 			}
 			if isinstance(record.msg, dict) :
 				errorinfo.update(record.msg)
