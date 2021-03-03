@@ -119,7 +119,8 @@ def retrieveAuthToken(request: Request) -> AuthToken :
 
 	token_data: AuthToken = verifyToken(token.split()[-1])
 
-	if 'ip' in token_data.data and token_data.data['ip'] != request.client.host :
-		raise Unauthorized('The authentication token provided is not valid from this device or location.')
+	# TODO: this works kind of weird with ipv6 and ephemeral ip addresses, fix later
+	# if 'ip' in token_data.data and token_data.data['ip'] != request.client.host :
+	# 	raise Unauthorized('The authentication token provided is not valid from this device or location.')
 
 	return token_data
