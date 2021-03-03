@@ -1,5 +1,4 @@
-from kh_common.utilities import getFullyQualifiedClassName, int_from_bytes
-from hashlib import sha1
+from kh_common.utilities import getFullyQualifiedClassName
 
 
 class Hashable :
@@ -7,8 +6,7 @@ class Hashable :
 	_hash = 0
 
 	def __init__(self) :
-		name = f"<class '{getFullyQualifiedClassName(self)}' {Hashable._hash}>"
-		self._hash = int_from_bytes(sha1(name.encode()).digest())
+		self._hash = hash(f"<class '{getFullyQualifiedClassName(self)}' {Hashable._hash}>")
 		Hashable._hash += 1
 
 

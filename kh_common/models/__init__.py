@@ -28,3 +28,6 @@ class KhUser(NamedTuple) :
 	user_id: int
 	token: AuthToken
 	scope: Set[Scope]
+
+	def __hash__(self) :
+		return hash(f'{self.user_id}{self.scope}')

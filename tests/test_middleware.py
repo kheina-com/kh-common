@@ -103,7 +103,7 @@ class TestAuthMiddleware :
 		client = TestClient(app)
 
 		# act
-		result = client.get('/', cookies={ 'kh_auth': token })
+		result = client.get('/', cookies={ 'kh-auth': token })
 
 		# assert
 		assert 200 == result.status_code
@@ -153,7 +153,7 @@ class TestAuthMiddleware :
 		client = TestClient(app)
 
 		# act
-		result = client.get('/', cookies={ 'kh_auth': token })
+		result = client.get('/', cookies={ 'kh-auth': token })
 
 		# assert
 		assert 401 == result.status_code

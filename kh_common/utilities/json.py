@@ -7,7 +7,7 @@ from uuid import UUID
 
 
 _conversions: Dict[type, Callable] = {
-	datetime: datetime.timestamp,
+	datetime: str,
 	Decimal: float,
 	tuple: lambda x : list(map(_convert_item, filter(None, x))),
 	set: lambda x : list(map(_convert_item, filter(None, x))),
@@ -18,8 +18,8 @@ _conversions: Dict[type, Callable] = {
 		'user_id': x.user_id,
 		'scope': json_stream(x.scope),
 		'token': {
-			'expires': x.token.expires.timestamp(),
-			'guid': x.token.guid.hex,
+			'expires': json_stream(x.token.expires),
+			'guid': json_stream(x.token.guid.hex),
 			'data': x.token.data,
 		} if x.token else None,
 	},

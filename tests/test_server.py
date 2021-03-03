@@ -175,7 +175,7 @@ class TestAppServer :
 		token = mock_token(1000000, { 'scope': [Scope.mod] })
 
 		# act
-		response = client.get(schema + base_url + endpoint, cookies={ 'kh_auth': token })
+		response = client.get(schema + base_url + endpoint, cookies={ 'kh-auth': token })
 
 		# assert
 		assert 200 == response.status_code

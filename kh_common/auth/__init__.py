@@ -12,7 +12,6 @@ from datetime import datetime, timezone
 from kh_common.base64 import b64decode
 from enum import Enum, unique
 from fastapi import Request
-from hashlib import sha1
 from uuid import UUID
 import ujson as json
 
@@ -29,9 +28,6 @@ class KhUser(KhUser) :
 		if scope not in self.scope :
 			raise Forbidden('User is not authorized to access this resource.')
 		return True
-
-	def __hash__(self) :
-		return int_from_bytes(sha1(self.token.token_string.encode()).digest())
 
 
 @ArgsCache(60 * 60 * 24)  # 24 hour cache
