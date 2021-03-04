@@ -19,6 +19,7 @@ class KhCorsMiddleware:
 		allowed_headers: Iterable[str] = [],
 		allowed_methods: Iterable[str] = [],
 		allow_credentials: bool = True,
+		exposed_headers: Iterable[str] = [],
 		max_age: int=86400,
 	) -> None :
 		self.app = app
@@ -27,6 +28,7 @@ class KhCorsMiddleware:
 		self.allowed_headers = ', '.join(allowed_headers + ['access-control-request-method', 'origin'])
 		self.allowed_methods = ', '.join(map(str.upper, allowed_methods))
 		self.allow_credentials = str(allow_credentials).lower()
+		self.exposed_headers = ', '.join(exposed_headers)
 		self.max_age = str(max_age)
 
 
@@ -55,6 +57,7 @@ class KhCorsMiddleware:
 						'access-control-allow-headers': self.allowed_headers,
 						'access-control-allow-credentials': self.allow_credentials,
 						'access-control-max-age': self.max_age,
+						'access-control-expose-headers': self.exposed_headers,
 					},
 				)(scope, receive, send)
 				return
@@ -79,6 +82,7 @@ class KhCorsMiddleware:
 			'access-control-allow-headers': self.allowed_headers,
 			'access-control-allow-credentials': self.allow_credentials,
 			'access-control-max-age': self.max_age,
+			'access-control-expose-headers': self.exposed_headers,
 		})
 
 		await send(message)

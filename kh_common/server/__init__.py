@@ -39,6 +39,14 @@ def ServerApp(
 		'x-frame-options',
 		'x-xss-protection',
 	],
+	exposed_headers: Iterable[str] = [
+		'authorization',
+		'cache-control',
+		'content-type',
+		'cookie',
+		'set-cookie',
+		'www-authenticate',
+	],
 ) -> FastAPI :
 	app = FastAPI()
 	app.add_middleware(ExceptionMiddleware, handlers={ Exception: jsonErrorHandler }, debug=False)
@@ -53,6 +61,7 @@ def ServerApp(
 			allowed_protocols = set(allowed_protocols),
 			allowed_headers = allowed_headers,
 			allowed_methods = allowed_methods,
+			exposed_headers = exposed_headers,
 			max_age = max_age,
 		)
 

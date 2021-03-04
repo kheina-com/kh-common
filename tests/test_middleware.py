@@ -242,6 +242,7 @@ class TestCorsMiddleware :
 		'access-control-allow-headers',
 		'access-control-allow-credentials',
 		'access-control-max-age',
+		'access-control-expose-headers',
 	}
 
 	def test_CorsMiddleware_ValidOrigin_Success(self, mocker) :
