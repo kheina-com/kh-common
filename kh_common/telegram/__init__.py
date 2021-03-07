@@ -40,7 +40,7 @@ class Listener :
 
 
 	# parse_mode = MarkdownV2 or HTML
-	async def sendMessage(self, user, message, parse_mode='HTML') :
+	async def sendMessage(self, recipient, message, parse_mode='HTML') :
 		request = f'https://api.telegram.org/bot{self._telegram_access_token}/sendMessage'
 		errorMessage = 'failed to send notification to telegram.'
 		info = None
@@ -60,8 +60,8 @@ class Listener :
 					if not info['ok'] :
 						break
 					return True
-			except :
-				pass
+			except Exception as e :
+				print(e)
 
 		logger.error({
 			'info': info,
@@ -144,16 +144,19 @@ class Listener :
 				) as response :
 					updates = await response.json()
 
-					if updates['ok'] and updates['result'] :
+					if not updates['ok'] :
+						logger.error({
+							'message': 'failed to read updates from telegram.',
+							'updates': updates,
+						})
+						sleep(self.looptime)
+
+					elif updates['result'] :
 						mostrecent = updates['result'][-1]['update_id'] + 1
 						for update in updates['result'] :
 							await self.queue.put(update)
 
 					else :
-						logger.error({
-							'message': 'failed to read updates from telegram.',
-							'updates': updates,
-						})
 						sleep(self.looptime)
 
 				self._logQueueSize(self.queue.qsize())
