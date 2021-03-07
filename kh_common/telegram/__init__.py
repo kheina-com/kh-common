@@ -126,7 +126,7 @@ class Listener :
 
 
 	async def run(self, threads:int=1) :
-		threads = [ensure_future(self.processQueue()) for _ in threads]
+		threads = [ensure_future(self.processQueue()) for _ in range(threads)]
 		await self.recv()
 
 
