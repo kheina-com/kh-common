@@ -54,14 +54,14 @@ class Listener :
 						'chat_id': recipient,
 						'text': message,
 					},
-					timeout=ClientTimeout(Notifier.Timeout),
+					timeout=ClientTimeout(self.Timeout),
 				) as response :
 					info = await response.json()
 					if not info['ok'] :
 						break
 					return True
-			except Exception as e :
-				print(e)
+			except :
+				pass
 
 		logger.error({
 			'info': info,
