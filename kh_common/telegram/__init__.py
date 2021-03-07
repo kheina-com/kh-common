@@ -112,7 +112,7 @@ class Listener :
 			update = await self.queue.get()
 
 			try :
-				self.parseMessage(update['message'])
+				await self.parseMessage(update['message'])
 
 			except QuitParsing :
 				pass
