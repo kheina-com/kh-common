@@ -1,3 +1,4 @@
+from aiohttp import ClientTimeout, request as async_request
 from kh_common.config.credentials import telegram
 from asyncio import ensure_future, Queue, sleep
 from kh_common.caching import Aggregate
