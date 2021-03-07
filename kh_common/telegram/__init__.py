@@ -94,7 +94,7 @@ class Listener :
 			return await self.handleNonCommand(self, user, chat, message)
 
 		end = entity['offset'] + entity['length']
-		command = message['text'][entity['offset']:end].strip()
+		command = message['text'][entity['offset']:end]
 
 		if command in self.responses :
 			return await self.sendMessage(user, self.responses[command])
