@@ -1,5 +1,6 @@
-from kh_common.config.calculated import z_score
 from kh_common.config.constants import epoch
+from kh_common.caching import CalcDict
+from scipy.stats import norm
 from math import log10, sqrt
 from typing import Union
 
@@ -12,6 +13,9 @@ resources:
 	https://redditblog.com/2009/10/15/reddits-new-comment-sorting-system
 	https://www.reddit.com/r/TheoryOfReddit/comments/bpmd3x/how_does_hot_vs_best_vscontroversial_vs_rising/envijlj
 """
+
+
+z_score = CalcDict(lambda k : norm.ppf(1-(1-k)/2))
 
 
 def _sign(x: Union[int, float]) -> int :
