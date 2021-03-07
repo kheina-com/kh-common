@@ -54,7 +54,7 @@ class Listener :
 						'chat_id': recipient,
 						'text': message,
 					},
-					timeout=ClientTimeout(self.Timeout),
+					timeout=ClientTimeout(self.timeout),
 				) as response :
 					info = await response.json()
 					if not info['ok'] :
