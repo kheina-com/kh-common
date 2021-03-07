@@ -18,8 +18,8 @@ _conversions: Dict[type, Callable] = {
 		'user_id': x.user_id,
 		'scope': json_stream(x.scope),
 		'token': {
-			'expires': json_stream(x.token.expires),
-			'guid': json_stream(x.token.guid.hex),
+			'expires': _convert_item(x.token.expires),
+			'guid': _convert_item(x.token.guid),
 			'data': x.token.data,
 		} if x.token else None,
 	},
