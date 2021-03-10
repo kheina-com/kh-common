@@ -128,7 +128,7 @@ class B2Interface :
 					self.b2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
 					json=self.b2['upload_url_load'],
 					headers={ 'Authorization': self.b2['authorizationToken'] },
-					timeout=self.b2_timeout,
+					timeout=ClientTimeout(self.b2_timeout),
 				) as response :
 					if response.ok :
 						return await response.json()
@@ -179,7 +179,7 @@ class B2Interface :
 					upload_url['uploadUrl'],
 					headers=headers,
 					data=file_data,
-					timeout=ClientTimeout(self.b2_timeout),
+					timeout=self.b2_timeout,
 				)
 				status = response.status_code
 				if response.ok :
