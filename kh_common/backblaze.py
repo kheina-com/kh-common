@@ -79,8 +79,41 @@ class B2Interface :
 		raise ValueError(f'file extention does not have a known mime type: {filename}')
 
 
-	def b2_upload(self, *args, **kwargs) -> Dict[str, Any] :
-		return get_event_loop().run_until_complete(self.b2_upload_async(*args, **kwargs))
+	async def _obtain_upload_url(self) -> Dict[str, Any] :
+		backoff: float = 1
+		content: Union[str, type(None)] = None
+		status: Union[int, type(None)] = None
+
+		for _ in range(self.b2_max_retries) :
+			try :
+				response = requests_post(
+					self.b2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
+					json=self.b2['upload_url_load'],
+					headers={ 'Authorization': self.b2['authorizationToken'] },
+					timeout=ClientTimeout(self.b2_timeout),
+				)
+				if response.ok :
+					return json.loads(response.content)
+
+				elif response.status == 401 :
+					# obtain new auth token
+					self._b2_authorize()
+
+				else :
+					content = response.content
+					status = response.status
+
+			except Exception as e :
+				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=e)
+
+			sleep(backoff)
+			backoff = min(backoff * 2, self.b2_max_backoff)
+
+		raise B2AuthorizationError(
+			f'Unable to obtain b2 upload url, max retries exceeded: {self.b2_max_retries}.',
+			response=json.loads(content) if content else None,
+			status=status,
+		)
 
 
 	async def _obtain_upload_url_async(self) -> Dict[str, Any] :
@@ -98,7 +131,7 @@ class B2Interface :
 					timeout=ClientTimeout(self.b2_timeout),
 				) as response :
 					if response.ok :
-						return json.loads(await response.read())
+						return await response.json()
 
 					elif response.status == 401 :
 						# obtain new auth token
@@ -118,6 +151,63 @@ class B2Interface :
 			f'Unable to obtain b2 upload url, max retries exceeded: {self.b2_max_retries}.',
 			response=json.loads(content) if content else None,
 			status=status,
+		)
+
+
+	async def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, type(None)]=None, sha1:Union[str, type(None)]=None) -> Dict[str, Any] :
+		# obtain upload url
+		upload_url: str = self._obtain_upload_url()
+
+		sha1: str = sha1 or hashlib_sha1(file_data).hexdigest()
+		content_type: str = content_type or self._get_mime_from_filename(filename)
+
+		headers: Dict[str, str] = {
+			'Authorization': upload_url['authorizationToken'],
+			'X-Bz-File-Name': quote(filename),
+			'Content-Type': content_type,
+			'Content-Length': str(len(file_data)),
+			'X-Bz-Content-Sha1': sha1,
+		}
+
+		backoff: float = 1
+		content: Union[str, type(None)] = None
+		status: Union[int, type(None)] = None
+
+		for _ in range(self.b2_max_retries) :
+			try :
+				response = requests_post(
+					upload_url['uploadUrl'],
+					headers=headers,
+					data=file_data,
+					timeout=ClientTimeout(self.b2_timeout),
+				)
+				status = response.status_code
+				if response.ok :
+					content: Dict[str, Any] = json.loads(response.content)
+					assert content_type == content['contentType']
+					assert sha1 == content['contentSha1']
+					assert filename == unquote(content['fileName'])
+					return content
+
+				else :
+					content = response.content
+
+			except AssertionError :
+				raise
+
+			except Exception as e :
+				self.logger.warning('error encountered during b2 upload.', exc_info=e)
+
+			sleep(backoff)
+			backoff = min(backoff * 2, self.b2_max_backoff)
+
+		raise B2UploadError(
+			f'Upload to b2 failed, max retries exceeded: {self.b2_max_retries}.',
+			response=json.loads(content) if content else None,
+			status=status,
+			upload_url=upload_url,
+			headers=headers,
+			filesize=len(file_data),
 		)
 
 
