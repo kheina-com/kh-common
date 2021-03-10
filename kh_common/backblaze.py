@@ -79,7 +79,7 @@ class B2Interface :
 		raise ValueError(f'file extention does not have a known mime type: {filename}')
 
 
-	async def _obtain_upload_url(self) -> Dict[str, Any] :
+	def _obtain_upload_url(self) -> Dict[str, Any] :
 		backoff: float = 1
 		content: Union[str, type(None)] = None
 		status: Union[int, type(None)] = None
@@ -154,7 +154,7 @@ class B2Interface :
 		)
 
 
-	async def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, type(None)]=None, sha1:Union[str, type(None)]=None) -> Dict[str, Any] :
+	def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, type(None)]=None, sha1:Union[str, type(None)]=None) -> Dict[str, Any] :
 		# obtain upload url
 		upload_url: str = self._obtain_upload_url()
 
