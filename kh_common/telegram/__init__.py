@@ -88,9 +88,11 @@ class Listener :
 		chat = message['chat']['id']
 		is_chat = False
 
-		if user != chat and not self.allow_chats :
+		if user != chat :
+			if not self.allow_chats :
+				return True
+
 			is_chat = True
-			return True
 
 		if not 'entities' in message :
 			return await self.sendMessage(chat, 'Sorry, I only understand bot commands right now.')
