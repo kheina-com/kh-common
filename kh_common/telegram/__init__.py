@@ -20,6 +20,7 @@ class Listener :
 		looptime: float = 1,
 		threads: int = 1,
 		allow_chats: bool = False,
+		bot_name: str = None,
 		timeout: float = 30,
 		# commands that don't need to run any logic
 		responses: dict = { },
@@ -30,6 +31,7 @@ class Listener :
 		self.allow_chats = allow_chats
 		self.timeout = timeout
 		self.threads = threads
+		self.bot_name = bot_name
 
 		self._telegram_access_token = telegram['telegram_access_token']
 		self._telegram_bot_id = telegram['telegram_bot_id']
@@ -84,8 +86,10 @@ class Listener :
 	async def parseMessage(self, message) :
 		user = message['from']['id']
 		chat = message['chat']['id']
+		is_chat = False
 
 		if user != chat and not self.allow_chats :
+			is_chat = True
 			return True
 
 		if not 'entities' in message :
@@ -99,6 +103,16 @@ class Listener :
 
 		end = entity['offset'] + entity['length']
 		command = message['text'][entity['offset']:end]
+
+		if is_chat :
+			command_split = command.split('@')
+			if len(command_split) <= 1 :
+				return True
+
+			if command_split[1] != self.bot_name :
+				return True
+
+			command = command_split[0]
 
 		if command in self.responses :
 			return await self.sendMessage(chat, self.responses[command])
