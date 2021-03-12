@@ -31,7 +31,7 @@ class Listener :
 		self.allow_chats = allow_chats
 		self.timeout = timeout
 		self.threads = threads
-		self.bot_name = bot_name
+		self.bot_name = bot_name.lower() if bot_name else None
 
 		self._telegram_access_token = telegram['telegram_access_token']
 		self._telegram_bot_id = telegram['telegram_bot_id']
@@ -109,7 +109,7 @@ class Listener :
 			if len(command_split) <= 1 :
 				return True
 
-			if command_split[1] != self.bot_name :
+			if command_split[1].lower() != self.bot_name :
 				return True
 
 			command = command_split[0]
