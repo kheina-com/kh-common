@@ -1,11 +1,12 @@
 from aiohttp import ClientResponse, ClientTimeout, request as request_async
 from requests import Response, get as requests_get, post as requests_post
+from asyncio import get_event_loop, sleep as sleep_async
 from kh_common.exceptions.base_error import BaseError
 from kh_common.config.repo import name, short_hash
 from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import b2
 from hashlib import sha1 as hashlib_sha1
-from asyncio import sleep as sleep_async
+from urllib.parse import quote, unquote
 from typing import Any, Dict, Union
 from base64 import b64encode
 from time import sleep
@@ -80,7 +81,8 @@ class B2Interface :
 
 	def _obtain_upload_url(self) -> Dict[str, Any] :
 		backoff: float = 1
-		response: Union[Response, type(None)] = None
+		content: Union[str, type(None)] = None
+		status: Union[int, type(None)] = None
 
 		for _ in range(self.b2_max_retries) :
 			try :
@@ -90,73 +92,27 @@ class B2Interface :
 					headers={ 'Authorization': self.b2['authorizationToken'] },
 					timeout=self.b2_timeout,
 				)
-
-			except :
-				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=True)
-
-			else :
 				if response.ok :
 					return json.loads(response.content)
 
-				elif response.status_code == 401 :
+				elif response.status == 401 :
 					# obtain new auth token
-					self.authorize_b2()
+					self._b2_authorize()
+
+				else :
+					content = response.content
+					status = response.status
+
+			except Exception as e :
+				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=e)
 
 			sleep(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
 
 		raise B2AuthorizationError(
 			f'Unable to obtain b2 upload url, max retries exceeded: {self.b2_max_retries}.',
-			response=json.loads(response.content) if response else None,
-			status=response.status_code if response else None,
-		)
-
-
-	def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, type(None)]=None, sha1:Union[str, type(None)]=None) -> Dict[str, Any] :
-		# obtain upload url
-		upload_url: str = self._obtain_upload_url()
-
-		sha1: str = sha1 or hashlib_sha1(file_data).hexdigest()
-		content_type: str = content_type or self._get_mime_from_filename(filename)
-
-		headers: Dict[str, str] = {
-			'Authorization': upload_url['authorizationToken'],
-			'X-Bz-File-Name': filename,
-			'Content-Type': content_type,
-			'Content-Length': str(len(file_data)),
-			'X-Bz-Content-Sha1': sha1,
-		}
-
-		backoff: float = 1
-		response: Union[Response, type(None)] = None
-
-		for _ in range(self.b2_max_retries) :
-			try :
-				response = requests_post(
-					upload_url['uploadUrl'],
-					headers=headers,
-					data=file_data,
-					timeout=self.b2_timeout,
-				)
-
-			except :
-				self.logger.warning('error encountered during b2 upload.', exc_info=True)
-
-			else :
-				if response.ok :
-					response_data: Dict[str, Any] = json.loads(response.content)
-					assert content_type == response_data['contentType']
-					assert sha1 == response_data['contentSha1']
-					assert filename == response_data['fileName']
-					return response_data
-
-			sleep(backoff)
-			backoff = min(backoff * 2, self.b2_max_backoff)
-
-		raise B2UploadError(
-			f'Upload to b2 failed, max retries exceeded: {self.b2_max_retries}.',
-			response=json.loads(response.content) if response else None,
-			status=response.status_code if response else None,
+			response=json.loads(content) if content else None,
+			status=status,
 		)
 
 
@@ -174,19 +130,19 @@ class B2Interface :
 					headers={ 'Authorization': self.b2['authorizationToken'] },
 					timeout=ClientTimeout(self.b2_timeout),
 				) as response :
-					if int(response.status / 100) == 2 :
-						return json.loads(await response.read())
+					if response.ok :
+						return await response.json()
 
 					elif response.status == 401 :
 						# obtain new auth token
-						self.authorize_b2()
+						self._b2_authorize()
 
 					else :
 						content = await response.read()
 						status = response.status
 
-			except :
-				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=True)
+			except Exception as e :
+				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=e)
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
@@ -195,6 +151,63 @@ class B2Interface :
 			f'Unable to obtain b2 upload url, max retries exceeded: {self.b2_max_retries}.',
 			response=json.loads(content) if content else None,
 			status=status,
+		)
+
+
+	def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, type(None)]=None, sha1:Union[str, type(None)]=None) -> Dict[str, Any] :
+		# obtain upload url
+		upload_url: str = self._obtain_upload_url()
+
+		sha1: str = sha1 or hashlib_sha1(file_data).hexdigest()
+		content_type: str = content_type or self._get_mime_from_filename(filename)
+
+		headers: Dict[str, str] = {
+			'Authorization': upload_url['authorizationToken'],
+			'X-Bz-File-Name': quote(filename),
+			'Content-Type': content_type,
+			'Content-Length': str(len(file_data)),
+			'X-Bz-Content-Sha1': sha1,
+		}
+
+		backoff: float = 1
+		content: Union[str, type(None)] = None
+		status: Union[int, type(None)] = None
+
+		for _ in range(self.b2_max_retries) :
+			try :
+				response = requests_post(
+					upload_url['uploadUrl'],
+					headers=headers,
+					data=file_data,
+					timeout=self.b2_timeout,
+				)
+				status = response.status_code
+				if response.ok :
+					content: Dict[str, Any] = json.loads(response.content)
+					assert content_type == content['contentType']
+					assert sha1 == content['contentSha1']
+					assert filename == unquote(content['fileName'])
+					return content
+
+				else :
+					content = response.content
+
+			except AssertionError :
+				raise
+
+			except Exception as e :
+				self.logger.warning('error encountered during b2 upload.', exc_info=e)
+
+			sleep(backoff)
+			backoff = min(backoff * 2, self.b2_max_backoff)
+
+		raise B2UploadError(
+			f'Upload to b2 failed, max retries exceeded: {self.b2_max_retries}.',
+			response=json.loads(content) if content else None,
+			status=status,
+			upload_url=upload_url,
+			headers=headers,
+			filesize=len(file_data),
 		)
 
 
@@ -207,7 +220,7 @@ class B2Interface :
 
 		headers: Dict[str, str] = {
 			'Authorization': upload_url['authorizationToken'],
-			'X-Bz-File-Name': filename,
+			'X-Bz-File-Name': quote(filename),
 			'Content-Type': content_type,
 			'Content-Length': str(len(file_data)),
 			'X-Bz-Content-Sha1': sha1,
@@ -226,19 +239,22 @@ class B2Interface :
 					data=file_data,
 					timeout=ClientTimeout(self.b2_timeout),
 				) as response :
-					if int(response.status / 100) == 2 :
-						response_data: Dict[str, Any] = json.loads(await response.read())
-						assert content_type == response_data['contentType']
-						assert sha1 == response_data['contentSha1']
-						assert filename == response_data['fileName']
-						return response_data
+					status = response.status
+					if response.ok :
+						content: Dict[str, Any] = await response.json()
+						assert content_type == content['contentType']
+						assert sha1 == content['contentSha1']
+						assert filename == unquote(content['fileName'])
+						return content
 
 					else :
 						content = await response.read()
-						status = response.status
 
-			except :
-				self.logger.warning('error encountered during b2 upload.', exc_info=True)
+			except AssertionError :
+				raise
+
+			except Exception as e :
+				self.logger.warning('error encountered during b2 upload.', exc_info=e)
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
@@ -247,4 +263,7 @@ class B2Interface :
 			f'Upload to b2 failed, max retries exceeded: {self.b2_max_retries}.',
 			response=json.loads(content) if content else None,
 			status=status,
+			upload_url=upload_url,
+			headers=headers,
+			filesize=len(file_data),
 		)

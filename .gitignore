@@ -2,11 +2,8 @@
 **/credentials.*
 **/credentials
 credentials
-**/notifier
-notifier
 
 # executables
-iqdb/iqdb
 **/*.o
 
 # config files
@@ -15,7 +12,6 @@ iqdb/iqdb
 # database files
 **/*.db
 **/*.sql
-databaseIDs.json
 
 # images
 **/*.jpg
@@ -24,13 +20,11 @@ databaseIDs.json
 **/*.ico
 **/*.svg
 
-# test files
-*test.*
-*test
-
 # python files
 **/__pycache__
 **/Pipfile
+**/.py*
+server.py
 
 # text files, except a requirements file, should it exist
 *.log
@@ -38,20 +32,11 @@ databaseIDs.json
 *.out
 !requirements.txt
 
-# old web files from original iqdb clone
-**/web
-
-# stats files
-stats.json
-
 # back ups of files hosted remotely
 **/backups
 
 # experimental things
-libparseform.so
-parseform.cpp
-parseform.py
-cf
+ignore*
 
 # grab template files
 !*template.*

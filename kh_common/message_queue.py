@@ -1,8 +1,8 @@
 from pika import BaseConnection, BlockingConnection, ConnectionParameters
 from typing import Any, Dict, Iterator, List, Tuple, Union
+from kh_common.utilities import getFullyQualifiedClassName
 from kh_common.config.credentials import message_queue
 from kh_common.config.repo import name, short_hash
-from kh_common import getFullyQualifiedClassName
 from kh_common.logging import getLogger, Logger
 from pika.channel import Channel
 from traceback import format_tb
@@ -75,11 +75,5 @@ class Receiver :
 				if connection :
 					connection.close()
 
-			except :
-				e: Exception
-				traceback: TracebackType
-				e, traceback = exc_info()[1:]
-				self.logger.warning({
-					'message': f'{GetFullyQualifiedClassName(e)}: {e}',
-					'stacktrace': format_tb(traceback),
-				})
+			except Exception as e :
+				self.logger.warning('unexpected exception occurred during message queue close.', exc_info=e)

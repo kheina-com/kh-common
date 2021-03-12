@@ -1,6 +1,9 @@
 from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
-from kh_common.config.repo import name, short_hash
-from kh_common import getFullyQualifiedClassName
+from kh_common.utilities import flatten, getFullyQualifiedClassName
+from kh_common.config.repo import short_hash, name as repo_name
+from google.cloud import logging as google_logging
+from kh_common.utilities.json import json_stream
+from google.auth import compute_engine
 from traceback import format_tb
 from types import ModuleType
 import logging
@@ -16,21 +19,11 @@ class TerminalAgent :
 		self.time: ModuleType = time
 		self.json: ModuleType = json
 
-	def flatten(self, it: Iterator[Any]) -> Iterator[Any] :
-		if isinstance(it, (tuple, list, set)) :
-			for i in it :
-				yield from self.flatten(i)
-		elif isinstance(it, dict) :
-			for k, v in it.items() :
-				yield from self.flatten(v)
-		else :
-			yield it
-
 	def log_text(self, log: str, severity:str='INFO') -> type(None) :
 		print('[' + self.time.asctime(self.time.localtime(self.time.time())) + ']', severity, '>', log)
 
 	def log_struct(self, log: Dict[str, Any], severity:str='INFO') -> type(None) :
-		for i in self.flatten(log) :
+		for i in flatten(log) :
 			if not isinstance(i, TerminalAgent.loggable) :
 				print('WARNING:', i, 'may not be able to be logged.')
 		print('[' + self.time.asctime(self.time.localtime(self.time.time())) + ']', severity, '>', self.json.dumps(log, indent=4))
@@ -38,34 +31,38 @@ class TerminalAgent :
 
 class LogHandler(logging.Handler) :
 
+	logging_available = True
+
 	def __init__(self, name: str, *args: Tuple[Any], structs:Tuple[type]=(dict, list, tuple), **kwargs:[str, Any]) -> type(None) :
 		logging.Handler.__init__(self, *args, **kwargs)
 		self._structs: Tuple[type] = structs
 		try :
-			from google.cloud import logging as google_logging
-			from google.auth import compute_engine
+			if not LogHandler.logging_available :
+				raise ValueError('logging unavailable.')
 			credentials: compute_engine.credentials.Credentials = compute_engine.Credentials()
 			logging_client: google_logging.client.Client = google_logging.Client(credentials=credentials)
 			self.agent: google_logging.logger.Logger = logging_client.logger(name)
 		except :
+			LogHandler.logging_available = False
 			self.agent: TerminalAgent = TerminalAgent()
 
 
 	def emit(self, record: logging.LogRecord) -> type(None) :
-		if record.args and isinstance(record.msg, str) and len(record.args) == record.msg.count('%') :
+		if record.args and isinstance(record.msg, str) :
 			record.msg: str = record.msg % record.args
 		if record.exc_info :
 			e: Exception = record.exc_info[1]
+			refid = getattr(e, 'refid', None)
 			errorinfo: Dict[str, Any] = {
 				'error': f'{getFullyQualifiedClassName(e)}: {e}',
-				'stacktrace': format_tb(record.exc_info[2]),
-				'refid': getattr(e, 'refid', None),
-				**getattr(e, 'logdata', { }),
+				'stacktrace': list(map(str.strip, format_tb(record.exc_info[2]))),
+				'refid': refid.hex if refid else None,
+				**json_stream(getattr(e, 'logdata', { })),
 			}
 			if isinstance(record.msg, dict) :
-				errorinfo.update(record.msg)
+				errorinfo.update(json_stream(record.msg))
 			else :
-				errorinfo.update({ 'message': record.msg })
+				errorinfo['message'] = record.msg
 			self.agent.log_struct(errorinfo, severity=record.levelname)
 		else :
 			if isinstance(record.msg, self._structs) :
@@ -78,7 +75,7 @@ Logger: type = logging.Logger
 
 
 def getLogger(name: Union[str, type(None)]=None, level:int=logging.INFO, filter:Callable=lambda x : x, disable:List[str]=[], **kwargs:[str, Any]) -> Logger :
-	name: str = name or f'{name}.{short_hash}'
+	name: str = name or f'{repo_name}.{short_hash}'
 	for loggerName in disable :
 		logging.getLogger(loggerName).propagate = False
 	logging.root.setLevel(logging.NOTSET)

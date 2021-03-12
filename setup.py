@@ -8,12 +8,9 @@ setup(
 	description='common libraries for kheina.com',
 	author='kheina',
 	url='https://github.com/kheina-com/kh-common',
-	packages=find_packages(),
-	install_requires=[
-		'pika',
-		'ujson',
-		'cryptography',
-		'requests',
-		'google-cloud-logging',
-	],
+	packages=find_packages(exclude=['tests']),
+	install_requires=open('requirements.txt').read().split(),
+	extras_require={
+		'scoring':  ['scipy>=1.5.2'],
+	},
 )
