@@ -33,8 +33,8 @@ class TestJson :
 		date = datetime.now(timezone.utc)
 		guid = uuid4()
 		user = KhUser(3, AuthToken(3, date, guid, { 'some': 'data' }, 'token'), set([Scope.user]))
-		data = (1, '2', date, (1, 2), { 'a': 1, 'b': (1,) }, { 1, 2, 3 }, AnEnum.value_a, user)
-		expected = [1, '2', str(date), [1, 2], { 'a': 1, 'b': [1] }, [1, 2, 3], 'value_a', { 'user_id': 3, 'scope': ['user'], 'token': { 'expires': str(date), 'guid': guid.hex, 'data': { 'some': 'data' } } }]
+		data = (1, '2', date, (1, 2), { 'a': 1, 'b': (2,), 3: 4 }, { 1, 2, 3 }, AnEnum.value_a, user)
+		expected = [1, '2', str(date), [1, 2], { 'a': 1, 'b': [2], '3': 4 }, [1, 2, 3], 'value_a', { 'user_id': 3, 'scope': ['user'], 'token': { 'expires': str(date), 'guid': guid.hex, 'data': { 'some': 'data' } } }]
 
 		# act
 		result = json_stream(data)

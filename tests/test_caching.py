@@ -234,6 +234,7 @@ class TestAggregate :
 		# setup
 		data = [727.7, 1086.5, 1091.0, 1361.3, 1490.5, 1956.1]
 		expected = 420.962489619522557404707185924053192138671875
+
 		@Aggregate(len(data) - 1, aggregator=Aggregator.StandardDeviation)
 		def aggregate_test(a, b=None) :
 			return a, b

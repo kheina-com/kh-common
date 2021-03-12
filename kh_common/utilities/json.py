@@ -39,7 +39,7 @@ def _convert_item(item: Any) -> Any :
 
 def json_stream(stream: Iterable) :
 	if isinstance(stream, (dict, zip)) :
-		return dict(zip(stream.keys(), map(_convert_item, stream.values())))
+		return dict(zip(map(str, stream.keys()), map(_convert_item, stream.values())))
 
 	else :
 		return list(map(_convert_item, stream))
