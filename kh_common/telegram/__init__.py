@@ -29,6 +29,7 @@ class Listener :
 		self.looptime = looptime
 		self.allow_chats = allow_chats
 		self.timeout = timeout
+		self.threads = threads
 
 		self._telegram_access_token = telegram['telegram_access_token']
 		self._telegram_bot_id = telegram['telegram_bot_id']
@@ -73,31 +74,34 @@ class Listener :
 
 
 	async def handleNonCommand(self, user, chat, message) :
-		await self.sendMessage(user, 'sorry, I only understand bot commands right now.')
+		ensure_future(self.sendMessage(chat, 'Sorry, I only understand bot commands right now.'))
 
 
-	async def handleParseError(self, user, *args, **kwargs) :
-		await self.sendMessage(user, "sorry, I didn't understand that command. to see a list of my commands, try /help")
+	async def handleParseError(self, user, chat, command, text, message) :
+		ensure_future(self.sendMessage(chat, "Sorry, I didn't understand that command. to see a list of my commands, try /help"))
 
 
 	async def parseMessage(self, message) :
 		user = message['from']['id']
 		chat = message['chat']['id']
+
 		if user != chat and not self.allow_chats :
 			return True
 
 		if not 'entities' in message :
-			return await self.sendMessage(user, 'sorry, I only understand bot commands right now.')
+			return await self.sendMessage(chat, 'Sorry, I only understand bot commands right now.')
 
-		entity = next(filter(lambda x : x['type'] == 'bot_command', message['entities']))
-		if not entity :
+		try :
+			entity = next(filter(lambda x : x['type'] == 'bot_command', message['entities']))
+
+		except StopIteration :
 			return await self.handleNonCommand(self, user, chat, message)
 
 		end = entity['offset'] + entity['length']
 		command = message['text'][entity['offset']:end]
 
 		if command in self.responses :
-			return await self.sendMessage(user, self.responses[command])
+			return await self.sendMessage(chat, self.responses[command])
 
 		text = message['text'][end:].strip()
 
@@ -126,8 +130,8 @@ class Listener :
 			self.queue.task_done()
 
 
-	async def run(self, threads:int=1) :
-		threads = [ensure_future(self.processQueue()) for _ in range(threads)]
+	async def run(self) :
+		threads = [ensure_future(self.processQueue()) for _ in range(self.threads)]
 		await self.recv()
 
 
