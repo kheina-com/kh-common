@@ -169,7 +169,7 @@ class Listener :
 							'message': 'failed to read updates from telegram.',
 							'updates': updates,
 						})
-						sleep(self.looptime)
+						await sleep(self.looptime)
 
 					elif updates['result'] :
 						mostrecent = updates['result'][-1]['update_id'] + 1
