@@ -2,12 +2,10 @@ from aiohttp import ClientTimeout, request as async_request
 from kh_common.config.credentials import telegram
 from asyncio import ensure_future, Queue, sleep
 from kh_common.caching import Aggregate
-from kh_common import logging
-import requests
-import json
+from kh_common.logging import getLogger
 
 
-logger = logging.getLogger()
+logger = getLogger()
 
 
 class QuitParsing(Exception) :
