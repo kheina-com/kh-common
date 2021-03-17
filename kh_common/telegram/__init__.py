@@ -101,7 +101,7 @@ class Listener :
 			entity = next(filter(lambda x : x['type'] == 'bot_command', message['entities']))
 
 		except StopIteration :
-			return await self.handleNonCommand(self, user, chat, message)
+			return await self.handleNonCommand(user, chat, message)
 
 		end = entity['offset'] + entity['length']
 		command = message['text'][entity['offset']:end]
