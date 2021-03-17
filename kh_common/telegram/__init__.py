@@ -75,8 +75,9 @@ class Listener :
 		return False
 
 
-	async def handleNonCommand(self, user, chat, message) :
-		ensure_future(self.sendMessage(chat, 'Sorry, I only understand bot commands right now.'))
+	async def handleNonCommand(self, user, chat, is_chat, message) :
+		if not is_chat :
+			ensure_future(self.sendMessage(chat, 'Sorry, I only understand bot commands right now.'))
 
 
 	async def handleParseError(self, user, chat, command, text, message) :
@@ -94,14 +95,11 @@ class Listener :
 
 			is_chat = True
 
-		if not 'entities' in message :
-			return await self.sendMessage(chat, 'Sorry, I only understand bot commands right now.')
-
 		try :
-			entity = next(filter(lambda x : x['type'] == 'bot_command', message['entities']))
+			entity = next(filter(lambda x : x['type'] == 'bot_command', message.get('entities', [])))
 
 		except StopIteration :
-			return await self.handleNonCommand(user, chat, message)
+			return await self.handleNonCommand(user, chat, is_chat, message)
 
 		end = entity['offset'] + entity['length']
 		command = message['text'][entity['offset']:end]
