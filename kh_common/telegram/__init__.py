@@ -177,7 +177,7 @@ class Listener :
 							await self.queue.put(update)
 
 					else :
-						sleep(self.looptime)
+						await sleep(self.looptime)
 
 				self._logQueueSize(self.queue.qsize())
 
