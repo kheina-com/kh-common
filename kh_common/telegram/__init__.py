@@ -1,13 +1,13 @@
+from asyncio import ensure_future, Queue, QueueEmpty, sleep, wait as WaitAll
 from aiohttp import ClientTimeout, request as async_request
 from kh_common.config.credentials import telegram
-from asyncio import ensure_future, Queue, sleep
+from kh_common.utilities import Terminated
 from kh_common.caching import Aggregate
-from kh_common import logging
-import requests
-import json
+from kh_common.logging import getLogger
+from typing import List
 
 
-logger = logging.getLogger()
+logger = getLogger()
 
 
 class QuitParsing(Exception) :
@@ -17,17 +17,21 @@ class QuitParsing(Exception) :
 class Listener :
 
 	def __init__(self,
-		looptime: float = 1,
+		loop_time: float = 1,
+		queue_empty_wait: float = 1,
 		threads: int = 1,
 		allow_chats: bool = False,
 		bot_name: str = None,
 		timeout: float = 30,
+		text_limit: int = 4096,
+		text_breaks: List[str] = ['\n', '\t', ' '],
 		# commands that don't need to run any logic
 		responses: dict = { },
 		# commands that actually require logic to be performed
 		commands: dict = { },
 	) :
-		self.looptime = looptime
+		self.loop_time = loop_time
+		self.queue_empty_wait = queue_empty_wait
 		self.allow_chats = allow_chats
 		self.timeout = timeout
 		self.threads = threads
@@ -38,14 +42,55 @@ class Listener :
 
 		self.commands = commands
 		self.responses = responses
+		self.text_limit = text_limit
+		self.text_breaks = text_breaks
 
 		self.queue = Queue()
 
 
+	def splitMessage(self, text: str) :
+		if len(text) <= self.text_limit :
+			return [text]
+
+		messages = []
+
+		while len(text) > self.text_limit :
+			t = text[:self.text_limit]
+			t_split = -1
+
+			for splitter in self.text_breaks :
+				t_split = t.rfind(splitter)
+
+				if t_split > 0 :
+					break
+
+			if t_split <= 0 :
+				t_split = self.text_limit
+				splitter = ''
+
+			messages.append(text[:t_split])
+			text = text[t_split + len(splitter):]
+
+		messages.append(text)
+		return messages
+
+
 	# parse_mode = MarkdownV2 or HTML
 	async def sendMessage(self, recipient, message, parse_mode='HTML') :
+		messages = self.splitMessage(message)
+		success = False
+
+		for i, m in enumerate(messages) :
+			success = await self._sendSingleMessage(recipient, m, parse_mode, i, len(messages))
+			if not success :
+				return False
+
+		return success
+
+
+	async def _sendSingleMessage(self, recipient, message, parse_mode='HTML', message_index=0, message_count=1) :
 		request = f'https://api.telegram.org/bot{self._telegram_access_token}/sendMessage'
-		errorMessage = 'failed to send notification to telegram.'
+		error = 'failed to send notification to telegram.'
 		info = None
 		for _ in range(5) :
 			try :
@@ -68,19 +113,26 @@ class Listener :
 
 		logger.error({
 			'info': info,
-			'message': errorMessage,
-			'request': request,
-			'telegram message': message,
+			'message': error,
+			'request': {
+				'url': request,
+				'message': {
+					'text': message,
+					'index': message_index,
+					'total': message_count,
+				},
+			},
 		})
 		return False
 
 
-	async def handleNonCommand(self, user, chat, message) :
-		ensure_future(self.sendMessage(chat, 'Sorry, I only understand bot commands right now.'))
+	async def handleNonCommand(self, user, chat, is_chat, message) :
+		if not is_chat :
+			ensure_future(self._sendSingleMessage(chat, 'Sorry, I only understand bot commands right now.'))
 
 
 	async def handleParseError(self, user, chat, command, text, message) :
-		ensure_future(self.sendMessage(chat, "Sorry, I didn't understand that command. to see a list of my commands, try /help"))
+		ensure_future(self._sendSingleMessage(chat, "Sorry, I didn't understand that command. to see a list of my commands, try /help"))
 
 
 	async def parseMessage(self, message) :
@@ -94,14 +146,11 @@ class Listener :
 
 			is_chat = True
 
-		if not 'entities' in message :
-			return await self.sendMessage(chat, 'Sorry, I only understand bot commands right now.')
-
 		try :
-			entity = next(filter(lambda x : x['type'] == 'bot_command', message['entities']))
+			entity = next(filter(lambda x : x['type'] == 'bot_command', message.get('entities', [])))
 
 		except StopIteration :
-			return await self.handleNonCommand(self, user, chat, message)
+			return await self.handleNonCommand(user, chat, is_chat, message)
 
 		end = entity['offset'] + entity['length']
 		command = message['text'][entity['offset']:end]
@@ -128,8 +177,13 @@ class Listener :
 
 
 	async def processQueue(self) :
-		while True :
-			update = await self.queue.get()
+		while Terminated.alive or not self.queue.empty :
+			try :
+				update = self.queue.get_nowait()
+
+			except QueueEmpty :
+				await sleep(self.queue_empty_wait)
+				continue
 
 			try :
 				await self.parseMessage(update['message'])
@@ -147,15 +201,15 @@ class Listener :
 
 
 	async def run(self) :
-		threads = [ensure_future(self.processQueue()) for _ in range(self.threads)]
-		await self.recv()
+		threads = [self.processQueue() for _ in range(self.threads)] + [self.recv()]
+		await WaitAll(threads)
 
 
 	async def recv(self) :
 		# just let it fail if it's not json serialized
 		request = f'https://api.telegram.org/bot{self._telegram_access_token}/getUpdates?offset='
 		mostrecent = 0
-		while True :
+		while Terminated.alive :
 			try :
 				async with async_request(
 					'GET',
@@ -169,7 +223,7 @@ class Listener :
 							'message': 'failed to read updates from telegram.',
 							'updates': updates,
 						})
-						sleep(self.looptime)
+						await sleep(self.loop_time)
 
 					elif updates['result'] :
 						mostrecent = updates['result'][-1]['update_id'] + 1
@@ -177,7 +231,7 @@ class Listener :
 							await self.queue.put(update)
 
 					else :
-						sleep(self.looptime)
+						await sleep(self.loop_time)
 
 				self._logQueueSize(self.queue.qsize())
 
