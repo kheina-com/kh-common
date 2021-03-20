@@ -3,6 +3,7 @@ from kh_common.config.credentials import telegram
 from asyncio import ensure_future, Queue, sleep
 from kh_common.caching import Aggregate
 from kh_common.logging import getLogger
+from typing import List
 
 
 logger = getLogger()
@@ -20,6 +21,8 @@ class Listener :
 		allow_chats: bool = False,
 		bot_name: str = None,
 		timeout: float = 30,
+		text_limit: int = 4096,
+		text_breaks: List[str] = ['\n', '\t', ' '],
 		# commands that don't need to run any logic
 		responses: dict = { },
 		# commands that actually require logic to be performed
@@ -36,14 +39,55 @@ class Listener :
 
 		self.commands = commands
 		self.responses = responses
+		self.text_limit = text_limit
+		self.text_breaks = text_breaks
 
 		self.queue = Queue()
 
 
+	def splitMessage(self, text: str) :
+		if len(text) <= self.text_limit :
+			return [text]
+
+		messages = []
+
+		while len(text) > self.text_limit :
+			t = text[:self.text_limit]
+			t_split = -1
+
+			for splitter in self.text_breaks :
+				t_split = t.rfind(splitter)
+
+				if t_split > 0 :
+					break
+			
+			if t_split <= 0 :
+				t_split = self.text_limit
+				splitter = ''
+
+			messages.append(text[:t_split])
+			text = text[t_split + len(splitter):]
+
+		messages.append(text)
+		return messages
+
+
 	# parse_mode = MarkdownV2 or HTML
 	async def sendMessage(self, recipient, message, parse_mode='HTML') :
+		messages = self.splitMessage(message)
+		success = False
+
+		for i, m in enumerate(messages) :
+			success = await self._sendSingleMessage(recipient, m, parse_mode, i, len(messages))
+			if not success :
+				return False
+
+		return success
+
+
+	async def _sendSingleMessage(self, recipient, message, parse_mode='HTML', message_index=0, message_count=1) :
 		request = f'https://api.telegram.org/bot{self._telegram_access_token}/sendMessage'
-		errorMessage = 'failed to send notification to telegram.'
+		error = 'failed to send notification to telegram.'
 		info = None
 		for _ in range(5) :
 			try :
@@ -66,20 +110,26 @@ class Listener :
 
 		logger.error({
 			'info': info,
-			'message': errorMessage,
-			'request': request,
-			'telegram message': message,
+			'message': error,
+			'request': {
+				'url': request,
+				'message': {
+					'text': message,
+					'index': message_index,
+					'total': message_count,
+				},
+			},
 		})
 		return False
 
 
 	async def handleNonCommand(self, user, chat, is_chat, message) :
 		if not is_chat :
-			ensure_future(self.sendMessage(chat, 'Sorry, I only understand bot commands right now.'))
+			ensure_future(self._sendSingleMessage(chat, 'Sorry, I only understand bot commands right now.'))
 
 
 	async def handleParseError(self, user, chat, command, text, message) :
-		ensure_future(self.sendMessage(chat, "Sorry, I didn't understand that command. to see a list of my commands, try /help"))
+		ensure_future(self._sendSingleMessage(chat, "Sorry, I didn't understand that command. to see a list of my commands, try /help"))
 
 
 	async def parseMessage(self, message) :
@@ -144,7 +194,7 @@ class Listener :
 
 	async def run(self) :
 		threads = [ensure_future(self.processQueue()) for _ in range(self.threads)]
-		await self.recv()
+		await self.recv()  # TODO: catch here for kill/end commands, then allow threads to clean up
 		await asyncio.wait(threads)
 
 
