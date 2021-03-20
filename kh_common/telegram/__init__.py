@@ -1,6 +1,6 @@
+from asyncio import ensure_future, Queue, QueueEmpty, sleep, wait as WaitAll
 from aiohttp import ClientTimeout, request as async_request
 from kh_common.config.credentials import telegram
-from asyncio import ensure_future, Queue, sleep
 from kh_common.utilities import Terminated
 from kh_common.caching import Aggregate
 from kh_common.logging import getLogger
@@ -17,7 +17,8 @@ class QuitParsing(Exception) :
 class Listener :
 
 	def __init__(self,
-		looptime: float = 1,
+		loop_time: float = 1,
+		queue_empty_wait: float = 1,
 		threads: int = 1,
 		allow_chats: bool = False,
 		bot_name: str = None,
@@ -29,7 +30,8 @@ class Listener :
 		# commands that actually require logic to be performed
 		commands: dict = { },
 	) :
-		self.looptime = looptime
+		self.loop_time = loop_time
+		self.queue_empty_wait = queue_empty_wait
 		self.allow_chats = allow_chats
 		self.timeout = timeout
 		self.threads = threads
@@ -175,8 +177,13 @@ class Listener :
 
 
 	async def processQueue(self) :
-		while True :
-			update = await self.queue.get()
+		while Terminated.alive or not self.queue.empty :
+			try :
+				update = self.queue.get_nowait()
+
+			except QueueEmpty :
+				await sleep(self.queue_empty_wait)
+				continue
 
 			try :
 				await self.parseMessage(update['message'])
@@ -194,12 +201,8 @@ class Listener :
 
 
 	async def run(self) :
-		threads = [ensure_future(self.processQueue()) for _ in range(self.threads)]
-		print(threads)
-		await self.recv()  # TODO: catch here for kill/end commands, then allow threads to clean up
-		print('finished recv ?')
-		await asyncio.wait(threads)
-		print('finished threads')
+		threads = [self.processQueue() for _ in range(self.threads)] + [self.recv()]
+		await WaitAll(threads)
 
 
 	async def recv(self) :
@@ -208,8 +211,6 @@ class Listener :
 		mostrecent = 0
 		while Terminated.alive :
 			try :
-				await sleep(100)
-
 				async with async_request(
 					'GET',
 					request + str(mostrecent),
@@ -222,7 +223,7 @@ class Listener :
 							'message': 'failed to read updates from telegram.',
 							'updates': updates,
 						})
-						await sleep(self.looptime)
+						await sleep(self.loop_time)
 
 					elif updates['result'] :
 						mostrecent = updates['result'][-1]['update_id'] + 1
@@ -230,7 +231,7 @@ class Listener :
 							await self.queue.put(update)
 
 					else :
-						await sleep(self.looptime)
+						await sleep(self.loop_time)
 
 				self._logQueueSize(self.queue.qsize())
 
@@ -243,13 +244,3 @@ class Listener :
 		logger.info({
 			'queue_size': queue_size,
 		})
-
-
-if __name__ == '__main__' :
-	from asyncio import get_event_loop
-	loop = get_event_loop()
-	try :
-		listener = Listener()
-		loop.run_until_complete(listener.run())
-	except :
-		logger.exception('dskjfahsdflk;asdf')
