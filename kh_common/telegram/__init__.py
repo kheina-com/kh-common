@@ -156,7 +156,7 @@ class Listener :
 		}
 
 		try :
-			entity = next(filter(lambda x : x['type'] == 'bot_command', message.get('entities', [])))
+ 			entity = next(filter(lambda x : x['type'] == 'bot_command', message.get('entities', [])))
 
 		except StopIteration :
 			arg_spec = getfullargspec(self.handleNonCommand)
