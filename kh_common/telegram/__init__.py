@@ -1,6 +1,7 @@
 from aiohttp import ClientTimeout, request as async_request
 from kh_common.config.credentials import telegram
 from asyncio import ensure_future, Queue, sleep
+from kh_common.utilities import Terminated
 from kh_common.caching import Aggregate
 from kh_common.logging import getLogger
 from typing import List
@@ -60,7 +61,7 @@ class Listener :
 
 				if t_split > 0 :
 					break
-			
+
 			if t_split <= 0 :
 				t_split = self.text_limit
 				splitter = ''
@@ -194,16 +195,21 @@ class Listener :
 
 	async def run(self) :
 		threads = [ensure_future(self.processQueue()) for _ in range(self.threads)]
+		print(threads)
 		await self.recv()  # TODO: catch here for kill/end commands, then allow threads to clean up
+		print('finished recv ?')
 		await asyncio.wait(threads)
+		print('finished threads')
 
 
 	async def recv(self) :
 		# just let it fail if it's not json serialized
 		request = f'https://api.telegram.org/bot{self._telegram_access_token}/getUpdates?offset='
 		mostrecent = 0
-		while True :
+		while Terminated.alive :
 			try :
+				await sleep(100)
+
 				async with async_request(
 					'GET',
 					request + str(mostrecent),
@@ -237,3 +243,13 @@ class Listener :
 		logger.info({
 			'queue_size': queue_size,
 		})
+
+
+if __name__ == '__main__' :
+	from asyncio import get_event_loop
+	loop = get_event_loop()
+	try :
+		listener = Listener()
+		loop.run_until_complete(listener.run())
+	except :
+		logger.exception('dskjfahsdflk;asdf')
