@@ -1,9 +1,11 @@
 from asyncio import ensure_future, Queue, QueueEmpty, sleep, wait as WaitAll
 from aiohttp import ClientTimeout, request as async_request
 from kh_common.config.credentials import telegram
-from kh_common.utilities import Terminated
+from kh_common.utilities.signal import Terminated
 from kh_common.caching import Aggregate
 from kh_common.logging import getLogger
+from collections import defaultdict
+from inspect import getfullargspec
 from typing import List
 
 
@@ -40,7 +42,7 @@ class Listener :
 		self._telegram_access_token = telegram['telegram_access_token']
 		self._telegram_bot_id = telegram['telegram_bot_id']
 
-		self.commands = commands
+		self.commands = defaultdict(lambda : self.handleUnknownCommand, commands)
 		self.responses = responses
 		self.text_limit = text_limit
 		self.text_breaks = text_breaks
@@ -126,12 +128,12 @@ class Listener :
 		return False
 
 
-	async def handleNonCommand(self, user, chat, is_chat, message) :
+	async def handleNonCommand(self, chat, is_chat, **kwargs) :
 		if not is_chat :
 			ensure_future(self._sendSingleMessage(chat, 'Sorry, I only understand bot commands right now.'))
 
 
-	async def handleParseError(self, user, chat, command, text, message) :
+	async def handleUnknownCommand(self, chat, **kwargs) :
 		ensure_future(self._sendSingleMessage(chat, "Sorry, I didn't understand that command. to see a list of my commands, try /help"))
 
 
@@ -146,11 +148,23 @@ class Listener :
 
 			is_chat = True
 
+		args = {
+			'user': user,
+			'chat': chat,
+			'is_chat': is_chat,
+			'message': message,
+		}
+
 		try :
-			entity = next(filter(lambda x : x['type'] == 'bot_command', message.get('entities', [])))
+ 			entity = next(filter(lambda x : x['type'] == 'bot_command', message.get('entities', [])))
 
 		except StopIteration :
-			return await self.handleNonCommand(user, chat, is_chat, message)
+			arg_spec = getfullargspec(self.handleNonCommand)
+
+			if arg_spec.varkw :
+				return await func(**args)
+
+			return await self.handleNonCommand(**{ k: args[k] for k in arg_spec.args[1:] + arg_spec.kwonlyargs })
 
 		end = entity['offset'] + entity['length']
 		command = message['text'][entity['offset']:end]
@@ -168,12 +182,18 @@ class Listener :
 		if command in self.responses :
 			return await self.sendMessage(chat, self.responses[command])
 
-		text = message['text'][end:].strip()
+		args.update({
+			'text': message['text'][end:].strip(),
+			'command': command,
+		})
 
-		if command in self.commands :
-			return await self.commands[command](user, chat, text, message)
+		func = self.commands[command]
+		arg_spec = getfullargspec(func)
 
-		return await self.handleParseError(user, chat, command, text, message)
+		if arg_spec.varkw :
+			return await func(**args)
+
+		return await func(**{ k: args[k] for k in arg_spec.args[1:] + arg_spec.kwonlyargs })
 
 
 	async def processQueue(self) :
