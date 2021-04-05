@@ -95,13 +95,13 @@ class B2Interface :
 				if response.ok :
 					return json.loads(response.content)
 
-				elif response.status == 401 :
+				elif response.status_code == 401 :
 					# obtain new auth token
 					self._b2_authorize()
 
 				else :
 					content = response.content
-					status = response.status
+					status = response.status_code
 
 			except Exception as e :
 				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=e)
