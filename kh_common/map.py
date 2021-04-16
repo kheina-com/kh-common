@@ -14,9 +14,9 @@ class Map(SqlInterface, dict) :
 
 	def __missing__(self, key: Hashable) -> Any:
 		data: Any = self.query(f"""
-			SELECT {self.value}
-			FROM {self.table}
-			WHERE {self.key} = %s;
+			SELECT {self._value}
+			FROM {self._table}
+			WHERE {self._key} = %s;
 			""",
 			(key,),
 			fetch_one=True,
