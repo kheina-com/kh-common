@@ -6,18 +6,35 @@ from fastapi.responses import PlainTextResponse, UJSONResponse
 from starlette.exceptions import ExceptionMiddleware
 from kh_common.config.constants import environment
 from kh_common.exceptions import jsonErrorHandler
+from fastapi.responses import Response
 from fastapi import FastAPI, Request
 from typing import Iterable
+
+
+NoContentResponse = Response(None, status_code=204)
 
 
 def ServerApp(
 	auth: bool = True,
 	auth_required: bool = True,
 	cors: bool = True,
-	allowed_hosts: Iterable[str] = ['localhost', '127.0.0.1', '*.kheina.com', 'kheina.com'],
-	allowed_origins: Iterable[str] = ['localhost', '127.0.0.1', 'dev.kheina.com', 'kheina.com'],
-	allowed_methods: Iterable[str] = ['GET', 'POST'],
 	max_age: int = 86400,
+	allowed_hosts: Iterable[str] = [
+		'localhost',
+		'127.0.0.1',
+		'*.kheina.com',
+		'kheina.com'
+	],
+	allowed_origins: Iterable[str] = [
+		'localhost',
+		'127.0.0.1',
+		'dev.kheina.com',
+		'kheina.com'
+	],
+	allowed_methods: Iterable[str] = [
+		'GET',
+		'POST'
+	],
 	allowed_headers: Iterable[str] = [
 		'accept',
 		'accept-language',
