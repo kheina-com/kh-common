@@ -87,11 +87,12 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 				except Exception as e :
 					for cls in type(e).__mro__ :
 						if cls in handlers :
-							Error, message = handlers[cls]
-							raise Error(message)
+							Error, custom_message = handlers[cls]
+							raise Error(custom_message)
 
 					kwargs.update(zip(arg_spec.args, args))
 					kwargs['refid']: UUID = uuid4().hex
+
 					logdata = {
 						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
 						for key in kwargs.keys() - exclusions
@@ -112,8 +113,8 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 				except Exception as e :
 					for cls in type(e).__mro__ :
 						if cls in handlers :
-							Error, message = handlers[cls]
-							raise Error(message)
+							Error, custom_message = handlers[cls]
+							raise Error(custom_message)
 
 					kwargs.update(zip(arg_spec.args, args))
 					kwargs['refid']: UUID = uuid4().hex
