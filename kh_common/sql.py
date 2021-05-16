@@ -13,7 +13,7 @@ from sys import exc_info
 
 class SqlInterface :
 
-	def __init__(self, conversions:Dict[type, Callable]={ }) -> type(None) :
+	def __init__(self, conversions:Dict[type, Callable]={ }) -> None :
 		self.logger: Logger = getLogger()
 		self._sql_connect()
 		self._conversions: Dict[type, Callable] = {
@@ -23,7 +23,7 @@ class SqlInterface :
 		}
 
 
-	def _sql_connect(self) -> type(None) :
+	def _sql_connect(self) -> None :
 		try :
 			self._conn: Connection = dbConnect(**db)
 
@@ -41,7 +41,7 @@ class SqlInterface :
 		return item
 
 
-	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[type(None), List[Any]] :
+	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[None, List[Any]] :
 		if self._conn.closed :
 			self._sql_connect()
 
@@ -96,7 +96,7 @@ class Transaction :
 
 	def __init__(self, sql: SqlInterface) :
 		self._sql: SqlInterface = sql
-		self.cur: Union[Cursor, type(None)] = None
+		self.cur: Union[Cursor, None] = None
 
 
 	def __enter__(self) :
@@ -126,7 +126,7 @@ class Transaction :
 		self._sql._conn.rollback()
 
 
-	def query(self, sql: str, params:Tuple[Any]=(), fetch_one:bool=False, fetch_all:bool=False) -> Union[type(None), List[Any]] :
+	def query(self, sql: str, params:Tuple[Any]=(), fetch_one:bool=False, fetch_all:bool=False) -> Union[None, List[Any]] :
 		params = tuple(map(self._sql._convert_item, params))
 		try :
 			self.cur.execute(sql, params)

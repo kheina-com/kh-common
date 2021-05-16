@@ -3,7 +3,7 @@ from uuid import UUID, uuid4
 
 
 class BaseError(Exception) :
-	def __init__(self, message: str, *args:Tuple[Any], refid:Union[UUID, str, type(None)]=None, logdata:Dict[str, Any]={ }, **kwargs: Dict[str, Any]) -> type(None) :
+	def __init__(self, message: str, *args:Tuple[Any], refid:Union[UUID, str, None]=None, logdata:Dict[str, Any]={ }, **kwargs: Dict[str, Any]) -> None :
 		Exception.__init__(self, message)
 
 		self.refid: str = refid or logdata.get('refid') or uuid4()

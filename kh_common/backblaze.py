@@ -23,7 +23,7 @@ class B2UploadError(BaseError) :
 
 class B2Interface :
 
-	def __init__(self, timeout:float=300, max_backoff:float=30, max_retries:float=15, mime_types:Dict[str, str]={ }) -> type(None) :
+	def __init__(self, timeout:float=300, max_backoff:float=30, max_retries:float=15, mime_types:Dict[str, str]={ }) -> None :
 		self.logger: Logger = getLogger()
 		self.b2_timeout: float = timeout
 		self.b2_max_backoff: float = max_backoff
@@ -45,7 +45,7 @@ class B2Interface :
 	def _b2_authorize(self) -> bool :
 		basic_auth_string: bytes = b'Basic ' + b64encode((b2['key_id'] + ':' + b2['key']).encode())
 		b2_headers: Dict[str, bytes] = { 'Authorization': basic_auth_string }
-		response: Union[Response, type(None)] = None
+		response: Union[Response, None] = None
 
 		for _ in range(self.b2_max_retries) :
 			try :
@@ -81,8 +81,8 @@ class B2Interface :
 
 	def _obtain_upload_url(self) -> Dict[str, Any] :
 		backoff: float = 1
-		content: Union[str, type(None)] = None
-		status: Union[int, type(None)] = None
+		content: Union[str, None] = None
+		status: Union[int, None] = None
 
 		for _ in range(self.b2_max_retries) :
 			try :
@@ -118,8 +118,8 @@ class B2Interface :
 
 	async def _obtain_upload_url_async(self) -> Dict[str, Any] :
 		backoff: float = 1
-		content: Union[str, type(None)] = None
-		status: Union[int, type(None)] = None
+		content: Union[str, None] = None
+		status: Union[int, None] = None
 
 		for _ in range(self.b2_max_retries) :
 			try :
@@ -154,7 +154,7 @@ class B2Interface :
 		)
 
 
-	def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, type(None)]=None, sha1:Union[str, type(None)]=None) -> Dict[str, Any] :
+	def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
 		# obtain upload url
 		upload_url: str = self._obtain_upload_url()
 
@@ -170,8 +170,8 @@ class B2Interface :
 		}
 
 		backoff: float = 1
-		content: Union[str, type(None)] = None
-		status: Union[int, type(None)] = None
+		content: Union[str, None] = None
+		status: Union[int, None] = None
 
 		for _ in range(self.b2_max_retries) :
 			try :
@@ -211,7 +211,7 @@ class B2Interface :
 		)
 
 
-	async def b2_upload_async(self, file_data: bytes, filename: str, content_type:Union[str, type(None)]=None, sha1:Union[str, type(None)]=None) -> Dict[str, Any] :
+	async def b2_upload_async(self, file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
 		# obtain upload url
 		upload_url: str = await self._obtain_upload_url_async()
 
@@ -227,8 +227,8 @@ class B2Interface :
 		}
 
 		backoff: float = 1
-		content: Union[str, type(None)] = None
-		status: Union[int, type(None)] = None
+		content: Union[str, None] = None
+		status: Union[int, None] = None
 
 		for _ in range(self.b2_max_retries) :
 			try :

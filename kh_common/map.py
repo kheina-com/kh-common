@@ -16,7 +16,8 @@ class Map(SqlInterface, dict) :
 		data: Any = self.query(f"""
 			SELECT {self._value}
 			FROM {self._table}
-			WHERE {self._key} = %s;
+			WHERE {self._key} = %s
+			LIMIT 1;
 			""",
 			(key,),
 			fetch_one=True,

@@ -9,11 +9,11 @@ from copy import copy
 
 class CalcDict(dict) :
 
-	def __init__(self, default: Callable[[Hashable], Any]) -> type(None) :
+	def __init__(self, default: Callable[[Hashable], Any]) -> None :
 		self.default: Callable = default
 
 
-	def setdefault(self, default: Callable[[Hashable], Any]) -> type(None) :
+	def setdefault(self, default: Callable[[Hashable], Any]) -> None :
 		self.default = default
 
 
