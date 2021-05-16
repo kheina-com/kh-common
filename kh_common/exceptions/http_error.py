@@ -63,7 +63,7 @@ class BadOrMalformedResponse(HttpError) :
 	pass
 
 
-def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self'], handlers: Dict[type, Tuple[type, str]]) -> Callable :
+def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handlers: Dict[type, Tuple[type, str]] = { }) -> Callable :
 	"""
 	raises internal server error from any unexpected errors
 	f'an unexpected error occurred while {message}.'
@@ -84,7 +84,12 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self'], handlers: 
 				except HttpError :
 					raise
 
-				except :
+				except Exception as e :
+					for cls in type(e).__mro__ :
+						if cls in handlers :
+							Error, message = handlers[cls]
+							raise Error(message)
+
 					kwargs.update(zip(arg_spec.args, args))
 					kwargs['refid']: UUID = uuid4().hex
 					logdata = {
@@ -92,6 +97,7 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self'], handlers: 
 						for key in kwargs.keys() - exclusions
 					}
 					logger.exception(logdata)
+
 					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 
 		else :
@@ -103,14 +109,21 @@ def HttpErrorHandler(message: str, exclusions:Iterable[str]=['self'], handlers: 
 				except HttpError :
 					raise
 
-				except :
+				except Exception as e :
+					for cls in type(e).__mro__ :
+						if cls in handlers :
+							Error, message = handlers[cls]
+							raise Error(message)
+
 					kwargs.update(zip(arg_spec.args, args))
 					kwargs['refid']: UUID = uuid4().hex
+
 					logdata = {
 						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
 						for key in kwargs.keys() - exclusions
 					}
 					logger.exception(logdata)
+
 					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 
 		return wrapper
