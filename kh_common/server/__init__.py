@@ -23,17 +23,17 @@ def ServerApp(
 		'localhost',
 		'127.0.0.1',
 		'*.kheina.com',
-		'kheina.com'
+		'kheina.com',
 	],
 	allowed_origins: Iterable[str] = [
 		'localhost',
 		'127.0.0.1',
 		'dev.kheina.com',
-		'kheina.com'
+		'kheina.com',
 	],
 	allowed_methods: Iterable[str] = [
 		'GET',
-		'POST'
+		'POST',
 	],
 	allowed_headers: Iterable[str] = [
 		'accept',
