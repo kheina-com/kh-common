@@ -5,4 +5,4 @@ cryptography>=3.0
 google-cloud-logging>=1.12.1
 requests>=2.23.0
 aiohttp>=3.7.3
-fastapi>=0.61.1
+fastapi>=0.61.2
