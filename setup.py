@@ -6,6 +6,8 @@ setup(
 	name='kh_common',
 	version=kh_version,
 	description='common libraries for kheina.com',
+    long_description=open('readme.md').read(),
+    long_description_content_type='text/markdown',
 	author='kheina',
 	url='https://github.com/kheina-com/kh-common',
 	packages=find_packages(exclude=['tests']),

@@ -43,3 +43,10 @@ ignore*
 
 # grab ALL markdown files. These are all readmes, setups, and tutorials
 !**/*.md
+
+# pypi files
+**/build/*
+**/dist/*
+build
+dist
+*.egg-info
