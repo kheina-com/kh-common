@@ -10,6 +10,7 @@ from kh_common.exceptions import jsonErrorHandler
 from fastapi.responses import Response
 from fastapi import FastAPI, Request
 from typing import Iterable
+from ujson import dumps
 
 
 NoContentResponse = Response(None, status_code=204)
@@ -95,5 +96,5 @@ def ServerApp(
 class JsonResponse(Response) :
 	
 	def __init__(self, serializable_body, *args, **kwargs) :
-		super().__init__(json_stream(serializable_body), *args, **kwargs)
+		super().__init__(dumps(json_stream(serializable_body)), *args, **kwargs)
 		self.headers['content-type'] = 'application/json'
