@@ -94,10 +94,10 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					kwargs['refid']: UUID = uuid4().hex
 
 					logdata = {
-						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
+						key: kwargs[key]
 						for key in kwargs.keys() - exclusions
 					}
-					logger.exception(logdata)
+					logger.exception({ 'params': logdata })
 
 					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 
@@ -120,10 +120,10 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					kwargs['refid']: UUID = uuid4().hex
 
 					logdata = {
-						key: (kwargs[key].name if isinstance(kwargs[key], Enum) else kwargs[key])
+						key: kwargs[key]
 						for key in kwargs.keys() - exclusions
 					}
-					logger.exception(logdata)
+					logger.exception({ 'params': logdata })
 
 					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
 

@@ -2,6 +2,7 @@ from starlette.middleware.trustedhost import TrustedHostMiddleware
 from kh_common.server.middleware.auth import KhAuthMiddleware
 from kh_common.server.middleware.cors import KhCorsMiddleware
 from kh_common.exceptions.base_error import BaseError
+from kh_common.utilities.json import json_stream
 from fastapi.responses import PlainTextResponse, UJSONResponse
 from starlette.exceptions import ExceptionMiddleware
 from kh_common.config.constants import environment
@@ -89,3 +90,10 @@ def ServerApp(
 		app.add_middleware(KhAuthMiddleware, required=auth_required)
 
 	return app
+
+
+class JsonResponse(Response) :
+	
+	def __init__(self, serializable_body, *args, **kwargs) :
+		super().__init__(json_stream(serializable_body), *args, **kwargs)
+		self.headers['content-type'] = 'application/json'

@@ -23,7 +23,7 @@ class CalcDict(dict) :
 
 
 _conversions: Dict[type, Callable] = {
-	dict: lambda x : tuple((key, k[key]) for key in sorted(k.keys())),
+	dict: lambda x : tuple((key, x[key]) for key in sorted(x.keys())),
 	list: tuple,
 }
 
@@ -47,7 +47,7 @@ def _cache_stream(stream: Iterable) :
 		return tuple(map(_convert_item, stream))
 
 
-def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
+def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0, ) -> Callable :
 	"""
 	stores single result for all arguments used to call.
 	any arguments/keywords can be used.
