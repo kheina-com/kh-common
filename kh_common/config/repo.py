@@ -3,9 +3,9 @@ from typing import Any, Dict, Union
 from subprocess import PIPE, Popen
 
 
-name: Union[str, type(None)] = None
+name: Union[str, None] = None
 
-output: Union[bytes, type(None)] = b''.join(Popen(['git', 'config', '--get', 'remote.origin.url'], stdout=PIPE, stderr=PIPE).communicate())
+output: Union[bytes, None] = b''.join(Popen(['git', 'config', '--get', 'remote.origin.url'], stdout=PIPE, stderr=PIPE).communicate())
 if output and not output.startswith(b'fatal'):
 	name = stringSlice(output.decode(), '/', '.git')
 
@@ -15,14 +15,14 @@ else :
 		name = stringSlice(output.decode(), '/').strip()
 
 
-short_hash: Union[str, type(None)] = None
+short_hash: Union[str, None] = None
 
 output = b''.join(Popen(['git', 'rev-parse', '--short', 'HEAD'], stdout=PIPE, stderr=PIPE).communicate())
 if output and not output.startswith(b'fatal'):
 	short_hash = output.decode().strip()
 
 
-full_hash: Union[str, type(None)] = None
+full_hash: Union[str, None] = None
 
 output = b''.join(Popen(['git', 'rev-parse', 'HEAD'], stdout=PIPE, stderr=PIPE).communicate())
 if output and not output.startswith(b'fatal'):

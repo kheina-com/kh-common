@@ -11,18 +11,18 @@ import logging
 
 class TerminalAgent :
 
-	loggable: Tuple[type] = (str, int, float, type(None))
+	loggable: Tuple[type] = (str, int, float, None)
 
-	def __init__(self) -> type(None) :
+	def __init__(self) -> None :
 		import time
 		import json
 		self.time: ModuleType = time
 		self.json: ModuleType = json
 
-	def log_text(self, log: str, severity:str='INFO') -> type(None) :
+	def log_text(self, log: str, severity:str='INFO') -> None :
 		print('[' + self.time.asctime(self.time.localtime(self.time.time())) + ']', severity, '>', log)
 
-	def log_struct(self, log: Dict[str, Any], severity:str='INFO') -> type(None) :
+	def log_struct(self, log: Dict[str, Any], severity:str='INFO') -> None :
 		for i in flatten(log) :
 			if not isinstance(i, TerminalAgent.loggable) :
 				print('WARNING:', i, 'may not be able to be logged.')
@@ -33,7 +33,7 @@ class LogHandler(logging.Handler) :
 
 	logging_available = True
 
-	def __init__(self, name: str, *args: Tuple[Any], structs:Tuple[type]=(dict, list, tuple), **kwargs:[str, Any]) -> type(None) :
+	def __init__(self, name: str, *args: Tuple[Any], structs:Tuple[type]=(dict, list, tuple), **kwargs:[str, Any]) -> None :
 		logging.Handler.__init__(self, *args, **kwargs)
 		self._structs: Tuple[type] = structs
 		try :
@@ -47,7 +47,7 @@ class LogHandler(logging.Handler) :
 			self.agent: TerminalAgent = TerminalAgent()
 
 
-	def emit(self, record: logging.LogRecord) -> type(None) :
+	def emit(self, record: logging.LogRecord) -> None :
 		if record.args and isinstance(record.msg, str) :
 			record.msg: str = record.msg % record.args
 		if record.exc_info :
@@ -74,7 +74,7 @@ class LogHandler(logging.Handler) :
 Logger: type = logging.Logger
 
 
-def getLogger(name: Union[str, type(None)]=None, level:int=logging.INFO, filter:Callable=lambda x : x, disable:List[str]=[], **kwargs:[str, Any]) -> Logger :
+def getLogger(name: Union[str, None]=None, level:int=logging.INFO, filter:Callable=lambda x : x, disable:List[str]=[], **kwargs:[str, Any]) -> Logger :
 	name: str = name or f'{repo_name}.{short_hash}'
 	for loggerName in disable :
 		logging.getLogger(loggerName).propagate = False

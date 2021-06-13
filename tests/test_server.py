@@ -1,13 +1,14 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
+from kh_common.server.middleware.cors import KhCorsMiddleware
 from kh_common.exceptions.http_error import Unauthorized
 from tests.utilities.auth import mock_pk, mock_token
 from kh_common.utilities.json import json_stream
 from kh_common.server import Request, ServerApp
 from fastapi.testclient import TestClient
 from kh_common.auth import Scope
+from fastapi import FastAPI
 from uuid import uuid4
 import ujson as json
-
 
 endpoint = '/'
 base_url = 'test.kheina.com'
@@ -183,21 +184,20 @@ class TestAppServer :
 		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response_json
 
 
-	"""
 	def test_ServerApp_ValidOrigin_Success(self) :
 
 		# arrange
+		host = 'localhost'
 		app = ServerApp(auth=False, cors=True)
 
 		@app.get(endpoint)
 		async def app_func() :
 			return { 'success': True }
 
-		client = TestClient(app, base_url='localhost')
+		client = TestClient(app, base_url=host)
 
 		# act
-		result = client.get(schema + 'localhost' + endpoint, headers={ 'Origin': 'base_url' })
-		print(result.text)
+		result = client.get(f'{schema}{host}{endpoint}', headers={ 'Origin': f'{schema}{host}' })
 
 		# assert
 		assert 200 == result.status_code
@@ -212,7 +212,7 @@ class TestAppServer :
 		token = mock_token(user_id, key_id=54321)
 
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -236,7 +236,7 @@ class TestAppServer :
 		token = mock_token(user_id, key_id=54321)
 
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -262,7 +262,7 @@ class TestAppServer :
 		token = mock_token(user_id, key_id=54321)
 
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -288,7 +288,7 @@ class TestAppServer :
 		token = mock_token(user_id, key_id=54321)
 
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' }, allowed_protocols={ 'http' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' }, allowed_protocols={ 'https' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -297,7 +297,7 @@ class TestAppServer :
 		client = TestClient(app)
 
 		# act
-		result = client.get('/', headers={ 'origin': 'https://kheina.com' })
+		result = client.get('/', headers={ 'origin': 'http://kheina.com' })
 
 		# assert
 		assert 400 == result.status_code
@@ -314,7 +314,7 @@ class TestAppServer :
 		token = mock_token(user_id, key_id=54321)
 
 		app = FastAPI()
-		app.add_middleware(KhCorsMiddleware, allowed_hosts={ 'kheina.com' }, allowed_protocols={ 'http' })
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' }, allowed_protocols={ 'https' })
 
 		@app.get('/')
 		async def app_func(req: Request) :
@@ -323,9 +323,8 @@ class TestAppServer :
 		client = TestClient(app)
 
 		# act
-		result = client.get('/', headers={ 'origin': 'http://kheina.com' })
+		result = client.get('/', headers={ 'origin': 'https://kheina.com' })
 
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
-	"""

@@ -25,6 +25,7 @@ class KhUser(KhUser) :
 		return True
 
 	def verify_scope(self, scope: Scope) :
+		self.authenticated()
 		if scope not in self.scope :
 			raise Forbidden('User is not authorized to access this resource.')
 		return True

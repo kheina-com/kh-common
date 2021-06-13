@@ -36,7 +36,7 @@ class Receiver :
 
 
 	def _recv(self) -> Iterator[Any] :
-		connection: Union[BaseConnection, type(None)] = None
+		connection: Union[BaseConnection, None] = None
 		try :
 			# returns a list of all messages retrieved from the message queue
 			connection = BlockingConnection(ConnectionParameters(**self._connection_info))

@@ -3,9 +3,9 @@ from kh_common.exceptions.http_error import Forbidden, Unauthorized
 from kh_common.auth import AuthToken, KhUser, verifyToken, Scope
 from tests.utilities.auth import mock_pk, mock_token, expires
 from datetime import datetime, timezone
-from fastapi import FastAPI
 from pytest import raises
 from uuid import uuid4
+import json
 
 
 class TestAuthToken :
@@ -40,7 +40,7 @@ class TestAuthToken :
 
 		# act
 		with raises(Unauthorized) :
-			result = verifyToken(token)
+			verifyToken(token)
 
 
 	def test_VerifyToken_TamperedToken_RaisesUnauthorized(self, mocker) :
@@ -57,7 +57,7 @@ class TestAuthToken :
 
 		# act
 		with raises(Unauthorized) :
-			result = verifyToken(token)
+			verifyToken(token)
 
 
 	def test_Authenticated_UserNotAuthenticated_RaisesUnauthorized(self) :
@@ -67,7 +67,7 @@ class TestAuthToken :
 
 		# act
 		with raises(Unauthorized) :
-			result = user.authenticated()
+			user.authenticated()
 
 
 	def test_Authenticated_UserAuthenticated_ReturnsTrue(self, mocker) :
@@ -85,30 +85,38 @@ class TestAuthToken :
 		assert True == result
 
 
-	def test_VerifyScope_UserNotAuthorized_RaisesForbidden(self) :
+	def test_VerifyScope_UserNotAuthorized_RaisesUnauthorized(self) :
 
 		# arrange
 		user = KhUser(1, None, set([Scope.default]))
 
 		# act
-		with raises(Forbidden) :
-			result = user.verify_scope(Scope.user)
+		with raises(Unauthorized) :
+			user.verify_scope(Scope.user)
 
 
-	def test_VerifyScope_AuthenticatedUserNotAuthorized_RaisesForbidden(self) :
+	def test_VerifyScope_AuthenticatedUserNotAuthorized_RaisesForbidden(self, mocker) :
 
 		# arrange
-		user = KhUser(1, None, set([Scope.user]))
+		mock_pk(mocker, key_id=123456)
+		user_id = 1234567890
+		guid = uuid4()
+		token = mock_token(user_id, guid=guid, key_id=123456)
+		user = KhUser(1, AuthToken(user_id, datetime.fromtimestamp(expires, timezone.utc), guid, {}, token), set([Scope.user]))
 
 		# act
 		with raises(Forbidden) :
-			result = user.verify_scope(Scope.admin)
+			user.verify_scope(Scope.admin)
 
 
-	def test_VerifyScope_AuthenticatedUserAuthorized_ReturnsTrue(self) :
+	def test_VerifyScope_AuthenticatedUserAuthorized_ReturnsTrue(self, mocker) :
 
 		# arrange
-		user = KhUser(1, None, set([Scope.admin]))
+		mock_pk(mocker, key_id=123456)
+		user_id = 1234567890
+		guid = uuid4()
+		token = mock_token(user_id, guid=guid, key_id=123456)
+		user = KhUser(1, AuthToken(user_id, datetime.fromtimestamp(expires, timezone.utc), guid, {}, token), set([Scope.user, Scope.admin]))
 
 		# act
 		result = user.verify_scope(Scope.admin)
