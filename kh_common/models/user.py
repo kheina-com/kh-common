@@ -1,5 +1,5 @@
+from kh_common.models.privacy import UserPrivacy
 from kh_common.models.verified import Verified
-from kh_common.models.privacy import Privacy
 from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
@@ -8,7 +8,7 @@ from typing import Optional
 class User(BaseModel) :
 	name: str
 	handle: str
-	privacy: Privacy
+	privacy: UserPrivacy
 	icon: str
 	banner: Optional[str]
 	website: Optional[str]
