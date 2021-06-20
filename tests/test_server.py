@@ -1,20 +1,20 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.server.middleware.cors import KhCorsMiddleware
-from kh_common.exceptions.http_error import Unauthorized
 from tests.utilities.auth import mock_pk, mock_token
-from kh_common.utilities.json import json_stream
 from kh_common.server import Request, ServerApp
 from fastapi.testclient import TestClient
 from kh_common.auth import Scope
 from fastapi import FastAPI
 from uuid import uuid4
-import ujson as json
+import pytest
+
 
 endpoint = '/'
 base_url = 'test.kheina.com'
 schema = 'http://'
 
 
+@pytest.mark.asyncio
 class TestAppServer :
 
 	def test_ServerApp_GetNoAuth_Success(self) :
@@ -85,7 +85,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			req.user.authenticated()
+			await req.user.authenticated()
 
 		client = TestClient(app, base_url=base_url)
 
@@ -103,10 +103,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			try : authenticated = req.user.authenticated()
-			except Unauthorized :
-				authenticated = False
-			return { 'authenticated': authenticated }
+			return { 'authenticated': await req.user.authenticated(raise_error=False) }
 
 		client = TestClient(app, base_url=base_url)
 
@@ -168,7 +165,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			req.user.verify_scope(Scope.mod)
+			await req.user.verify_scope(Scope.mod)
 			return { 'user_id': req.user.user_id, 'data': req.user.token.data }
 
 		client = TestClient(app, base_url=base_url)

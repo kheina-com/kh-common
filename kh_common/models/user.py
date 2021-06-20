@@ -1,3 +1,4 @@
+from kh_common.models.verified import Verified
 from kh_common.models.privacy import Privacy
 from pydantic import BaseModel
 from datetime import datetime
@@ -13,4 +14,4 @@ class User(BaseModel) :
 	website: Optional[str]
 	created: datetime
 	description: Optional[str]
-	verified: Optional[str]
+	verified: Optional[Verified]

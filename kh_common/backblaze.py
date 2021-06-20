@@ -1,10 +1,9 @@
-from aiohttp import ClientResponse, ClientTimeout, request as request_async
 from requests import Response, get as requests_get, post as requests_post
-from asyncio import get_event_loop, sleep as sleep_async
+from aiohttp import ClientTimeout, request as async_request
 from kh_common.exceptions.base_error import BaseError
-from kh_common.config.repo import name, short_hash
 from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import b2
+from asyncio import sleep as sleep_async
 from hashlib import sha1 as hashlib_sha1
 from urllib.parse import quote, unquote
 from typing import Any, Dict, Union
@@ -61,7 +60,7 @@ class B2Interface :
 			else :
 				if response.ok :
 					self.b2: Dict[str, Any] = json.loads(response.content)
-					self.b2['upload_url_load']: Dict[str, str] = { 'bucketId': self.b2['allowed']['bucketId'] }
+					self.b2['upload_url_load'] = { 'bucketId': self.b2['allowed']['bucketId'] }
 					return True
 
 		else :
@@ -123,7 +122,7 @@ class B2Interface :
 
 		for _ in range(self.b2_max_retries) :
 			try :
-				async with request_async(
+				async with async_request(
 					'POST',
 					self.b2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
 					json=self.b2['upload_url_load'],
@@ -232,7 +231,7 @@ class B2Interface :
 
 		for _ in range(self.b2_max_retries) :
 			try :
-				async with request_async(
+				async with async_request(
 					'POST',
 					upload_url['uploadUrl'],
 					headers=headers,

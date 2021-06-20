@@ -3,12 +3,27 @@ import ujson
 
 class MockResponse :
 
-	def __init__(self, load) :
+	def __init__(self, load, status = 200) :
+		self.status = status
+	
 		if isinstance(load, str) :
-			self.text = self.content = text
+			self.content = load
+
 		elif isinstance(load, dict) :
-			self.text = ujson.dumps(load)
+			self.content = ujson.dumps(load)
 
 
-	def json(self) :
-		return ujson.loads(self.text)
+	async def json(self) :
+		return ujson.loads(self.content)
+
+
+	async def text(self) :
+		return self.content
+
+
+	async def __aexit__(self, *args):
+		pass
+
+
+	async def __aenter__(self):
+		return self

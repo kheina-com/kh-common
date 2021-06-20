@@ -8,8 +8,10 @@ from fastapi.testclient import TestClient
 from fastapi import FastAPI, Request
 from kh_common.auth import Scope
 from pytest import raises
+import pytest
 
 
+@pytest.mark.asyncio
 class TestAuthMiddleware :
 
 	def test_AuthMiddleware_AuthNotRequiredValidToken_200Authenticated(self, mocker) :
@@ -24,7 +26,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated() })
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': await req.user.authenticated() })
 
 		client = TestClient(app)
 
@@ -47,10 +49,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			try : authenticated = req.user.authenticated()
-			except Unauthorized :
-				authenticated = False
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'token': req.user.token, 'authenticated': authenticated })
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'token': req.user.token, 'authenticated': await req.user.authenticated(raise_error=False) })
 
 		client = TestClient(app)
 
@@ -74,7 +73,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated() })
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': await req.user.authenticated() })
 
 		client = TestClient(app)
 
@@ -98,7 +97,7 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated() })
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': await req.user.authenticated() })
 
 		client = TestClient(app)
 
@@ -196,9 +195,9 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			req.user.verify_scope(Scope.mod)
-			req.user.verify_scope(Scope.admin)
-			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': req.user.authenticated() })
+			await req.user.verify_scope(Scope.mod)
+			await req.user.verify_scope(Scope.admin)
+			return json_stream({ 'user_id': req.user.user_id, 'scope': req.user.scope, 'data': req.user.token.data, 'authenticated': await req.user.authenticated() })
 
 		client = TestClient(app)
 
@@ -224,14 +223,14 @@ class TestAuthMiddleware :
 
 		@app.get('/')
 		async def app_func(req: Request) :
-			req.user.verify_scope(Scope.mod)
-			req.user.verify_scope(Scope.admin)
+			await req.user.verify_scope(Scope.mod)
+			await req.user.verify_scope(Scope.admin)
 
 		client = TestClient(app)
 
 		# act
 		with raises(Forbidden) :
-			result = client.get('/', headers={ 'authorization': f'bearer {token}' })
+			client.get('/', headers={ 'authorization': f'bearer {token}' })
 
 
 class TestCorsMiddleware :
@@ -245,7 +244,7 @@ class TestCorsMiddleware :
 		'access-control-expose-headers',
 	}
 
-	def test_CorsMiddleware_ValidOrigin_Success(self, mocker) :
+	def test_CorsMiddleware_ValidOrigin_Success(self) :
 
 		# arrange
 		app = FastAPI()
@@ -266,7 +265,7 @@ class TestCorsMiddleware :
 		assert self.CorsHeaders.issubset(result.headers.keys())
 
 
-	def test_CorsMiddleware_NoOrigin_Success(self, mocker) :
+	def test_CorsMiddleware_NoOrigin_Success(self) :
 
 		# arrange
 		app = FastAPI()
@@ -287,7 +286,7 @@ class TestCorsMiddleware :
 		assert not (self.CorsHeaders & result.headers.keys())
 
 
-	def test_CorsMiddleware_InvalidOrigin_BadRequest(self, mocker) :
+	def test_CorsMiddleware_InvalidOrigin_BadRequest(self) :
 
 		# arrange
 		app = FastAPI()
@@ -310,7 +309,7 @@ class TestCorsMiddleware :
 		assert not (self.CorsHeaders & result.headers.keys())
 
 
-	def test_CorsMiddleware_UnknownOrigin_BadRequest(self, mocker) :
+	def test_CorsMiddleware_UnknownOrigin_BadRequest(self) :
 
 		# arrange
 		app = FastAPI()
@@ -333,7 +332,7 @@ class TestCorsMiddleware :
 		assert not (self.CorsHeaders & result.headers.keys())
 
 
-	def test_CorsMiddleware_InvalidProtocol_BadRequest(self, mocker) :
+	def test_CorsMiddleware_InvalidProtocol_BadRequest(self) :
 
 		# arrange
 		app = FastAPI()
@@ -356,7 +355,7 @@ class TestCorsMiddleware :
 		assert not (self.CorsHeaders & result.headers.keys())
 
 
-	def test_CorsMiddleware_ValidProtocol_Success(self, mocker) :
+	def test_CorsMiddleware_ValidProtocol_Success(self) :
 
 		# arrange
 		app = FastAPI()
@@ -377,7 +376,30 @@ class TestCorsMiddleware :
 		assert self.CorsHeaders.issubset(result.headers.keys())
 
 
-	def test_CorsMiddleware_ValidRequest_HeadersAccurate(self, mocker) :
+	def test_CorsMiddleware_InvalidProtocol_BadRequest(self) :
+
+		# arrange
+		app = FastAPI()
+		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' }, allowed_protocols={ 'https' })
+
+		@app.get('/')
+		async def app_func(req: Request) :
+			return { 'success': True }
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/', headers={ 'origin': 'http://kheina.com' })
+
+		# assert
+		assert 400 == result.status_code
+		response_json = result.json()
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'error': 'BadRequest: Origin not allowed.', 'status': 400 } == response_json
+		assert not (self.CorsHeaders & result.headers.keys())
+
+
+	def test_CorsMiddleware_ValidRequest_HeadersAccurate(self) :
 
 		# arrange
 		app = FastAPI()

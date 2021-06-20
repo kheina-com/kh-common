@@ -1,5 +1,5 @@
-from typing import Any, Callable, Dict, Iterable, List, Tuple, Union
-from kh_common.models import KhUser
+from kh_common.models.auth import KhUser
+from typing import Any, Callable, Dict
 from pydantic import BaseModel
 from datetime import datetime
 from decimal import Decimal

@@ -5,12 +5,13 @@ from tests.utilities.auth import mock_pk, mock_token, expires
 from datetime import datetime, timezone
 from pytest import raises
 from uuid import uuid4
-import json
+import pytest
 
 
+@pytest.mark.asyncio
 class TestAuthToken :
 
-	def test_VerifyToken_ValidToken_DecodesSuccessfully(self, mocker) :
+	async def test_VerifyToken_ValidToken_DecodesSuccessfully(self, mocker) :
 
 		# arrange
 		mock_pk(mocker, key_id=12345)
@@ -20,7 +21,7 @@ class TestAuthToken :
 		token = mock_token(user_id, token_data=token_data, guid=guid, key_id=12345)
 
 		# act
-		result = verifyToken(token)
+		result = await verifyToken(token)
 
 		# assert
 		assert user_id == result.user_id
@@ -29,7 +30,7 @@ class TestAuthToken :
 		assert token_data == result.data
 
 
-	def test_VerifyToken_InvalidToken_RaisesUnauthorized(self, mocker) :
+	async def test_VerifyToken_InvalidToken_RaisesUnauthorized(self, mocker) :
 
 		# arrange
 		mock_pk(mocker, key_id=12345)
@@ -40,10 +41,10 @@ class TestAuthToken :
 
 		# act
 		with raises(Unauthorized) :
-			verifyToken(token)
+			await verifyToken(token)
 
 
-	def test_VerifyToken_TamperedToken_RaisesUnauthorized(self, mocker) :
+	async def test_VerifyToken_TamperedToken_RaisesUnauthorized(self, mocker) :
 
 		# arrange
 		mock_pk(mocker, key_id=12345)
@@ -57,20 +58,20 @@ class TestAuthToken :
 
 		# act
 		with raises(Unauthorized) :
-			verifyToken(token)
+			await verifyToken(token)
 
 
-	def test_Authenticated_UserNotAuthenticated_RaisesUnauthorized(self) :
+	async def test_Authenticated_UserNotAuthenticated_RaisesUnauthorized(self) :
 
 		# arrange
 		user = KhUser(1, None, set([Scope.default]))
 
 		# act
 		with raises(Unauthorized) :
-			user.authenticated()
+			await user.authenticated()
 
 
-	def test_Authenticated_UserAuthenticated_ReturnsTrue(self, mocker) :
+	async def test_Authenticated_UserAuthenticated_ReturnsTrue(self, mocker) :
 
 		# arrange
 		mock_pk(mocker, key_id=123456)
@@ -80,22 +81,22 @@ class TestAuthToken :
 		user = KhUser(1, AuthToken(user_id, datetime.fromtimestamp(expires, timezone.utc), guid, {}, token), set([Scope.user]))
 
 		# act
-		result = user.authenticated()
+		result = await user.authenticated()
 
 		assert True == result
 
 
-	def test_VerifyScope_UserNotAuthorized_RaisesUnauthorized(self) :
+	async def test_VerifyScope_UserNotAuthorized_RaisesUnauthorized(self) :
 
 		# arrange
 		user = KhUser(1, None, set([Scope.default]))
 
 		# act
 		with raises(Unauthorized) :
-			user.verify_scope(Scope.user)
+			await user.verify_scope(Scope.user)
 
 
-	def test_VerifyScope_AuthenticatedUserNotAuthorized_RaisesForbidden(self, mocker) :
+	async def test_VerifyScope_AuthenticatedUserNotAuthorized_RaisesForbidden(self, mocker) :
 
 		# arrange
 		mock_pk(mocker, key_id=123456)
@@ -106,10 +107,10 @@ class TestAuthToken :
 
 		# act
 		with raises(Forbidden) :
-			user.verify_scope(Scope.admin)
+			await user.verify_scope(Scope.admin)
 
 
-	def test_VerifyScope_AuthenticatedUserAuthorized_ReturnsTrue(self, mocker) :
+	async def test_VerifyScope_AuthenticatedUserAuthorized_ReturnsTrue(self, mocker) :
 
 		# arrange
 		mock_pk(mocker, key_id=123456)
@@ -119,6 +120,6 @@ class TestAuthToken :
 		user = KhUser(1, AuthToken(user_id, datetime.fromtimestamp(expires, timezone.utc), guid, {}, token), set([Scope.user, Scope.admin]))
 
 		# act
-		result = user.verify_scope(Scope.admin)
+		result = await user.verify_scope(Scope.admin)
 
 		assert True == result

@@ -19,7 +19,7 @@ class KhAuthMiddleware:
 		request: Request = Request(scope, receive, send)
 
 		try :
-			token_data: AuthToken = retrieveAuthToken(request)
+			token_data: AuthToken = await retrieveAuthToken(request)
 
 			scope['user'] = KhUser(
 				user_id=token_data.user_id,
