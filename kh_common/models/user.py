@@ -15,3 +15,11 @@ class User(BaseModel) :
 	created: datetime
 	description: Optional[str]
 	verified: Optional[Verified]
+
+
+class UserPortable(BaseModel) :
+	name: str
+	handle: str
+	privacy: UserPrivacy
+	icon: str
+	verified: Optional[Verified]
