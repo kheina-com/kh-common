@@ -239,6 +239,8 @@ class B2Interface :
 
 		assert files is not None
 
+		deletes = 0
+
 		for file in files :
 			if file['fileName'] != filename :
 				continue
@@ -255,12 +257,13 @@ class B2Interface :
 						headers={ 'authorization': self.b2_auth_token },
 						raise_for_status=True,
 					) as response :
+						deletes += 1
 						break
 
 				except Exception as e :
 					self.logger.error('error encountered during b2 delete.', exc_info=e)
 
-		return True
+		return bool(deletes)
 
 
 	async def b2_upload_async(self, file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
