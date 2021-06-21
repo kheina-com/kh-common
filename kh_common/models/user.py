@@ -9,7 +9,7 @@ class User(BaseModel) :
 	name: str
 	handle: str
 	privacy: UserPrivacy
-	icon: str
+	icon: Optional[str]
 	banner: Optional[str]
 	website: Optional[str]
 	created: datetime
@@ -21,5 +21,5 @@ class UserPortable(BaseModel) :
 	name: str
 	handle: str
 	privacy: UserPrivacy
-	icon: str
+	icon: Optional[str]
 	verified: Optional[Verified]
