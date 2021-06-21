@@ -11,8 +11,6 @@ import logging
 
 class TerminalAgent :
 
-	loggable: Tuple[type] = (str, int, float, None)
-
 	def __init__(self) -> None :
 		import time
 		import json
@@ -23,9 +21,6 @@ class TerminalAgent :
 		print('[' + self.time.asctime(self.time.localtime(self.time.time())) + ']', severity, '>', log)
 
 	def log_struct(self, log: Dict[str, Any], severity:str='INFO') -> None :
-		for i in flatten(log) :
-			if not isinstance(i, TerminalAgent.loggable) :
-				print('WARNING:', i, 'may not be able to be logged.')
 		print('[' + self.time.asctime(self.time.localtime(self.time.time())) + ']', severity, '>', self.json.dumps(log, indent=4))
 
 
