@@ -4,6 +4,7 @@ from psycopg2 import Binary, connect as dbConnect
 from psycopg2.errors import ConnectionException
 from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import db
+from kh_common.sql.query import Query
 from kh_common.timing import Timer
 
 
@@ -38,11 +39,16 @@ class SqlInterface :
 		return item
 
 
-	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[None, List[Any]] :
+	def query(self, sql: Union[str, Query], params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[None, List[Any]] :
 		if self._conn.closed :
 			self._sql_connect()
 
-		params = tuple(map(self._convert_item, params))
+		if isinstance(sql, Query) :
+			sql, params = sql.__build_query__()
+
+		else :
+			params = tuple(map(self._convert_item, params))
+
 		try :
 			cur: Cursor = self._conn.cursor()
 			
@@ -147,3 +153,5 @@ class Transaction :
 				'query': sql,
 			}, exc_info=e)
 			raise
+
+

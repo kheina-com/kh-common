@@ -4,7 +4,6 @@ from kh_common.exceptions.base_error import BaseError
 from kh_common.logging import getLogger, Logger
 from uuid import UUID, uuid4
 from functools import wraps
-from enum import Enum
 
 
 logger: Logger = getLogger()
