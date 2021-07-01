@@ -176,8 +176,6 @@ class Query :
 				params += where.params()
 
 		if self._group :
-			for group in self._group :
-				assert group in self._select
 			query += (
 				' GROUP BY ' +
 				','.join(list(map(str, self._group)))
