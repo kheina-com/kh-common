@@ -1,6 +1,6 @@
-from typing import Any, Callable, Dict, Iterator, List, Tuple, Union
-from kh_common.utilities import flatten, getFullyQualifiedClassName
 from kh_common.config.repo import short_hash, name as repo_name
+from kh_common.utilities import getFullyQualifiedClassName
+from typing import Any, Callable, Dict, List, Tuple, Union
 from google.cloud import logging as google_logging
 from kh_common.utilities.json import json_stream
 from google.auth import compute_engine
