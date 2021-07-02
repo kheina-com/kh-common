@@ -2,6 +2,7 @@ from typing import Any, Callable, Dict, Hashable, Iterable, Tuple, Union
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from collections import defaultdict, OrderedDict
 from functools import wraps
+from asyncio import Lock
 from math import sqrt
 from time import time
 from copy import copy
@@ -59,25 +60,35 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 		if iscoroutinefunction(func) :
 			@wraps(func)
 			async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-				now: float = time()
-				if now > decorator.expire :
-					decorator.expire = now + TTL
-					decorator.data = await func(*args, **kwargs)
+				async with decorator.lock :
+					if time() > decorator.expire :
+						decorator.expire = time() + TTL
+						decorator.data = await func(*args, **kwargs)
 				return copy(decorator.data)
 
 		else :
 			@wraps(func)
 			def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-				now: float = time()
-				if now > decorator.expire :
-					decorator.expire = now + TTL
+				if time() > decorator.expire :
+					decorator.expire = time() + TTL
 					decorator.data = func(*args, **kwargs)
 				return copy(decorator.data)
 
 		return wrapper
-	decorator.expire: float = 0
-	decorator.data: Any = None
+	decorator.expire = 0
+	decorator.data = None
+	decorator.lock = Lock()
 	return decorator
+
+
+async def __clear_cache__(cache: OrderedDict, lock: Lock) :
+	now: float = time()
+
+	async with lock :
+		while True :
+			cache_key = next(cache.__iter__())
+			if cache[cache_key]['e'] >= now : break
+			del cache[cache_key]
 
 
 def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
@@ -93,19 +104,14 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 		if iscoroutinefunction(func) :
 			@wraps(func)
 			async def wrapper(*key: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-				now: float = time()
-
 				if decorator.cache :
-					while True :
-						cache_key = next(decorator.cache.__iter__())
-						if decorator.cache[cache_key]['e'] >= now : break
-						del decorator.cache[cache_key]
+					await __clear_cache__(decorator.cache, decorator.lock)
 
 					if key in decorator.cache :
 						return copy(decorator.cache[key]['d'])
 
 				data: Any = await func(*key, **kwargs)
-				decorator.cache[key] = { 'd': data, 'e': now + TTL }
+				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
 
 				return copy(data)
 
@@ -124,13 +130,14 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 						return copy(decorator.cache[key]['d'])
 
 				data: Any = func(*key, **kwargs)
-				decorator.cache[key] = { 'd': data, 'e': now + TTL }
+				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
 
 				return copy(data)
 
 		return wrapper
 
 	decorator.cache = OrderedDict()
+	decorator.lock = Lock()
 	return decorator
 
 
@@ -149,19 +156,15 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 			@wraps(func)
 			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 				key: Tuple[Any] = _cache_stream([args, kwargs])
-				now: float = time()
 
 				if decorator.cache :
-					while True :
-						cache_key = next(decorator.cache.__iter__())
-						if decorator.cache[cache_key]['e'] >= now : break
-						del decorator.cache[cache_key]
+					await __clear_cache__(decorator.cache, decorator.lock)
 
 					if key in decorator.cache :
 						return copy(decorator.cache[key]['d'])
 
 				data: Any = await func(*args, **kwargs)
-				decorator.cache[key] = { 'd': data, 'e': now + TTL }
+				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
 
 				return copy(data)
 
@@ -181,13 +184,14 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 						return copy(decorator.cache[key]['d'])
 
 				data: Any = func(*args, **kwargs)
-				decorator.cache[key] = { 'd': data, 'e': now + TTL }
+				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
 
 				return copy(data)
 
 		return wrapper
 
 	decorator.cache = OrderedDict()
+	decorator.lock = Lock()
 	return decorator
 
 
@@ -308,5 +312,5 @@ def Aggregate(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 
 		return wrapper
 
-	decorator.expire: float = time() + TTL
+	decorator.expire = time() + TTL
 	return decorator
