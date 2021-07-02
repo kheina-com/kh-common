@@ -81,14 +81,17 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 	return decorator
 
 
-async def __clear_cache__(cache: OrderedDict, lock: Lock) :
+def __clear_cache__(cache: OrderedDict) :
 	now: float = time()
 
-	async with lock :
+	try :
 		while True :
 			cache_key = next(cache.__iter__())
 			if cache[cache_key]['e'] >= now : break
 			del cache[cache_key]
+
+	except StopIteration :
+		pass
 
 
 def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
@@ -104,11 +107,11 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 		if iscoroutinefunction(func) :
 			@wraps(func)
 			async def wrapper(*key: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-				if decorator.cache :
-					await __clear_cache__(decorator.cache, decorator.lock)
+				async with decorator.lock :
+					__clear_cache__(decorator.cache)
 
-					if key in decorator.cache :
-						return copy(decorator.cache[key]['d'])
+				if key in decorator.cache :
+					return copy(decorator.cache[key]['d'])
 
 				data: Any = await func(*key, **kwargs)
 				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
@@ -118,16 +121,10 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 		else :
 			@wraps(func)
 			def wrapper(*key: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-				now: float = time()
+				__clear_cache__(decorator.cache)
 
-				if decorator.cache :
-					while True :
-						cache_key = next(decorator.cache.__iter__())
-						if decorator.cache[cache_key]['e'] >= now : break
-						del decorator.cache[cache_key]
-
-					if key in decorator.cache :
-						return copy(decorator.cache[key]['d'])
+				if key in decorator.cache :
+					return copy(decorator.cache[key]['d'])
 
 				data: Any = func(*key, **kwargs)
 				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
@@ -157,11 +154,11 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 				key: Tuple[Any] = _cache_stream([args, kwargs])
 
-				if decorator.cache :
-					await __clear_cache__(decorator.cache, decorator.lock)
+				async with decorator.lock :
+					__clear_cache__(decorator.cache)
 
-					if key in decorator.cache :
-						return copy(decorator.cache[key]['d'])
+				if key in decorator.cache :
+					return copy(decorator.cache[key]['d'])
 
 				data: Any = await func(*args, **kwargs)
 				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
@@ -172,16 +169,11 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 			@wraps(func)
 			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 				key: Tuple[Any] = _cache_stream([args, kwargs])
-				now: float = time()
 
-				if decorator.cache :
-					while True :
-						cache_key = next(decorator.cache.__iter__())
-						if decorator.cache[cache_key]['e'] >= now : break
-						del decorator.cache[cache_key]
+				__clear_cache__(decorator.cache)
 
-					if key in decorator.cache :
-						return copy(decorator.cache[key]['d'])
+				if key in decorator.cache :
+					return copy(decorator.cache[key]['d'])
 
 				data: Any = func(*args, **kwargs)
 				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
