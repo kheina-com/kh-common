@@ -4,6 +4,9 @@ from dataclasses import dataclass
 from enum import Enum, unique
 
 
+Query = None
+
+
 @unique
 class Order(Enum) :
 	ascending: str = 'ASC'
@@ -33,6 +36,8 @@ class Operator(Enum) :
 	less_than_equal_to: str = '{} <= {}'
 	like: str = '{} LIKE {}'
 	not_like: str = '{} NOT LIKE {}'
+	within: str = '{} IN {}'
+	not_in: str = '{} NOT IN {}'
 	is_null: str = '{} IS NULL'
 	is_not_null: str = '{} IS NOT NULL'
 
@@ -68,9 +73,9 @@ class Field :
 
 @dataclass
 class Where :
-	field: Union[Field, Value]
+	field: Union[Field, Value, Query]
 	operator: Operator
-	value: Union[Field, Value]
+	value: Union[Field, Value, Query]
 
 	def __str__(self) :
 		if self.operator in { Operator.is_null, Operator.is_not_null } :
@@ -150,13 +155,13 @@ class Query :
 		self._order: List[Tuple[Union[Field, Order]]] = []
 		self._limit: int = None
 		self._offset: int = None
+		self._function: str = None
 
 
 	def __build_query__(self) :
 		# something needs to be selected
 		assert self._select
 
-		params = []
 		query = f'SELECT {",".join(list(map(str, self._select)))} FROM {self._table}'
 
 		if self._joins :
@@ -164,16 +169,12 @@ class Query :
 				' ' +
 				' '.join(list(map(str, self._joins)))
 			)
-			for join in self._joins :
-				params += join.params()
 
 		if self._where :
 			query += (
 				' WHERE ' +
 				' AND '.join(list(map(str, self._where)))
 			)
-			for where in self._where :
-				params += where.params()
 
 		if self._group :
 			query += (
@@ -186,8 +187,6 @@ class Query :
 				' HAVING ' +
 				' AND '.join(list(map(str, self._having)))
 			)
-			for having in self._having :
-				params += having.params()
 
 		if self._order :
 			query += (
@@ -197,13 +196,45 @@ class Query :
 
 		if self._limit :
 			query += ' LIMIT %s'
-			params.append(self._limit)
 
 		if self._offset :
 			query += ' OFFSET %s'
+
+		return query
+
+	def __str__(self) :
+		if self._function :
+			return f'{self._function}(' + self.__build_query__() + ')'
+		return '(' + self.__build_query__() + ')'
+
+	def build(self) :
+		return self.__build_query__() + ';', self.params()
+
+	def params(self) :
+		# something needs to be selected
+		assert self._select
+
+		params = []
+
+		if self._joins :
+			for join in self._joins :
+				params += join.params()
+
+		if self._where :
+			for where in self._where :
+				params += where.params()
+
+		if self._having :
+			for having in self._having :
+				params += having.params()
+
+		if self._limit :
+			params.append(self._limit)
+
+		if self._offset :
 			params.append(self._offset)
 
-		return query + ';', params
+		return params
 
 	def select(self, *field: Tuple[Field]) :
 		for f in field :
@@ -255,4 +286,8 @@ class Query :
 		assert page > 0
 		assert self._limit and self._limit > 0
 		self._offset = self._limit * (page - 1)
+		return self
+
+	def function(self, function: str) :
+		self._function = function
 		return self

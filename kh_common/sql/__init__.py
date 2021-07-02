@@ -44,7 +44,7 @@ class SqlInterface :
 			self._sql_connect()
 
 		if isinstance(sql, Query) :
-			sql, params = sql.__build_query__()
+			sql, params = sql.build()
 
 		params = tuple(map(self._convert_item, params))
 

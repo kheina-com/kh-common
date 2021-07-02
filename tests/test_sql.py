@@ -191,7 +191,7 @@ class TestQuery :
 		).where(
 			Where(
 				Value(1),
-				Operator.not_equal,
+				Operator.not_in,
 				Value(2),
 			),
 			Where(
@@ -216,8 +216,20 @@ class TestQuery :
 			).where(
 				Where(
 					Value(7),
-					Operator.like,
-					Value(8),
+					Operator.not_equal,
+					Query(
+						Table('kheina.test.test3')
+					).select(
+						Field('test3', 'test'),
+					).where(
+						Where(
+							Value(8),
+							Operator.within,
+							Value(9),
+						),
+					).function(
+						'all'
+					),
 				),
 			),
 		).group(
@@ -228,26 +240,27 @@ class TestQuery :
 			Order.ascending,
 		).having(
 			Where(
-				Value(9),
-				Operator.not_like,
 				Value(10),
+				Operator.not_like,
+				Value(11),
 			),
 		).limit(
-			11
-		).offset(
 			12
+		).offset(
+			13
 		)
 
 		# act
-		sql, params = query.__build_query__()
+		sql, params = query.build()
 
 		# assert
 		assert sql == ' '.join([
 			'SELECT test.test,test.test2',
 			'FROM kheina.test.test',
 			'CROSS JOIN kheina.test.test1 ON %s <= %s',
-			'LEFT JOIN kheina.test.test2 ON %s LIKE %s',
-			'WHERE %s != %s AND %s < %s',
+			'LEFT JOIN kheina.test.test2 ON %s !=',
+			'all(SELECT test3.test FROM kheina.test.test3 WHERE %s IN %s)',
+			'WHERE %s NOT IN %s AND %s < %s',
 			'GROUP BY test.test,test.test2',
 			'HAVING %s NOT LIKE %s',
 			'ORDER BY test.test ASC',
