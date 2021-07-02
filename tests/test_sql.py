@@ -12,24 +12,24 @@ class TestQuery :
 			(
 				Value('test'),
 				'%s',
-				'test',
+				['test'],
 			),
 			(
 				Value(1),
 				'%s',
-				1,
+				[1],
 			),
 			(
 				Value(1, 'count'),
 				'count(%s)',
-				1,
+				[1],
 			),
 		],
 	)
 	def test_Value_str(self, value: Value, expected: str, expected_param: Any) :
 		# act
 		result = str(value)
-		params = value.params()
+		params = list(value.params())
 
 		# assert
 		assert result == expected
@@ -101,7 +101,7 @@ class TestQuery :
 	def test_Where_str(self, where: Where, expected: str, expected_params: List[Any]) :
 		# act
 		result = str(where)
-		params = where.params()
+		params = list(where.params())
 
 		# assert
 		assert result == expected
@@ -148,9 +148,9 @@ class TestQuery :
 		[
 			(
 				(JoinType.inner, Table('kheina.test.test')),
-				[Where(Value(1), Operator.equal, Value(2))],
+				[Where(Value(1), Operator.equal, Value([2, 3]))],
 				'INNER JOIN kheina.test.test ON %s = %s',
-				[1, 2],
+				[1, [2, 3]],
 			),
 			(
 				(JoinType.outer, Table('kheina.test.test', 't')),
@@ -165,7 +165,7 @@ class TestQuery :
 		join = Join(*args)
 		join.where(*where)
 		result = str(join)
-		params = join.params()
+		params = list(join.params())
 
 		# assert
 		assert result == expected

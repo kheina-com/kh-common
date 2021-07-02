@@ -1,5 +1,4 @@
 from typing import Any, List, Tuple, Union
-from kh_common.utilities import flatten
 from dataclasses import dataclass
 from enum import Enum, unique
 
@@ -53,7 +52,7 @@ class Value :
 		return '%s'
 
 	def params(self) -> Any :
-		return self.value
+		yield self.value
 
 
 @dataclass
@@ -85,15 +84,11 @@ class Where :
 			return self.operator.value.format(self.field, self.value)
 
 	def params(self) -> List[Any] :
-		params = []
-
 		if hasattr(self.field, 'params') :
-			params.append(self.field.params())
+			yield from self.field.params()
 
 		if hasattr(self.value, 'params') and self.operator not in { Operator.is_null, Operator.is_not_null } :
-			params.append(self.value.params())
-
-		return params
+			yield from self.value.params()
 
 
 class Table :
@@ -138,7 +133,8 @@ class Join :
 		)
 
 	def params(self) -> List[Any] :
-		return list(filter(None, flatten(map(Where.params, self._where))))
+		for where in self._where :
+			yield from where.params()
 
 
 class Query :
@@ -218,15 +214,15 @@ class Query :
 
 		if self._joins :
 			for join in self._joins :
-				params += join.params()
+				params += list(join.params())
 
 		if self._where :
 			for where in self._where :
-				params += where.params()
+				params += list(where.params())
 
 		if self._having :
 			for having in self._having :
-				params += having.params()
+				params += list(having.params())
 
 		if self._limit :
 			params.append(self._limit)

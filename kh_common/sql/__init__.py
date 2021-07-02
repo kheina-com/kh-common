@@ -50,13 +50,14 @@ class SqlInterface :
 
 		try :
 			cur: Cursor = self._conn.cursor()
-			
+
 			timer = Timer().start()
 
 			cur.execute(sql, params)
 
 			if commit :
 				self._conn.commit()
+
 			else :
 				self._conn.rollback()
 
