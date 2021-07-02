@@ -46,8 +46,7 @@ class SqlInterface :
 		if isinstance(sql, Query) :
 			sql, params = sql.__build_query__()
 
-		else :
-			params = tuple(map(self._convert_item, params))
+		params = tuple(map(self._convert_item, params))
 
 		try :
 			cur: Cursor = self._conn.cursor()
