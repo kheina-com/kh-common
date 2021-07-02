@@ -1,6 +1,6 @@
 from typing import Any, Callable, Dict, Hashable, Iterable, Tuple, Union
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from functools import wraps
 from math import sqrt
 from time import time
@@ -92,65 +92,45 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 
 		if iscoroutinefunction(func) :
 			@wraps(func)
-			async def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+			async def wrapper(*key: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 				now: float = time()
-				key = args
 
 				if decorator.cache :
-					i: int = 0
-					for expires, itemkey in decorator.keys :
-						if expires >= now : break
-						try :
-							del decorator.cache[itemkey]
-						except KeyError :
-							pass
-						i += 1
-
-					if i == len(decorator.keys) :
-						decorator.keys.clear()
-					elif i :
-						decorator.keys = decorator.keys[-len(decorator.cache):]
+					while True :
+						cache_key = next(decorator.cache.__iter__())
+						if decorator.cache[cache_key]['e'] >= now : break
+						del decorator.cache[cache_key]
 
 					if key in decorator.cache :
-						return copy(decorator.cache[key])
+						return copy(decorator.cache[key]['d'])
 
-				data: Any = await func(*args, **kwargs)
-				decorator.cache[key]: Any = data
-				decorator.keys.append((now + TTL, key))
+				data: Any = await func(*key, **kwargs)
+				decorator.cache[key] = { 'd': data, 'e': now + TTL }
 
 				return copy(data)
 
 		else :
 			@wraps(func)
-			def wrapper(*args: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
+			def wrapper(*key: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 				now: float = time()
-				key = args
 
 				if decorator.cache :
-					i: int = 0
-					for expires, itemkey in decorator.keys :
-						if expires >= now : break
-						del decorator.cache[itemkey]
-						i += 1
-
-					if i == len(decorator.keys) :
-						decorator.keys.clear()
-					elif i :
-						decorator.keys = decorator.keys[-len(decorator.cache):]
+					while True :
+						cache_key = next(decorator.cache.__iter__())
+						if decorator.cache[cache_key]['e'] >= now : break
+						del decorator.cache[cache_key]
 
 					if key in decorator.cache :
-						return copy(decorator.cache[key])
+						return copy(decorator.cache[key]['d'])
 
-				data: Any = func(*args, **kwargs)
-				decorator.cache[key]: Any = data
-				decorator.keys.append((now + TTL, key))
+				data: Any = func(*key, **kwargs)
+				decorator.cache[key] = { 'd': data, 'e': now + TTL }
 
 				return copy(data)
 
 		return wrapper
 
-	decorator.cache: Dict[Tuple[Hashable], Any] = { }
-	decorator.keys: List[Tuple[Union[float, Hashable]]] = [ ]
+	decorator.cache = OrderedDict()
 	return decorator
 
 
@@ -168,61 +148,46 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 		if iscoroutinefunction(func) :
 			@wraps(func)
 			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				cache_key: Tuple[Any] = _cache_stream([args, kwargs])
+				key: Tuple[Any] = _cache_stream([args, kwargs])
 				now: float = time()
 
 				if decorator.cache :
-					i: int = 0
-					for expires, key in decorator.keys :
-						if expires >= now : break
-						del decorator.cache[key]
-						i += 1
+					while True :
+						cache_key = next(decorator.cache.__iter__())
+						if decorator.cache[cache_key]['e'] >= now : break
+						del decorator.cache[cache_key]
 
-					if i == len(decorator.keys) :
-						decorator.keys.clear()
-					elif i :
-						decorator.keys = decorator.keys[-len(decorator.cache):]
-
-					if cache_key in decorator.cache :
-						return copy(decorator.cache[cache_key])
+					if key in decorator.cache :
+						return copy(decorator.cache[key]['d'])
 
 				data: Any = await func(*args, **kwargs)
-				decorator.cache[cache_key]: Any = data
-				decorator.keys.append((now + TTL, cache_key))
+				decorator.cache[key] = { 'd': data, 'e': now + TTL }
 
 				return copy(data)
 
 		else :
 			@wraps(func)
 			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				cache_key: Tuple[Any] = _cache_stream([args, kwargs])
+				key: Tuple[Any] = _cache_stream([args, kwargs])
 				now: float = time()
 
 				if decorator.cache :
-					i: int = 0
-					for expires, key in decorator.keys :
-						if expires >= now : break
-						del decorator.cache[key]
-						i += 1
+					while True :
+						cache_key = next(decorator.cache.__iter__())
+						if decorator.cache[cache_key]['e'] >= now : break
+						del decorator.cache[cache_key]
 
-					if i == len(decorator.keys) :
-						decorator.keys.clear()
-					elif i :
-						decorator.keys = decorator.keys[-len(decorator.cache):]
-
-					if cache_key in decorator.cache :
-						return copy(decorator.cache[cache_key])
+					if key in decorator.cache :
+						return copy(decorator.cache[key]['d'])
 
 				data: Any = func(*args, **kwargs)
-				decorator.cache[cache_key]: Any = data
-				decorator.keys.append((now + TTL, cache_key))
+				decorator.cache[key] = { 'd': data, 'e': now + TTL }
 
 				return copy(data)
 
 		return wrapper
 
-	decorator.cache: Dict[Tuple[Any], Any] = { }
-	decorator.keys: List[Tuple[Any]] = [ ]
+	decorator.cache = OrderedDict()
 	return decorator
 
 
