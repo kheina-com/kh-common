@@ -87,10 +87,10 @@ class Where :
 	def params(self) -> List[Any] :
 		params = []
 
-		if not isinstance(self.field, Field) :
+		if hasattr(self.field, 'params') :
 			params.append(self.field.params())
 
-		if not isinstance(self.value, Field) and self.operator not in { Operator.is_null, Operator.is_not_null } :
+		if hasattr(self.value, 'params') and self.operator not in { Operator.is_null, Operator.is_not_null } :
 			params.append(self.value.params())
 
 		return params
