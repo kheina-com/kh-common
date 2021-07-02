@@ -47,7 +47,7 @@ def _cache_stream(stream: Iterable) :
 		return tuple(map(_convert_item, stream))
 
 
-def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0, ) -> Callable :
+def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
 	"""
 	stores single result for all arguments used to call.
 	any arguments/keywords can be used.
@@ -100,7 +100,10 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 					i: int = 0
 					for expires, itemkey in decorator.keys :
 						if expires >= now : break
-						del decorator.cache[itemkey]
+						try :
+							del decorator.cache[itemkey]
+						except KeyError :
+							pass
 						i += 1
 
 					if i == len(decorator.keys) :
