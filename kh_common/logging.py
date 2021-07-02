@@ -28,7 +28,7 @@ class LogHandler(logging.Handler) :
 
 	logging_available = True
 
-	def __init__(self, name: str, *args: Tuple[Any], structs:Tuple[type]=(dict, list, tuple), **kwargs:[str, Any]) -> None :
+	def __init__(self, name: str, *args: Tuple[Any], structs:Tuple[type]=(dict, list, tuple), **kwargs:Dict[str, Any]) -> None :
 		logging.Handler.__init__(self, *args, **kwargs)
 		self._structs: Tuple[type] = structs
 		try :
@@ -61,7 +61,7 @@ class LogHandler(logging.Handler) :
 			self.agent.log_struct(errorinfo, severity=record.levelname)
 		else :
 			if isinstance(record.msg, self._structs) :
-				self.agent.log_struct(record.msg, severity=record.levelname)
+				self.agent.log_struct(json_stream(record.msg), severity=record.levelname)
 			else :
 				self.agent.log_text(str(record.msg), severity=record.levelname)
 
