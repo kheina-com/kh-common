@@ -21,9 +21,10 @@ def stringSlice(string: str, start:str=None, end:str=None) -> str :
 def flatten(it: Iterable[Any]) -> Iterable[Any] :
 	if isinstance(it, str) :
 		yield it
+		return
 
 	try :
-		for i in it :
+		for i in (it.values() if isinstance(it, dict) else it) :
 			yield from flatten(i)
 
 	except TypeError :
