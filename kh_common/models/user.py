@@ -15,6 +15,7 @@ class User(BaseModel) :
 	created: datetime
 	description: Optional[str]
 	verified: Optional[Verified]
+	following: Optional[bool]
 
 
 class UserPortable(BaseModel) :
@@ -23,3 +24,4 @@ class UserPortable(BaseModel) :
 	privacy: UserPrivacy
 	icon: Optional[str]
 	verified: Optional[Verified]
+	following: Optional[bool]
