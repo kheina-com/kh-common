@@ -2,10 +2,10 @@ from typing import Any, Callable, Dict, Hashable, Iterable, Tuple, Union
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from collections import defaultdict, OrderedDict
 from functools import wraps
-from copy import deepcopy
 from asyncio import Lock
 from math import sqrt
 from time import time
+from copy import copy
 
 
 class CalcDict(dict) :
@@ -64,7 +64,7 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 					if time() > decorator.expire :
 						decorator.expire = time() + TTL
 						decorator.data = await func(*args, **kwargs)
-				return deepcopy(decorator.data)
+				return copy(decorator.data)
 
 		else :
 			@wraps(func)
@@ -72,7 +72,7 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 				if time() > decorator.expire :
 					decorator.expire = time() + TTL
 					decorator.data = func(*args, **kwargs)
-				return deepcopy(decorator.data)
+				return copy(decorator.data)
 
 		return wrapper
 	decorator.expire = 0
@@ -111,12 +111,12 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 					__clear_cache__(decorator.cache)
 
 				if key in decorator.cache :
-					return deepcopy(decorator.cache[key]['d'])
+					return copy(decorator.cache[key]['d'])
 
 				data: Any = await func(*key, **kwargs)
 				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
 
-				return deepcopy(data)
+				return copy(data)
 
 		else :
 			@wraps(func)
@@ -124,12 +124,12 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 				__clear_cache__(decorator.cache)
 
 				if key in decorator.cache :
-					return deepcopy(decorator.cache[key]['d'])
+					return copy(decorator.cache[key]['d'])
 
 				data: Any = func(*key, **kwargs)
 				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
 
-				return deepcopy(data)
+				return copy(data)
 
 		return wrapper
 
@@ -158,12 +158,12 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 					__clear_cache__(decorator.cache)
 
 				if key in decorator.cache :
-					return deepcopy(decorator.cache[key]['d'])
+					return copy(decorator.cache[key]['d'])
 
 				data: Any = await func(*args, **kwargs)
 				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
 
-				return deepcopy(data)
+				return copy(data)
 
 		else :
 			@wraps(func)
@@ -173,12 +173,12 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 				__clear_cache__(decorator.cache)
 
 				if key in decorator.cache :
-					return deepcopy(decorator.cache[key]['d'])
+					return copy(decorator.cache[key]['d'])
 
 				data: Any = func(*args, **kwargs)
 				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
 
-				return deepcopy(data)
+				return copy(data)
 
 		return wrapper
 
