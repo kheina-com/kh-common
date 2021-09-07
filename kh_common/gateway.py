@@ -1,4 +1,5 @@
 from aiohttp import ClientTimeout, request as async_request
+from kh_common.caching import KwargsCache
 from kh_common.hashing import Hashable
 from pydantic import parse_obj_as
 from typing import Any, Type
@@ -30,6 +31,7 @@ class Gateway(Hashable) :
 		self._timeout: float = timeout
 
 
+	@KwargsCache(1)
 	async def fetch(
 		self,
 		body: dict = None,

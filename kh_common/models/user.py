@@ -17,6 +17,14 @@ class User(BaseModel) :
 	verified: Optional[Verified]
 	following: Optional[bool]
 
+	def portable(self) :
+		return UserPortable(
+			handle = self.handle,
+			privacy = self.privacy,
+			icon = self.icon,
+			verified = self.verified,
+			following = self.following,
+		)
 
 class UserPortable(BaseModel) :
 	name: str
