@@ -121,8 +121,9 @@ async def retrieveAuthToken(request: Request) -> AuthToken :
 
 	token_data: AuthToken = await verifyToken(token.split()[-1])
 
-	if 'fp' in token_data.data and token_data.data['fp'] != browserFingerprint(request) :
-		raise Unauthorized('The authentication token provided is not valid from this device or location.')
+	# TODO: this works great, but needs to be shelved until internal authentication is done
+	# if 'fp' in token_data.data and token_data.data['fp'] != browserFingerprint(request) :
+	# 	raise Unauthorized('The authentication token provided is not valid from this device or location.')
 
 	return token_data
 
