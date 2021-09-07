@@ -32,7 +32,7 @@ class Gateway(Hashable) :
 
 
 	@KwargsCache(1)
-	async def fetch(
+	async def __call__(
 		self,
 		body: dict = None,
 		auth: str = None,
