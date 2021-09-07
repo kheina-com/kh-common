@@ -1,8 +1,8 @@
 from aiohttp import ClientTimeout, request as async_request
 from kh_common.caching import KwargsCache
 from kh_common.hashing import Hashable
+from typing import Any, Dict, Type
 from pydantic import parse_obj_as
-from typing import Any, Type
 
 
 class Gateway(Hashable) :
@@ -36,11 +36,13 @@ class Gateway(Hashable) :
 		self,
 		body: dict = None,
 		auth: str = None,
+		headers: Dict[str, str] = None,
 		**kwargs,
 	) -> Any :
 		req = {
 			'timeout': ClientTimeout(self._timeout),
 			'raise_for_status': True,
+			'headers': { },
 		}
 
 		if self._method in self.MethodsWithoutBody :
@@ -49,10 +51,11 @@ class Gateway(Hashable) :
 		else :
 			req['json'] = body
 
+		if headers :
+			req['headers'] = headers
+
 		if auth :
-			req['headers'] = {
-				'authorization': 'bearer ' + auth,
-			}
+			req['headers']['authorization'] = 'bearer ' + auth
 
 		async with async_request(
 			self._method,

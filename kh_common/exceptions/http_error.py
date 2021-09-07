@@ -56,6 +56,11 @@ class BadGateway(HttpError) :
 		super().__init__(message, *args, status=502, **kwargs)
 
 
+class ServiceUnavailable(HttpError) :
+	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
+		super().__init__(message, *args, status=503, **kwargs)
+
+
 class InternalServerError(HttpError) :
 	pass
 
@@ -104,7 +109,7 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					}
 					logger.exception({ 'params': logdata, 'refid': refid })
 
-					error_type: type = BadGateway if isinstance(e, ClientError) else InternalServerError
+					error_type: type = ServiceUnavailable if isinstance(e, ClientError) else InternalServerError
 
 					raise error_type(
 						f'an unexpected error occurred while {message}.',
@@ -136,7 +141,7 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					}
 					logger.exception({ 'params': logdata, 'refid': refid })
 
-					error_type: type = BadGateway if isinstance(e, ClientError) else InternalServerError
+					error_type: type = ServiceUnavailable if isinstance(e, ClientError) else InternalServerError
 
 					raise error_type(
 						f'an unexpected error occurred while {message}.',
