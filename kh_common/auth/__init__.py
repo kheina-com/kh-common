@@ -130,11 +130,9 @@ async def retrieveAuthToken(request: Request) -> AuthToken :
 def browserFingerprint(request: Request) -> bytes :
 	headers = json.dumps({
 		'user-agent': request.headers.get('user-agent'),
-		'connection': request.headers.get('keep-alive'),
+		'connection': request.headers.get('connection'),
 		'host': request.headers.get('host'),
-		'x-forwarded-proto': request.headers.get('x-forwarded-proto'),
 		'accept-language': request.headers.get('accept-language'),
-		'origin': request.headers.get('origin'),
 		'dnt': request.headers.get('dnt'),
 		# "sec-fetch-dest": "empty",
 		# "sec-fetch-mode": "cors",
