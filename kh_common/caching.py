@@ -187,6 +187,66 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 	return decorator
 
 
+def AerospikeCache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
+	"""
+	checks if data exists in aerospike before running the function.
+	if data doesn't exist, it is stored after running this function.
+	key is created from function arguments
+	ex:
+	@AerospikeCache('{a}.{b}')
+	def example(a, b, c) :
+		...
+	yields a key in the format: '{a}.{b}'.format(a=a, b=b)
+	"""
+	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
+	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
+
+	from kh_common.config.credentials import aerospike
+	assert TTL > 0
+
+	def decorator(func: Callable) -> Callable :
+
+		arg_spec: Tuple[str] = tuple(getfullargspec(func).args)
+
+		if iscoroutinefunction(func) :
+			@wraps(func)
+			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
+				kwargs.update(zip(arg_spec, args))
+				key: str = key_format.format(**kwargs)
+				print(key)
+
+				async with decorator.lock :
+					# check aerospike here
+					pass
+
+				data: Any = await func(**kwargs)
+
+				# store data in aerospike here
+
+				return data
+
+		else :
+			@wraps(func)
+			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
+				kwargs.update(zip(arg_spec, args))
+				key: str = key_format.format(**kwargs)
+				print(key)
+
+				# check aerospike here
+
+				data: Any = func(**kwargs)
+
+				# store data in aerospike here
+
+				return data
+
+		return wrapper
+
+	decorator.cache = OrderedDict()
+	decorator.lock = Lock()
+	return decorator
+
+
 class SumAggregator :
 	def __init__(self) :
 		self.data = defaultdict(lambda : 0)

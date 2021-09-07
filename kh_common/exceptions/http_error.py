@@ -2,9 +2,9 @@ from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from typing import Any, Callable, Dict, Iterable, Set, Tuple
 from kh_common.exceptions.base_error import BaseError
 from kh_common.logging import getLogger, Logger
+from aiohttp import ClientError
 from uuid import UUID, uuid4
 from functools import wraps
-
 
 logger: Logger = getLogger()
 
@@ -48,6 +48,11 @@ class UnprocessableEntity(HttpError) :
 class Conflict(HttpError) :
 	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
 		super().__init__(message, *args, status=409, **kwargs)
+
+
+class BadGateway(HttpError) :
+	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
+		super().__init__(message, *args, status=502, **kwargs)
 
 
 class InternalServerError(HttpError) :
@@ -98,7 +103,9 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					}
 					logger.exception({ 'params': logdata, 'refid': refid })
 
-					raise InternalServerError(
+					error_type: type = BadGateway if isinstance(e, ClientError) else InternalServerError
+
+					raise error_type(
 						f'an unexpected error occurred while {message}.',
 						refid = refid,
 						logdata = logdata,
@@ -128,7 +135,9 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					}
 					logger.exception({ 'params': logdata, 'refid': refid })
 
-					raise InternalServerError(
+					error_type: type = BadGateway if isinstance(e, ClientError) else InternalServerError
+
+					raise error_type(
 						f'an unexpected error occurred while {message}.',
 						refid = refid,
 						logdata = logdata,

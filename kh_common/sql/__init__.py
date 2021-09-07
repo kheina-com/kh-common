@@ -136,10 +136,19 @@ class Transaction :
 		self._sql._conn.rollback()
 
 
-	def query(self, sql: str, params:Tuple[Any]=(), fetch_one:bool=False, fetch_all:bool=False) -> Union[None, List[Any]] :
+	def query(self, sql: Union[str, Query], params:Tuple[Any]=(), fetch_one:bool=False, fetch_all:bool=False) -> Union[None, List[Any]] :
+		if isinstance(sql, Query) :
+			sql, params = sql.build()
+
 		params = tuple(map(self._sql._convert_item, params))
+
 		try :
+			timer = Timer().start()
+
 			self.cur.execute(sql, params)
+
+			if timer.elapsed() > self._sql._long_query :
+				self._sql.logger.warning(f'query took longer than {self._sql._long_query} seconds:\n{sql}')
 
 			if fetch_one :
 				return self.cur.fetchone()
