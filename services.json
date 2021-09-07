@@ -1,9 +1,0 @@
-{
-	"upload": "https://dev.kheina.com/upload",
-	"tags": "https://dev.kheina.com/tags",
-	"posts": "https://dev.kheina.com/posts",
-	"acct": "https://dev.kheina.com/acct",
-	"frontend": "https://dev.kheina.com/frontend",
-	"users": "https://dev.kheina.com/users",
-	"config": "https://dev.kheina.com/config"
-}

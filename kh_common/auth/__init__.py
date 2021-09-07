@@ -3,14 +3,15 @@ from kh_common.models.auth import AuthToken, KhUser, PublicKeyResponse, Scope
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from kh_common.exceptions.http_error import Forbidden, Unauthorized
 from cryptography.hazmat.backends import default_backend
+from kh_common.base64 import b64decode, b64encode
 from kh_common.config.constants import auth_host
 from kh_common.utilities import int_from_bytes
 from aiohttp import request as async_request
 from typing import Callable, Dict, Union
-from kh_common.caching import ArgsCache
 from kh_common.datetime import datetime
-from kh_common.base64 import b64decode
+from kh_common.caching import ArgsCache
 from fastapi import Request
+from hashlib import sha1
 from uuid import UUID
 import ujson as json
 
@@ -120,8 +121,29 @@ async def retrieveAuthToken(request: Request) -> AuthToken :
 
 	token_data: AuthToken = await verifyToken(token.split()[-1])
 
-	# TODO: this works kind of weird with ipv6 and ephemeral ip addresses, fix later
-	# if 'ip' in token_data.data and token_data.data['ip'] != request.client.host :
-	# 	raise Unauthorized('The authentication token provided is not valid from this device or location.')
+	if 'fp' in token_data.data and token_data.data['fp'] != browserFingerprint(request) :
+		raise Unauthorized('The authentication token provided is not valid from this device or location.')
 
 	return token_data
+
+
+def browserFingerprint(request: Request) -> bytes :
+	headers = json.dumps({
+		'user-agent': request.headers.get('user-agent'),
+		'connection': request.headers.get('keep-alive'),
+		'host': request.headers.get('host'),
+		'x-forwarded-proto': request.headers.get('x-forwarded-proto'),
+		'accept-language': request.headers.get('accept-language'),
+		'origin': request.headers.get('origin'),
+		'dnt': request.headers.get('dnt'),
+		# "sec-fetch-dest": "empty",
+		# "sec-fetch-mode": "cors",
+		# "sec-fetch-site": "same-origin",
+		'pragma': request.headers.get('pragma'),
+		'cache-control': request.headers.get('cache-control'),
+		'cdn-loop': request.headers.get('cdn-loop'),
+		'cf-ipcountry': request.headers.get('cf-ipcountry'),
+		'ip': request.headers.get('cf-connecting-ip') or request.headers.get('x-forwarded-for') or request.client.host,
+	})
+
+	return b64encode(sha1(headers.encode()).digest()).decode()
