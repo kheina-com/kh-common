@@ -14,6 +14,10 @@ from fastapi import Request
 from hashlib import sha1
 from uuid import UUID
 import ujson as json
+from re import compile as re_compile
+
+
+ua_strip = re_compile(r'\/\d+(?:\.\d+)*')
 
 
 class KhUser(KhUser) :
@@ -128,9 +132,9 @@ async def retrieveAuthToken(request: Request) -> AuthToken :
 	return token_data
 
 
-def browserFingerprint(request: Request) -> bytes :
+def browserFingerprint(request: Request) -> str :
 	headers = json.dumps({
-		'user-agent': request.headers.get('user-agent'),
+		'user-agent': userAgentStrip(request.headers.get('user-agent')),
 		'connection': request.headers.get('connection'),
 		'host': request.headers.get('host'),
 		'accept-language': request.headers.get('accept-language'),
@@ -142,7 +146,14 @@ def browserFingerprint(request: Request) -> bytes :
 		'cache-control': request.headers.get('cache-control'),
 		'cdn-loop': request.headers.get('cdn-loop'),
 		'cf-ipcountry': request.headers.get('cf-ipcountry'),
-		'ip': request.headers.get('cf-connecting-ip') or request.headers.get('x-forwarded-for') or request.client.host,
+		'ip': request.headers.get('cf-connecting-ip') or request.client.host,
 	})
 
 	return b64encode(sha1(headers.encode()).digest()).decode()
+
+
+def userAgentStrip(ua: str) :
+	if not ua :
+		return None
+	parts = ua.partition('/')
+	return ''.join(parts[:-1] + (ua_strip.sub('', parts[-1]),))

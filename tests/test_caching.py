@@ -1,4 +1,4 @@
-from kh_common.caching import SimpleCache, ArgsCache, KwargsCache, Aggregate, Aggregator
+from kh_common.caching import SimpleCache, ArgsCache, KwargsCache, Cache, Aggregate, Aggregator
 from asyncio import sleep, wait as WaitAll
 from kh_common import caching
 import pytest
@@ -189,7 +189,7 @@ class TestKwargsCache :
 
 	it = 0
 
-	def test_KwargscCache_int(self) :
+	def test_KwargsCache_int(self) :
 		# setup
 		TestKwargsCache.it = 0
 		kwargs = { 'a': 1, 'b': '2', 'c': 3.1 }
@@ -260,12 +260,28 @@ class TestKwargsCache :
 		assert 4 == kwargscache_test(*data, **kwargs2)
 
 
+	def test_KwargsCache_default(self) :
+		# setup
+		TestKwargsCache.it = 0
+		default = 1
+
+		@KwargsCache(10)
+		def kwargscache_test(a, b=default) :
+			TestKwargsCache.it += 1
+			return TestKwargsCache.it
+
+		# assert
+		assert 1 == kwargscache_test(1)
+		assert 1 == kwargscache_test(1, default)
+		assert 1 == kwargscache_test(1, b=default)
+
+
 class TestKwargsCacheAsync :
 
 	it = 0
 
 	@pytest.mark.asyncio
-	async def test_KwargscCache_int(self) :
+	async def test_KwargsCache_int(self) :
 		# setup
 		TestKwargsCacheAsync.it = 0
 		kwargs = { 'a': 1, 'b': '2', 'c': 3.1 }
@@ -336,6 +352,211 @@ class TestKwargsCacheAsync :
 
 		assert 3 == await kwargscache_test(*data, **kwargs1)
 		assert 4 == await kwargscache_test(*data, **kwargs2)
+
+
+	@pytest.mark.asyncio
+	async def test_KwargsCache_default(self) :
+		# setup
+		TestKwargsCacheAsync.it = 0
+		default = 1
+
+		@KwargsCache(10)
+		async def kwargscache_test(a, b=default) :
+			TestKwargsCacheAsync.it += 1
+			return TestKwargsCacheAsync.it
+
+		# assert
+		assert 1 == await kwargscache_test(1)
+		assert 1 == await kwargscache_test(1, default)
+		assert 1 == await kwargscache_test(1, b=default)
+
+
+class TestFormatCache :
+
+	it = 0
+
+	def test_FormatCache_int(self) :
+		# setup
+		TestFormatCache.it = 0
+
+		@Cache('{t}', 5)
+		def cache_test(t) :
+			TestFormatCache.it += 1
+			return t + TestFormatCache.it - 1
+
+		# assert
+		assert 1 == cache_test(1)
+		assert 3 == cache_test(2)
+		assert 5 == cache_test(3)
+
+		assert 1 == cache_test(1)
+		assert 3 == cache_test(2)
+		assert 5 == cache_test(3)
+
+		assert 4 == cache_test(1)
+		assert 6 == cache_test(2)
+		assert 8 == cache_test(3)
+
+
+	def test_FormatCache_string(self) :
+		# setup
+		TestKwargsCache.it = 0
+		kwargs = { 'a': 1, 'b': '2', 'c': 3.1 }
+
+		@Cache('{t}.{a}', 5)
+		def cache_test(t, **kv) :
+			TestKwargsCache.it += 1
+			return f'{int(t) + TestKwargsCache.it - 1}'
+
+		# assert
+		assert '1' == cache_test('1', **kwargs)
+		assert '3' == cache_test('2', **kwargs)
+		assert '5' == cache_test('3', **kwargs)
+
+		assert '1' == cache_test('1', **kwargs)
+		assert '3' == cache_test('2', **kwargs)
+		assert '5' == cache_test('3', **kwargs)
+
+		assert '4' == cache_test('1', **kwargs)
+		assert '6' == cache_test('2', **kwargs)
+		assert '8' == cache_test('3', **kwargs)
+
+
+	def test_FormatCache_FormatStringAllArgs(self) :
+		# setup
+		TestKwargsCache.it = 0
+		default = 1
+
+		@Cache('{t}.{a}', 10)
+		def cache_test(t, a=default) :
+			TestKwargsCache.it += 1
+			return TestKwargsCache.it
+
+		# assert
+		assert 1 == cache_test(1)
+		assert 1 == cache_test(1, default)
+		assert 1 == cache_test(1, a=default)
+
+		assert 2 == cache_test(2)
+		assert 2 == cache_test(2, default)
+		assert 2 == cache_test(2, a=default)
+
+
+	def test_FormatCache_FormatStringSomeArgs(self) :
+		# setup
+		TestKwargsCache.it = 0
+		default = 1
+
+		@Cache('{a}', 10)
+		def cache_test(t, a=default) :
+			TestKwargsCache.it += 1
+			return TestKwargsCache.it
+
+		# assert
+		assert 1 == cache_test(1)
+		assert 1 == cache_test(2)
+
+		assert 2 == cache_test(1, a=default + 1)
+		assert 2 == cache_test(2, a=default + 1)
+
+		assert 3 == cache_test(1, a=default + 2)
+		assert 3 == cache_test(2, a=default + 2)
+
+
+class TestFormatCacheAsync :
+
+	it = 0
+
+	@pytest.mark.asyncio
+	async def test_FormatCache_int(self) :
+		# setup
+		TestFormatCache.it = 0
+
+		@Cache('{t}', 5)
+		async def cache_test(t) :
+			TestFormatCache.it += 1
+			return t + TestFormatCache.it - 1
+
+		# assert
+		assert 1 == await cache_test(1)
+		assert 3 == await cache_test(2)
+		assert 5 == await cache_test(3)
+
+		assert 1 == await cache_test(1)
+		assert 3 == await cache_test(2)
+		assert 5 == await cache_test(3)
+
+		assert 4 == await cache_test(1)
+		assert 6 == await cache_test(2)
+		assert 8 == await cache_test(3)
+
+
+	@pytest.mark.asyncio
+	async def test_FormatCache_string(self) :
+		# setup
+		TestKwargsCache.it = 0
+		kwargs = { 'a': 1, 'b': '2', 'c': 3.1 }
+
+		@Cache('{t}.{a}', 5)
+		async def cache_test(t, **kv) :
+			TestKwargsCache.it += 1
+			return f'{int(t) + TestKwargsCache.it - 1}'
+
+		# assert
+		assert '1' == await cache_test('1', **kwargs)
+		assert '3' == await cache_test('2', **kwargs)
+		assert '5' == await cache_test('3', **kwargs)
+
+		assert '1' == await cache_test('1', **kwargs)
+		assert '3' == await cache_test('2', **kwargs)
+		assert '5' == await cache_test('3', **kwargs)
+
+		assert '4' == await cache_test('1', **kwargs)
+		assert '6' == await cache_test('2', **kwargs)
+		assert '8' == await cache_test('3', **kwargs)
+
+
+	@pytest.mark.asyncio
+	async def test_FormatCache_FormatStringAllArgs(self) :
+		# setup
+		TestKwargsCache.it = 0
+		default = 1
+
+		@Cache('{t}.{a}', 10)
+		async def cache_test(t, a=default) :
+			TestKwargsCache.it += 1
+			return TestKwargsCache.it
+
+		# assert
+		assert 1 == await cache_test(1)
+		assert 1 == await cache_test(1, default)
+		assert 1 == await cache_test(1, a=default)
+
+		assert 2 == await cache_test(2)
+		assert 2 == await cache_test(2, default)
+		assert 2 == await cache_test(2, a=default)
+
+
+	@pytest.mark.asyncio
+	async def test_FormatCache_FormatStringSomeArgs(self) :
+		# setup
+		TestKwargsCache.it = 0
+		default = 1
+
+		@Cache('{a}', 10)
+		async def cache_test(t, a=default) :
+			TestKwargsCache.it += 1
+			return TestKwargsCache.it
+
+		# assert
+		assert 1 == await cache_test(1)
+		assert 1 == await cache_test(2)
+
+		assert 2 == await cache_test(1, a=default + 1)
+		assert 2 == await cache_test(2, a=default + 1)
+
+		assert 3 == await cache_test(1, a=default + 2)
+		assert 3 == await cache_test(2, a=default + 2)
 
 
 class TestAggregate :

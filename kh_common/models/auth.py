@@ -20,6 +20,7 @@ class Scope(Enum) :
 	user: int = 2
 	mod: int = 3
 	admin: int = 4
+	internal: int = 5
 
 	def all_included_scopes(self) :
 		return [v for v in Scope.__members__.values() if Scope.user.value <= v.value <= self.value] or [self]

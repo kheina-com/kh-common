@@ -87,7 +87,7 @@ def __clear_cache__(cache: OrderedDict) :
 	try :
 		while True :
 			cache_key = next(cache.__iter__())
-			if cache[cache_key]['e'] >= now : break
+			if cache[cache_key][0] >= now : break
 			del cache[cache_key]
 
 	except StopIteration :
@@ -111,10 +111,10 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 					__clear_cache__(decorator.cache)
 
 				if key in decorator.cache :
-					return copy(decorator.cache[key]['d'])
+					return copy(decorator.cache[key][1])
 
 				data: Any = await func(*key, **kwargs)
-				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
+				decorator.cache[key] = (time() + TTL, data)
 
 				return copy(data)
 
@@ -124,10 +124,10 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 				__clear_cache__(decorator.cache)
 
 				if key in decorator.cache :
-					return copy(decorator.cache[key]['d'])
+					return copy(decorator.cache[key][1])
 
 				data: Any = func(*key, **kwargs)
-				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
+				decorator.cache[key] = (time() + TTL, data)
 
 				return copy(data)
 
@@ -149,34 +149,99 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 
 	def decorator(func: Callable) -> Callable :
 
+		arg_spec: FullArgSpec = getfullargspec(func)
+		kw = dict(zip(arg_spec.args[-len(arg_spec.defaults):], arg_spec.defaults)) if arg_spec.defaults else { }
+		arg_spec: Tuple[str] = tuple(arg_spec.args)
+
 		if iscoroutinefunction(func) :
 			@wraps(func)
 			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				key: Tuple[Any] = _cache_stream([args, kwargs])
+				key: Tuple[Any] = _cache_stream({ **kw, **dict(zip(arg_spec, args)), **kwargs })
 
 				async with decorator.lock :
 					__clear_cache__(decorator.cache)
 
 				if key in decorator.cache :
-					return copy(decorator.cache[key]['d'])
+					return copy(decorator.cache[key][1])
 
 				data: Any = await func(*args, **kwargs)
-				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
+				decorator.cache[key] = (time() + TTL, data)
 
 				return copy(data)
 
 		else :
 			@wraps(func)
 			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				key: Tuple[Any] = _cache_stream([args, kwargs])
+				key: Tuple[Any] = _cache_stream({ **kw, **dict(zip(arg_spec, args)), **kwargs })
 
 				__clear_cache__(decorator.cache)
 
 				if key in decorator.cache :
-					return copy(decorator.cache[key]['d'])
+					return copy(decorator.cache[key][1])
 
 				data: Any = func(*args, **kwargs)
-				decorator.cache[key] = { 'd': data, 'e': time() + TTL }
+				decorator.cache[key] = (time() + TTL, data)
+
+				return copy(data)
+
+		return wrapper
+
+	decorator.cache = OrderedDict()
+	decorator.lock = Lock()
+	return decorator
+
+
+def Cache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
+	"""
+	checks if data exists in a local cache before running the function.
+	if data doesn't exist, it is stored after running this function.
+	key is created from function arguments
+	ex:
+	@Cache('{a}.{b}')
+	def example(a, b, c) :
+		...
+	yields a key in the format: '{a}.{b}'.format(a=a, b=b)
+	"""
+	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
+	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
+
+	assert key_format
+	assert TTL > 0
+
+	def decorator(func: Callable) -> Callable :
+
+		arg_spec: FullArgSpec = getfullargspec(func)
+		kw = dict(zip(arg_spec.args[-len(arg_spec.defaults):], arg_spec.defaults)) if arg_spec.defaults else { }
+		arg_spec: Tuple[str] = tuple(arg_spec.args)
+
+		if iscoroutinefunction(func) :
+			@wraps(func)
+			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
+				key: int = hash(key_format.format(**{ **kw, **dict(zip(arg_spec, args)), **kwargs })) % 2**61
+
+				async with decorator.lock :
+					__clear_cache__(decorator.cache)
+
+				if key in decorator.cache :
+					return copy(decorator.cache[key][1])
+
+				data: Any = await func(*args, **kwargs)
+				decorator.cache[key] = (time() + TTL, data)
+
+				return copy(data)
+
+		else :
+			@wraps(func)
+			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
+				key: int = hash(key_format.format(**{ **kw, **dict(zip(arg_spec, args)), **kwargs })) % 2**61
+
+				__clear_cache__(decorator.cache)
+
+				if key in decorator.cache :
+					return copy(decorator.cache[key][1])
+
+				data: Any = func(*args, **kwargs)
+				decorator.cache[key] = (time() + TTL, data)
 
 				return copy(data)
 
@@ -201,8 +266,10 @@ def AerospikeCache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TT
 	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
-	from kh_common.config.credentials import aerospike
+	assert key_format
 	assert TTL > 0
+
+	from kh_common.config.credentials import aerospike
 
 	def decorator(func: Callable) -> Callable :
 
@@ -213,7 +280,6 @@ def AerospikeCache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TT
 			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 				kwargs.update(zip(arg_spec, args))
 				key: str = key_format.format(**kwargs)
-				print(key)
 
 				async with decorator.lock :
 					# check aerospike here
@@ -230,7 +296,6 @@ def AerospikeCache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TT
 			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 				kwargs.update(zip(arg_spec, args))
 				key: str = key_format.format(**kwargs)
-				print(key)
 
 				# check aerospike here
 
@@ -242,7 +307,6 @@ def AerospikeCache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TT
 
 		return wrapper
 
-	decorator.cache = OrderedDict()
 	decorator.lock = Lock()
 	return decorator
 
