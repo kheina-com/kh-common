@@ -15,9 +15,11 @@ NoContentResponse = Response(None, status_code=204)
 
 
 async def __CustomHeaderMiddleware__(request: Request, call_next):
-    response = await call_next(request)
-    response.headers['kh-hash'] = short_hash
-    return response
+	response = await call_next(request)
+	response.headers.update({
+		'kh-hash': short_hash,
+	})
+	return response
 
 
 def ServerApp(
