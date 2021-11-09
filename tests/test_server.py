@@ -2,6 +2,7 @@ from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.server.middleware.cors import KhCorsMiddleware
 from tests.utilities.auth import mock_pk, mock_token
 from kh_common.server import Request, ServerApp
+from kh_common.config.repo import short_hash
 from fastapi.testclient import TestClient
 from kh_common.auth import Scope
 from fastapi import FastAPI
@@ -346,3 +347,23 @@ class TestAppServer :
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
+
+
+	def test_CustomHeaderMiddleware_HeadersInjected_Success(self) :
+
+		# arrange
+		app = ServerApp(auth=False, cors=False, custom_headers=True)
+
+		@app.get(endpoint)
+		async def app_func() :
+			return { 'success': True }
+
+		client = TestClient(app, base_url=base_url)
+
+		# act
+		result = client.get(f'{schema}{base_url}{endpoint}')
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+		assert short_hash == result.headers['kh-hash']

@@ -1,9 +1,11 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.exceptions.http_error import BadRequest, Forbidden, Unauthorized
+from kh_common.server.middleware import CustomHeaderMiddleware
 from kh_common.server.middleware.auth import KhAuthMiddleware
 from kh_common.server.middleware.cors import KhCorsMiddleware
 from tests.utilities.auth import mock_pk, mock_token
 from kh_common.utilities.json import json_stream
+from kh_common.config.repo import short_hash
 from fastapi.testclient import TestClient
 from fastapi import FastAPI, Request
 from kh_common.auth import Scope
@@ -430,3 +432,26 @@ class TestCorsMiddleware :
 		assert 'biscuit' in result.headers['access-control-allow-headers']
 		assert '123456' == result.headers['access-control-max-age']
 		assert 'false' == result.headers['access-control-allow-credentials']
+
+
+class TestCustomHeadersMiddleware :
+
+	def test_CustomHeadersMiddleware_ValidRequest_HeadersAccurate(self) :
+
+		# arrange
+		app = FastAPI()
+		app.middleware('http')(CustomHeaderMiddleware)
+
+		@app.get('/')
+		async def app_func(req: Request) :
+			return { 'success': True }
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/')
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+		assert short_hash == result.headers['kh-hash']

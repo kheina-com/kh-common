@@ -1,25 +1,17 @@
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from kh_common.server.middleware import CustomHeaderMiddleware
 from kh_common.server.middleware.auth import KhAuthMiddleware
 from kh_common.server.middleware.cors import KhCorsMiddleware
 from kh_common.exceptions.base_error import BaseError
 from starlette.exceptions import ExceptionMiddleware
 from kh_common.config.constants import environment
 from kh_common.exceptions import jsonErrorHandler
-from kh_common.config.repo import short_hash
 from fastapi.responses import Response
 from fastapi import FastAPI, Request
 from typing import Iterable
 
 
 NoContentResponse = Response(None, status_code=204)
-
-
-async def __CustomHeaderMiddleware__(request: Request, call_next):
-	response = await call_next(request)
-	response.headers.update({
-		'kh-hash': short_hash,
-	})
-	return response
 
 
 def ServerApp(
@@ -81,7 +73,7 @@ def ServerApp(
 	allowed_protocols = ['http', 'https'] if environment.is_local() else ['https']
 
 	if custom_headers :
-		app.middleware('http')(__CustomHeaderMiddleware__)
+		app.middleware('http')(CustomHeaderMiddleware)
 
 	if cors :
 		app.add_middleware(
