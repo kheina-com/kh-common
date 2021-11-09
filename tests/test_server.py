@@ -10,8 +10,8 @@ import pytest
 
 
 endpoint = '/'
-base_url = 'test.kheina.com'
-schema = 'http://'
+base_url = 'dev.kheina.com'
+schema = 'https://'
 
 
 @pytest.mark.asyncio
@@ -177,24 +177,45 @@ class TestAppServer :
 
 		# assert
 		assert 200 == response.status_code
+		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response.json()
+
+
+	def test_ServerApp_GetInvalidAuth_NullAuthCookie(self) :
+
+		# arrange
+		app = ServerApp(auth=True, auth_required=True)
+
+		@app.get(endpoint)
+		async def test_func() :
+			return { 'result': True }
+
+		client = TestClient(app, base_url=base_url)
+
+		token = str(None)
+
+		# act
+		response = client.get(schema + base_url + endpoint, cookies={ 'kh-auth': token })
+
+		# assert
+		assert 400 == response.status_code
 		response_json = response.json()
-		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response_json
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'status': 400, 'error': 'BadRequest: The given token uses a version that is unable to be decoded.' } == response_json
 
 
 	def test_ServerApp_ValidOrigin_Success(self) :
 
 		# arrange
-		host = 'localhost'
-		app = ServerApp(auth=False, cors=True)
+		app = ServerApp(auth=False, cors=True, custom_headers=False)
 
 		@app.get(endpoint)
 		async def app_func() :
 			return { 'success': True }
 
-		client = TestClient(app, base_url=host)
+		client = TestClient(app, base_url=base_url)
 
 		# act
-		result = client.get(f'{schema}{host}{endpoint}', headers={ 'Origin': f'{schema}{host}' })
+		result = client.get(f'{schema}{base_url}{endpoint}', headers={ 'Origin': f'{schema}{base_url}' })
 
 		# assert
 		assert 200 == result.status_code

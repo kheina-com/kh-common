@@ -44,7 +44,7 @@ class LogHandler(logging.Handler) :
 
 	def emit(self, record: logging.LogRecord) -> None :
 		if record.args and isinstance(record.msg, str) :
-			record.msg: str = record.msg % record.args
+			record.msg = record.msg % record.args
 		if record.exc_info :
 			e: Exception = record.exc_info[1]
 			refid = getattr(e, 'refid', None)
@@ -69,7 +69,7 @@ class LogHandler(logging.Handler) :
 Logger: type = logging.Logger
 
 
-def getLogger(name: Union[str, None]=None, level:int=logging.INFO, filter:Callable=lambda x : x, disable:List[str]=[], **kwargs:[str, Any]) -> Logger :
+def getLogger(name: Union[str, None]=None, level:int=logging.INFO, filter:Callable=lambda x : x, disable:List[str]=[], **kwargs:Dict[str, Any]) -> Logger :
 	name: str = name or f'{repo_name}.{short_hash}'
 	for loggerName in disable :
 		logging.getLogger(loggerName).propagate = False

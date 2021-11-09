@@ -20,6 +20,10 @@ from re import compile as re_compile
 ua_strip = re_compile(r'\/\d+(?:\.\d+)*')
 
 
+class InvalidToken(ValueError) :
+	pass
+
+
 class KhUser(KhUser) :
 	async def authenticated(self, raise_error=True) :
 		if not self.token or self.token != await verifyToken(self.token.token_string) :
@@ -114,7 +118,7 @@ async def verifyToken(token: str) -> AuthToken :
 	if version in tokenVersionSwitch :
 		return await tokenVersionSwitch[version](token)
 
-	raise ValueError('The given token uses a version that is unable to be decoded.')
+	raise InvalidToken('The given token uses a version that is unable to be decoded.')
 
 
 async def retrieveAuthToken(request: Request) -> AuthToken :

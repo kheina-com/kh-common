@@ -1,6 +1,6 @@
+from kh_common.auth import AuthToken, InvalidToken, KhUser, retrieveAuthToken, Scope
+from kh_common.exceptions.http_error import BadRequest, HttpError, Unauthorized
 from starlette.types import ASGIApp, Receive, Send, Scope as request_scope
-from kh_common.auth import AuthToken, KhUser, retrieveAuthToken, Scope
-from kh_common.exceptions.http_error import HttpError, Unauthorized
 from kh_common.exceptions import jsonErrorHandler
 from starlette.requests import Request
 
@@ -26,12 +26,13 @@ class KhAuthMiddleware:
 				token=token_data,
 				scope={ Scope.user } | set(map(Scope.__getitem__, token_data.data.get('scope', []))),
 			)
+		
+		except InvalidToken as e :
+			return await jsonErrorHandler(request, BadRequest(e))(scope, receive, send)
 
 		except HttpError as e :
 			if isinstance(e, Unauthorized) and self.auth_required :
-				response = jsonErrorHandler(request, e)
-				await response(scope, receive, send)
-				return
+				return await jsonErrorHandler(request, e)(scope, receive, send)
 
 			scope['user'] = KhUser(
 				user_id=None,
