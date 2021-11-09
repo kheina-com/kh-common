@@ -6,16 +6,18 @@ from kh_common.utilities.json import json_stream
 from kh_common.utilities import int_to_bytes
 from kh_common.base64 import b64encode
 from uuid import UUID, uuid4
-from math import ceil
+from asyncio import Future
 from time import time
 import ujson as json
 
 
 private_key = Ed25519PrivateKey.generate()
+
 public_key = private_key.public_key().public_bytes(
 	encoding=serialization.Encoding.DER,
 	format=serialization.PublicFormat.SubjectPublicKeyInfo,
 )
+
 pk_signature = private_key.sign(public_key)
 
 expires = int(time() + 1000)
@@ -24,9 +26,9 @@ issued = time()
 
 def mock_pk(mocker, key_id=1) -> None :
 	mocker.patch(
-		'kh_common.auth.requests_post',
+		'kh_common.auth.async_request',
 		side_effect=lambda *a, **kv : (
-			None if kv['json'] != { 'key_id': key_id, 'algorithm': 'ed25519' } or a != (f'{auth_host}/v1/key',)
+			None if kv['json'] != { 'key_id': key_id, 'algorithm': 'ed25519' } or a != ('POST', f'{auth_host}/v1/key',)
 			else MockResponse({
 				'signature': b64encode(pk_signature).decode(),
 				'key': b64encode(public_key).decode(),

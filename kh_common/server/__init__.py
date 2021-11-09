@@ -1,16 +1,14 @@
 from starlette.middleware.trustedhost import TrustedHostMiddleware
+from kh_common.server.middleware import CustomHeaderMiddleware
 from kh_common.server.middleware.auth import KhAuthMiddleware
 from kh_common.server.middleware.cors import KhCorsMiddleware
 from kh_common.exceptions.base_error import BaseError
-from kh_common.utilities.json import json_stream
-from fastapi.responses import PlainTextResponse, UJSONResponse
 from starlette.exceptions import ExceptionMiddleware
 from kh_common.config.constants import environment
 from kh_common.exceptions import jsonErrorHandler
 from fastapi.responses import Response
 from fastapi import FastAPI, Request
 from typing import Iterable
-from ujson import dumps
 
 
 NoContentResponse = Response(None, status_code=204)
@@ -21,6 +19,7 @@ def ServerApp(
 	auth_required: bool = True,
 	cors: bool = True,
 	max_age: int = 86400,
+	custom_headers: bool = True,
 	allowed_hosts: Iterable[str] = [
 		'localhost',
 		'127.0.0.1',
@@ -73,6 +72,9 @@ def ServerApp(
 
 	allowed_protocols = ['http', 'https'] if environment.is_local() else ['https']
 
+	if custom_headers :
+		app.middleware('http')(CustomHeaderMiddleware)
+
 	if cors :
 		app.add_middleware(
 			KhCorsMiddleware,
@@ -91,10 +93,3 @@ def ServerApp(
 		app.add_middleware(KhAuthMiddleware, required=auth_required)
 
 	return app
-
-
-class JsonResponse(Response) :
-	
-	def __init__(self, serializable_body, *args, **kwargs) :
-		super().__init__(dumps(json_stream(serializable_body)), *args, **kwargs)
-		self.headers['content-type'] = 'application/json'

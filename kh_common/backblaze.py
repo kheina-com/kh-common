@@ -1,10 +1,9 @@
-from aiohttp import ClientResponse, ClientTimeout, request as request_async
 from requests import Response, get as requests_get, post as requests_post
-from asyncio import get_event_loop, sleep as sleep_async
+from aiohttp import ClientTimeout, request as async_request
 from kh_common.exceptions.base_error import BaseError
-from kh_common.config.repo import name, short_hash
 from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import b2
+from asyncio import sleep as sleep_async
 from hashlib import sha1 as hashlib_sha1
 from urllib.parse import quote, unquote
 from typing import Any, Dict, Union
@@ -44,7 +43,7 @@ class B2Interface :
 
 	def _b2_authorize(self) -> bool :
 		basic_auth_string: bytes = b'Basic ' + b64encode((b2['key_id'] + ':' + b2['key']).encode())
-		b2_headers: Dict[str, bytes] = { 'Authorization': basic_auth_string }
+		b2_headers: Dict[str, bytes] = { 'authorization': basic_auth_string }
 		response: Union[Response, None] = None
 
 		for _ in range(self.b2_max_retries) :
@@ -60,8 +59,10 @@ class B2Interface :
 
 			else :
 				if response.ok :
-					self.b2: Dict[str, Any] = json.loads(response.content)
-					self.b2['upload_url_load']: Dict[str, str] = { 'bucketId': self.b2['allowed']['bucketId'] }
+					content = json.loads(response.content)
+					self.b2_api_url = content['apiUrl']
+					self.b2_auth_token = content['authorizationToken']
+					self.b2_bucket_id = content['allowed']['bucketId']
 					return True
 
 		else :
@@ -87,9 +88,9 @@ class B2Interface :
 		for _ in range(self.b2_max_retries) :
 			try :
 				response = requests_post(
-					self.b2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
-					json=self.b2['upload_url_load'],
-					headers={ 'Authorization': self.b2['authorizationToken'] },
+					self.b2_api_url + '/b2api/v2/b2_get_upload_url',
+					json={ 'bucketId': self.b2_bucket_id },
+					headers={ 'authorization': self.b2_auth_token },
 					timeout=self.b2_timeout,
 				)
 				if response.ok :
@@ -104,7 +105,7 @@ class B2Interface :
 					status = response.status_code
 
 			except Exception as e :
-				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=e)
+				self.logger.error('error encountered during b2 obtain upload url.', exc_info=e)
 
 			sleep(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
@@ -123,11 +124,11 @@ class B2Interface :
 
 		for _ in range(self.b2_max_retries) :
 			try :
-				async with request_async(
+				async with async_request(
 					'POST',
-					self.b2['apiUrl'] + '/b2api/v2/b2_get_upload_url',
-					json=self.b2['upload_url_load'],
-					headers={ 'Authorization': self.b2['authorizationToken'] },
+					self.b2_api_url + '/b2api/v2/b2_get_upload_url',
+					json={ 'bucketId': self.b2_bucket_id },
+					headers={ 'authorization': self.b2_auth_token },
 					timeout=ClientTimeout(self.b2_timeout),
 				) as response :
 					if response.ok :
@@ -142,7 +143,7 @@ class B2Interface :
 						status = response.status
 
 			except Exception as e :
-				self.logger.warning('error encountered during b2 obtain upload url.', exc_info=e)
+				self.logger.error('error encountered during b2 obtain upload url.', exc_info=e)
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
@@ -162,7 +163,7 @@ class B2Interface :
 		content_type: str = content_type or self._get_mime_from_filename(filename)
 
 		headers: Dict[str, str] = {
-			'Authorization': upload_url['authorizationToken'],
+			'authorization': upload_url['authorizationToken'],
 			'X-Bz-File-Name': quote(filename),
 			'Content-Type': content_type,
 			'Content-Length': str(len(file_data)),
@@ -196,7 +197,7 @@ class B2Interface :
 				raise
 
 			except Exception as e :
-				self.logger.warning('error encountered during b2 upload.', exc_info=e)
+				self.logger.error('error encountered during b2 upload.', exc_info=e)
 
 			sleep(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)
@@ -211,6 +212,60 @@ class B2Interface :
 		)
 
 
+	async def b2_delete_file_async(self, filename: str) :
+		files = None
+
+		for _ in range(self.b2_max_retries) :
+			try :
+				async with async_request(
+					'POST',
+					self.b2_api_url + '/b2api/v2/b2_list_file_versions',
+					json={
+						'bucketId': self.b2_bucket_id,
+						'startFileName': filename,
+						'maxFileCount': 5,
+					},
+					headers={ 'authorization': self.b2_auth_token },
+				) as response :
+					if response.status == 401 :
+						self._b2_authorize()
+						continue
+
+					files = (await response.json())['files']
+					break
+
+			except Exception as e :
+				self.logger.error('error encountered during b2 delete.', exc_info=e)
+
+		assert files is not None
+
+		deletes = 0
+
+		for file in files :
+			if file['fileName'] != filename :
+				continue
+
+			for _ in range(self.b2_max_retries) :
+				try :
+					async with async_request(
+						'POST',
+						self.b2_api_url + '/b2api/v2/b2_delete_file_version',
+						json={
+							'fileId': file['fileId'],
+							'fileName': file['fileName'],
+						},
+						headers={ 'authorization': self.b2_auth_token },
+						raise_for_status=True,
+					) as response :
+						deletes += 1
+						break
+
+				except Exception as e :
+					self.logger.error('error encountered during b2 delete.', exc_info=e)
+
+		return bool(deletes)
+
+
 	async def b2_upload_async(self, file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
 		# obtain upload url
 		upload_url: str = await self._obtain_upload_url_async()
@@ -219,7 +274,7 @@ class B2Interface :
 		content_type: str = content_type or self._get_mime_from_filename(filename)
 
 		headers: Dict[str, str] = {
-			'Authorization': upload_url['authorizationToken'],
+			'authorization': upload_url['authorizationToken'],
 			'X-Bz-File-Name': quote(filename),
 			'Content-Type': content_type,
 			'Content-Length': str(len(file_data)),
@@ -232,7 +287,7 @@ class B2Interface :
 
 		for _ in range(self.b2_max_retries) :
 			try :
-				async with request_async(
+				async with async_request(
 					'POST',
 					upload_url['uploadUrl'],
 					headers=headers,
@@ -254,7 +309,7 @@ class B2Interface :
 				raise
 
 			except Exception as e :
-				self.logger.warning('error encountered during b2 upload.', exc_info=e)
+				self.logger.error('error encountered during b2 upload.', exc_info=e)
 
 			await sleep_async(backoff)
 			backoff = min(backoff * 2, self.b2_max_backoff)

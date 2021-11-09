@@ -2,9 +2,9 @@ from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from typing import Any, Callable, Dict, Iterable, Set, Tuple
 from kh_common.exceptions.base_error import BaseError
 from kh_common.logging import getLogger, Logger
+from aiohttp import ClientError
 from uuid import UUID, uuid4
 from functools import wraps
-from enum import Enum
 
 
 logger: Logger = getLogger()
@@ -51,6 +51,16 @@ class Conflict(HttpError) :
 		super().__init__(message, *args, status=409, **kwargs)
 
 
+class BadGateway(HttpError) :
+	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
+		super().__init__(message, *args, status=502, **kwargs)
+
+
+class ServiceUnavailable(HttpError) :
+	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
+		super().__init__(message, *args, status=503, **kwargs)
+
+
 class InternalServerError(HttpError) :
 	pass
 
@@ -91,15 +101,21 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 							raise Error(custom_message)
 
 					kwargs.update(zip(arg_spec.args, args))
-					kwargs['refid']: UUID = uuid4().hex
+					refid: UUID = uuid4().hex
 
 					logdata = {
 						key: kwargs[key]
 						for key in kwargs.keys() - exclusions
 					}
-					logger.exception({ 'params': logdata })
+					logger.exception({ 'params': logdata, 'refid': refid })
 
-					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
+					error_type: type = ServiceUnavailable if isinstance(e, ClientError) else InternalServerError
+
+					raise error_type(
+						f'an unexpected error occurred while {message}.',
+						refid = refid,
+						logdata = logdata,
+					)
 
 		else :
 			@wraps(func)
@@ -117,15 +133,21 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 							raise Error(custom_message)
 
 					kwargs.update(zip(arg_spec.args, args))
-					kwargs['refid']: UUID = uuid4().hex
+					refid: UUID = uuid4().hex
 
 					logdata = {
 						key: kwargs[key]
 						for key in kwargs.keys() - exclusions
 					}
-					logger.exception({ 'params': logdata })
+					logger.exception({ 'params': logdata, 'refid': refid })
 
-					raise InternalServerError(f'an unexpected error occurred while {message}.', logdata=logdata)
+					error_type: type = ServiceUnavailable if isinstance(e, ClientError) else InternalServerError
+
+					raise error_type(
+						f'an unexpected error occurred while {message}.',
+						refid = refid,
+						logdata = logdata,
+					)
 
 		return wrapper
 

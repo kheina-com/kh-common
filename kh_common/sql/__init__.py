@@ -4,6 +4,7 @@ from psycopg2 import Binary, connect as dbConnect
 from psycopg2.errors import ConnectionException
 from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import db
+from kh_common.sql.query import Query
 from kh_common.timing import Timer
 
 
@@ -38,20 +39,25 @@ class SqlInterface :
 		return item
 
 
-	def query(self, sql: str, params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[None, List[Any]] :
+	def query(self, sql: Union[str, Query], params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[None, List[Any]] :
 		if self._conn.closed :
 			self._sql_connect()
 
+		if isinstance(sql, Query) :
+			sql, params = sql.build()
+
 		params = tuple(map(self._convert_item, params))
+
 		try :
 			cur: Cursor = self._conn.cursor()
-			
+
 			timer = Timer().start()
 
 			cur.execute(sql, params)
 
 			if commit :
 				self._conn.commit()
+
 			else :
 				self._conn.rollback()
 
@@ -130,10 +136,19 @@ class Transaction :
 		self._sql._conn.rollback()
 
 
-	def query(self, sql: str, params:Tuple[Any]=(), fetch_one:bool=False, fetch_all:bool=False) -> Union[None, List[Any]] :
+	def query(self, sql: Union[str, Query], params:Tuple[Any]=(), fetch_one:bool=False, fetch_all:bool=False) -> Union[None, List[Any]] :
+		if isinstance(sql, Query) :
+			sql, params = sql.build()
+
 		params = tuple(map(self._sql._convert_item, params))
+
 		try :
+			timer = Timer().start()
+
 			self.cur.execute(sql, params)
+
+			if timer.elapsed() > self._sql._long_query :
+				self._sql.logger.warning(f'query took longer than {self._sql._long_query} seconds:\n{sql}')
 
 			if fetch_one :
 				return self.cur.fetchone()
@@ -147,3 +162,5 @@ class Transaction :
 				'query': sql,
 			}, exc_info=e)
 			raise
+
+

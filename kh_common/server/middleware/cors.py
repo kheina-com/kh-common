@@ -1,7 +1,6 @@
-from starlette.types import ASGIApp, Receive, Send, Message, Scope as request_scope
-from kh_common.auth import AuthToken, KhUser, retrieveAuthToken, Scope
-from kh_common.exceptions.http_error import HttpError, BadRequest
+from starlette.types import ASGIApp, Receive, Send, Message, Scope
 from starlette.datastructures import Headers, MutableHeaders
+from kh_common.exceptions.http_error import BadRequest
 from kh_common.exceptions import jsonErrorHandler
 from starlette.requests import Request
 from fastapi.responses import Response
@@ -32,7 +31,7 @@ class KhCorsMiddleware:
 		self.max_age = str(max_age)
 
 
-	async def __call__(self, scope: request_scope, receive: Receive, send: Send) -> None :
+	async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None :
 		if scope['type'] != 'http' :
 			await self.app(scope, receive, send)
 			return

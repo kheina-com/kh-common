@@ -5,9 +5,8 @@ from typing import Any, Hashable
 class Map(SqlInterface, dict) :
 
 	def __init__(self, table: str, key: str, value: str) :
-		assert table.startswith('kheina.public.')
 		SqlInterface.__init__(self)
-		self._table = table
+		self._table = f'kheina.public.{table}'
 		self._key = key
 		self._value = value
 

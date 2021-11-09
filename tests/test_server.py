@@ -1,20 +1,21 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.server.middleware.cors import KhCorsMiddleware
-from kh_common.exceptions.http_error import Unauthorized
 from tests.utilities.auth import mock_pk, mock_token
-from kh_common.utilities.json import json_stream
 from kh_common.server import Request, ServerApp
+from kh_common.config.repo import short_hash
 from fastapi.testclient import TestClient
 from kh_common.auth import Scope
 from fastapi import FastAPI
 from uuid import uuid4
-import ujson as json
+import pytest
+
 
 endpoint = '/'
-base_url = 'test.kheina.com'
-schema = 'http://'
+base_url = 'dev.kheina.com'
+schema = 'https://'
 
 
+@pytest.mark.asyncio
 class TestAppServer :
 
 	def test_ServerApp_GetNoAuth_Success(self) :
@@ -85,7 +86,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			req.user.authenticated()
+			await req.user.authenticated()
 
 		client = TestClient(app, base_url=base_url)
 
@@ -103,10 +104,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			try : authenticated = req.user.authenticated()
-			except Unauthorized :
-				authenticated = False
-			return { 'authenticated': authenticated }
+			return { 'authenticated': await req.user.authenticated(raise_error=False) }
 
 		client = TestClient(app, base_url=base_url)
 
@@ -168,7 +166,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func(req: Request) :
-			req.user.verify_scope(Scope.mod)
+			await req.user.verify_scope(Scope.mod)
 			return { 'user_id': req.user.user_id, 'data': req.user.token.data }
 
 		client = TestClient(app, base_url=base_url)
@@ -180,24 +178,45 @@ class TestAppServer :
 
 		# assert
 		assert 200 == response.status_code
+		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response.json()
+
+
+	def test_ServerApp_GetInvalidAuth_NullAuthCookie(self) :
+
+		# arrange
+		app = ServerApp(auth=True, auth_required=True)
+
+		@app.get(endpoint)
+		async def test_func() :
+			return { 'result': True }
+
+		client = TestClient(app, base_url=base_url)
+
+		token = str(None)
+
+		# act
+		response = client.get(schema + base_url + endpoint, cookies={ 'kh-auth': token })
+
+		# assert
+		assert 400 == response.status_code
 		response_json = response.json()
-		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response_json
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'status': 400, 'error': 'BadRequest: The given token uses a version that is unable to be decoded.' } == response_json
 
 
 	def test_ServerApp_ValidOrigin_Success(self) :
 
 		# arrange
-		host = 'localhost'
-		app = ServerApp(auth=False, cors=True)
+		app = ServerApp(auth=False, cors=True, custom_headers=False)
 
 		@app.get(endpoint)
 		async def app_func() :
 			return { 'success': True }
 
-		client = TestClient(app, base_url=host)
+		client = TestClient(app, base_url=base_url)
 
 		# act
-		result = client.get(f'{schema}{host}{endpoint}', headers={ 'Origin': f'{schema}{host}' })
+		result = client.get(f'{schema}{base_url}{endpoint}', headers={ 'Origin': f'{schema}{base_url}' })
 
 		# assert
 		assert 200 == result.status_code
@@ -328,3 +347,23 @@ class TestAppServer :
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
+
+
+	def test_CustomHeaderMiddleware_HeadersInjected_Success(self) :
+
+		# arrange
+		app = ServerApp(auth=False, cors=False, custom_headers=True)
+
+		@app.get(endpoint)
+		async def app_func() :
+			return { 'success': True }
+
+		client = TestClient(app, base_url=base_url)
+
+		# act
+		result = client.get(f'{schema}{base_url}{endpoint}')
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+		assert short_hash == result.headers['kh-hash']
