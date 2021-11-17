@@ -18,6 +18,9 @@ class KhAuthMiddleware:
 
 		request: Request = Request(scope, receive, send)
 
+		if request.url.path == '/openapi.json' :
+			return await self.app(scope, receive, send)
+
 		try :
 			token_data: AuthToken = await retrieveAuthToken(request)
 
@@ -26,7 +29,7 @@ class KhAuthMiddleware:
 				token=token_data,
 				scope={ Scope.user } | set(map(Scope.__getitem__, token_data.data.get('scope', []))),
 			)
-		
+
 		except InvalidToken as e :
 			return await jsonErrorHandler(request, BadRequest(e))(scope, receive, send)
 
