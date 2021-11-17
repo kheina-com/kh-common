@@ -10,6 +10,7 @@ from asyncio import get_running_loop
 from kh_common.timing import Timer
 from functools import wraps
 
+
 class SqlInterface :
 
 	def __init__(self, long_query_metric: float = 1, conversions: Dict[type, Callable] = { }) -> None :
