@@ -222,7 +222,7 @@ class B2Interface :
 					self.b2_api_url + '/b2api/v2/b2_list_file_versions',
 					json={
 						'bucketId': self.b2_bucket_id,
-						'startFileName': filename,
+						'startFileName': f'{post_id}/{filename}',
 						'maxFileCount': 5,
 					},
 					headers={ 'authorization': self.b2_auth_token },
@@ -242,7 +242,7 @@ class B2Interface :
 		deletes = 0
 
 		for file in files :
-			if file['fileName'] != filename :
+			if file['fileName'] != f'{post_id}/{filename}' :
 				continue
 
 			for _ in range(self.b2_max_retries) :
