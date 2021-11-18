@@ -212,7 +212,7 @@ class B2Interface :
 		)
 
 
-	async def b2_delete_file_async(self, filename: str) :
+	async def b2_delete_file_async(self, post_id: str, filename: str) :
 		files = None
 
 		for _ in range(self.b2_max_retries) :
@@ -237,7 +237,7 @@ class B2Interface :
 			except Exception as e :
 				self.logger.error('error encountered during b2 delete.', exc_info=e)
 
-		assert files is not None
+		assert files
 
 		deletes = 0
 
@@ -322,3 +322,30 @@ class B2Interface :
 			headers=headers,
 			filesize=len(file_data),
 		)
+
+
+	async def b2_get_file_info(self, post_id: str, filename: str) :
+		for _ in range(self.b2_max_retries) :
+			try :
+				async with async_request(
+					'POST',
+					self.b2_api_url + '/b2api/v2/b2_list_file_versions',
+					json={
+						'bucketId': self.b2_bucket_id,
+						'startFileName': f'{post_id}/{filename}',
+						'maxFileCount': 5,
+					},
+					headers={ 'authorization': self.b2_auth_token },
+				) as response :
+
+					if response.status == 401 :
+						self._b2_authorize()
+						continue
+
+					return next(filter(lambda x : x['fileName'] == f'{post_id}/{filename}', await response.json()['files']))
+
+			except StopIteration :
+				self.logger.error('file not found in b2.', exc_info=e)
+
+			except Exception as e :
+				self.logger.error('error encountered during b2 get file info.', exc_info=e)
