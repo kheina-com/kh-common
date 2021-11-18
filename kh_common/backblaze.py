@@ -342,7 +342,7 @@ class B2Interface :
 						self._b2_authorize()
 						continue
 
-					return next(filter(lambda x : x['fileName'] == f'{post_id}/{filename}', await response.json()['files']))
+					return next(filter(lambda x : x['fileName'] == f'{post_id}/{filename}', (await response.json())['files']))
 
 			except StopIteration :
 				self.logger.error('file not found in b2.', exc_info=e)
