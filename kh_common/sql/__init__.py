@@ -1,13 +1,10 @@
 from psycopg2.extensions import connection as Connection, cursor as Cursor
 from typing import Any, Callable, Dict, List, Tuple, Union
 from psycopg2 import Binary, connect as dbConnect
-from concurrent.futures import ThreadPoolExecutor
 from psycopg2.errors import ConnectionException
 from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import db
 from kh_common.sql.query import Query
-from functools import partial, wraps
-from asyncio import get_event_loop
 from kh_common.timing import Timer
 
 
@@ -94,12 +91,6 @@ class SqlInterface :
 
 		finally :
 			cur.close()
-
-
-	@wraps(query)
-	async def query_async(self, *args, **kwargs) :
-		with ThreadPoolExecutor() as threadpool :
-			return await get_event_loop().run_in_executor(threadpool, partial(self.query, *args, **kwargs))
 
 
 	def transaction(self) :
