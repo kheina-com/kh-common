@@ -42,12 +42,10 @@ class KhCorsMiddleware:
 			origin = urlparse(request.headers['origin'])
 
 			if origin.scheme not in self.allowed_protocols or origin.netloc.split(':')[0] not in self.allowed_origins :
-				response = jsonErrorHandler(request, BadRequest('Origin not allowed.'))
-				await response(scope, receive, send)
-				return
+				return await jsonErrorHandler(request, BadRequest('Origin not allowed.'))(scope, receive, send)
 
 			if request.method == 'OPTIONS' and 'access-control-request-method' in request.headers :
-				await Response(
+				return await Response(
 					None,
 					status_code=204,
 					headers={
@@ -59,7 +57,6 @@ class KhCorsMiddleware:
 						'access-control-expose-headers': self.exposed_headers,
 					},
 				)(scope, receive, send)
-				return
 
 			send = partial(self.send, send=send, headers=request.headers)
 
