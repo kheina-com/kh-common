@@ -1,5 +1,5 @@
+from pydantic import BaseModel, ConstrainedBytes, ConstrainedDecimal
 from typing import Any, Callable, Dict, Iterable, List, Type, Union
-from pydantic import BaseModel, ConstrainedBytes
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
@@ -102,7 +102,16 @@ def _convert_map(model: Type[Dict[str, Any]], refs: set, namespace: str) -> dict
 
 
 def _convert_decimal(model: Type[Decimal], refs: set, namespace: str) :
-	raise NotImplementedError('Decimal support has not been added yet')
+	raise TypeError('Support for unconstrained decimals is not possible due to the nature of avro decimals. please use pydantic.condecimal(max_digits=int, decimal_places=int)')
+
+
+def _convert_condecimal(model: Type[ConstrainedDecimal], refs: set, namespace: str) :
+	return {
+		'type': 'bytes',
+		'logicalType': 'decimal',
+		'precision': model.max_digits,
+		'scale': model.decimal_places,
+	}
 
 
 _conversions_ = {
@@ -113,6 +122,7 @@ _conversions_ = {
 	ConstrainedBytes: _convert_bytes,
 	Dict: _convert_map,
 	Decimal: _convert_decimal,
+	ConstrainedDecimal: _convert_condecimal,
 	bool: 'boolean',
 	int: 'long',
 	float: 'double',
