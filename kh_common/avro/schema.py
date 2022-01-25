@@ -1,27 +1,41 @@
-from pydantic import BaseModel, schema_of
-from typing import Callable, Tuple, Type
+from typing import Any, Callable, Dict, Iterable, List, Type, Union
+from pydantic import BaseModel, ConstrainedBytes
+from datetime import datetime
+from decimal import Decimal
+from enum import Enum
+from uuid import UUID
 
 
-def convert_schema(model: Type[BaseModel]) -> dict :
-	openapi_schema = schema_of(model)
-	namespace = openapi_schema.get('title', model.__name__).replace('[', '_'). replace(']', '')
-	avro_schema: dict = _get_type(openapi_schema, set(), openapi_schema.get('definitions', []), namespace)['type']
-	avro_schema['name'] = namespace
+def convert_schema(model: Type[BaseModel], error: bool = False) -> dict :
+	namespace = _get_name(model)
+	avro_schema: dict = _get_type(model, set(), namespace)
+
+	if isinstance(avro_schema, dict) :
+		avro_schema['name'] = namespace
+
+		if error :
+			avro_schema['type'] = 'error'
+
 	return avro_schema
 
 
-def _convert_array(schema: dict, refs: set, defs: dict, namespace: str) :
-	object_type = _get_type(schema['items'], refs, defs, namespace)
+def _get_name(model: Type[BaseModel]) -> str :
+	origin = getattr(model, '__origin__', None)
 
-	# array of records
-	if '$ref' in schema['items'] :
-		object_type = object_type['type']
+	if origin :
+		return str(origin) + '(' + ', '.join(list(map(_get_name, model.__args__))) + ')'
 
-	# array of logical types
+	return model.__name__
+
+
+def _convert_array(model: Type[Iterable[Any]], refs: set, namespace: str) -> dict :
+	object_type = _get_type(model.__args__[0], refs, namespace)
+
+	# optimize: does this do anything?
 	if (
 		isinstance(object_type, dict)
-		and isinstance(object_type.get('type', {}), dict)
-		and object_type.get('type', {}).get('logicalType') is not None
+		and isinstance(object_type.get('type'), dict)
+		and object_type['type'].get('logicalType') is not None
 	):
 		object_type = object_type['type']
 
@@ -32,94 +46,119 @@ def _convert_array(schema: dict, refs: set, defs: dict, namespace: str) :
 	}
 
 
-def _convert_object(schema: dict, refs: set, defs: dict, namespace: str) :
+def _convert_object(model: Type[BaseModel], refs: set, namespace: str) -> dict :
+	namespace = getattr(model, '__namespace__', namespace)
+	fields = []
+
+	for name, field in model.__fields__.items() :
+		f = {
+			'name': name,
+			'type': _get_type(model.__annotations__[name], refs, namespace),
+		}
+
+		if not field.required :
+			# optimize: does this value need to be avro-encoded?
+			f['default'] = field.default
+
+		fields.append(f)
+
 	return {
 		'type': 'record',
-		'name': schema.get('name') or schema.get('title'),
+		'name': _get_name(model),
 		'namespace': namespace,
-		'fields': _get_fields(schema, refs, defs, namespace),
+		'fields': fields,
 	}
 
+
+def _convert_union(model: Type[Union[Any, Any]], refs: set, namespace: str) -> List[dict] :
+	return list(map(lambda x : _get_type(x, refs, namespace), model.__args__))
+
+
+def _convert_enum(model: Type[Enum], refs: set, namespace: str) -> dict :
+	return {
+		'type': 'enum',
+		'name': _get_name(model),
+		'symbols': list(map(lambda x : x.value, model.__members__.values())),
+	}
+
+
+def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> dict :
+	if model.min_length == model.max_length and model.max_length :
+		return {
+			'type': 'fixed',
+			'name': _get_name(model),
+			'size': model.max_length,
+		}
+
+	return 'bytes'
+
+
+def _convert_map(model: Type[Dict[str, Any]], refs: set, namespace: str) -> dict :
+	assert model.__args__[0] == str
+	return {
+		'type': 'map',
+		'values': _get_type(model.__args__[1], refs, namespace),
+	}
+
+
+def _convert_decimal(model: Type[Decimal], refs: set, namespace: str) :
+	raise NotImplementedError('Decimal support has not been added yet')
+
+
 _conversions_ = {
-	('array', None): _convert_array,
-	('object', None): _convert_object,
-	('boolean', None): 'boolean',
-	('integer', None): 'long',
-	('number', None): 'double',
-	('string', None): 'string',
-	('string', 'date-time'): {
+	BaseModel: _convert_object,
+	Union: _convert_union,
+	Iterable: _convert_array,
+	Enum: _convert_enum,
+	ConstrainedBytes: _convert_bytes,
+	Dict: _convert_map,
+	Decimal: _convert_decimal,
+	bool: 'boolean',
+	int: 'long',
+	float: 'double',
+	bytes: 'bytes',
+	type(None): 'null',
+	str: 'string',
+	datetime: {
 		'type': 'long',
 		'logicalType': 'timestamp-micros',
 	},
-	('string', 'date'): {
-		'type': 'int',
-		'logicalType': 'date',
-	},
-	('string', 'time'): {
-		'type': 'long',
-		'logicalType': 'time-micros',
-	},
-	('string', 'uuid'): {
+	UUID: {
 		'type': 'string',
 		'logicalType': 'uuid',
 	},
+	# optimize: are these necessary? do they map to any python/pydanitic types?
+	# ('string', 'date'): {
+	# 	'type': 'int',
+	# 	'logicalType': 'date',
+	# },
+	# ('string', 'time'): {
+	# 	'type': 'long',
+	# 	'logicalType': 'time-micros',
+	# },
 }
 
 
-def _get_type(schema: dict, refs: set, defs: dict, namespace: str) -> Tuple :
-	avro_type = { }
+def _get_type(model: Type[BaseModel], refs: set, namespace: str) -> Union[dict, str] :
+	model_name = _get_name(model)
+	origin = getattr(model, '__origin__', None)
+	if model_name in refs :
+		return model_name
 
-	if 'default' in schema :
-		avro_type['default'] = schema['default']
+	if origin in _conversions_ :
+		# none of these can be converted without funcs
+		t = _conversions_[origin](model, refs, namespace)
+		if isinstance(t, dict) and 'name' in t :
+			refs.add(t['name'])
+		return t
 
-	key = (schema.get('type'), schema.get('format'))
+	for cls in model.__mro__ :
+		if cls in _conversions_ :
+			if isinstance(_conversions_[cls], Callable) :
+				t = _conversions_[cls](model, refs, namespace)
+				if 'name' in t :
+					refs.add(t['name'])
+				return t
+			return _conversions_[cls]
 
-	if '$ref' in schema :
-		ref = schema['$ref'].replace('#/definitions/', '')
-
-		if ref in refs :
-			avro_type['type'] = ref
-
-		else :
-			avro_type = _get_type(defs[ref], refs, defs, namespace)
-			refs.add(ref)
-
-	elif 'enum' in schema :
-		avro_type['type'] = {
-			'type': 'enum',
-			'name': schema['title'],
-			'namespace': namespace,
-			'symbols': schema['enum'],
-		}
-
-	elif key in _conversions_ :
-		avro_type['type'] = _conversions_[key](schema, refs, defs, namespace) if isinstance(_conversions_[key], Callable) else _conversions_[key]
-
-	else :
-		raise NotImplementedError(f'{key[0]} with format {key[1]} missing from conversion map.')
-
-	avro_type['name'] = schema.get('name') or schema.get('title')
-
-	return avro_type
-
-
-def _get_fields(schema: dict, refs: set, defs: dict, namespace: str) :
-	required = set(schema.get('required', []))
-	fields = []
-
-	for key, value in schema.get('properties', {}).items():
-		avro_type = _get_type(value, refs, defs, namespace)
-		avro_type['name'] = key
-
-		if key not in required:
-
-			if 'default' not in avro_type :
-				avro_type['type'] = [avro_type['type'], 'null']
-				avro_type['default'] = None
-
-			elif avro_type.get('default') is None :
-				avro_type['type'] = [avro_type['type'], 'null']
-
-		fields.append(avro_type)
-
-	return fields
+	raise NotImplementedError(f'{model} missing from conversion map.')

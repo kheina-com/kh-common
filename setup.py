@@ -11,7 +11,7 @@ setup(
 	author='kheina',
 	url='https://github.com/kheina-com/kh-common',
 	packages=find_packages(exclude=['tests']),
-	install_requires=open('requirements.txt').read().split(),
+	install_requires=list(filter(None, map(str.strip, open('requirements.txt').read().split()))),
 	extras_require={
 		'scoring':  ['scipy>=1.5.2'],
 	},
