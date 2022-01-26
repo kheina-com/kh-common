@@ -70,7 +70,7 @@ def _convert_object(model: Type[BaseModel], refs: set, namespace: str) -> dict :
 	}
 
 
-def _convert_union(model: Type[Union[Any, Any]], refs: set, namespace: str) -> List[dict] :
+def _convert_union(model: Type[Union[Any, Any]], refs: set, namespace: str) -> List[Union[dict, str]] :
 	return list(map(lambda x : _get_type(x, refs, namespace), model.__args__))
 
 
@@ -82,7 +82,7 @@ def _convert_enum(model: Type[Enum], refs: set, namespace: str) -> dict :
 	}
 
 
-def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> dict :
+def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> Union[dict, str] :
 	if model.min_length == model.max_length and model.max_length :
 		return {
 			'type': 'fixed',
@@ -101,11 +101,11 @@ def _convert_map(model: Type[Dict[str, Any]], refs: set, namespace: str) -> dict
 	}
 
 
-def _convert_decimal(model: Type[Decimal], refs: set, namespace: str) :
+def _convert_decimal(model: Type[Decimal], refs: set, namespace: str) -> None :
 	raise TypeError('Support for unconstrained decimals is not possible due to the nature of avro decimals. please use pydantic.condecimal(max_digits=int, decimal_places=int)')
 
 
-def _convert_condecimal(model: Type[ConstrainedDecimal], refs: set, namespace: str) :
+def _convert_condecimal(model: Type[ConstrainedDecimal], refs: set, namespace: str) -> dict :
 	assert model.max_digits is not None and model.decimal_places is not None, 'Decimal attributes max_digits and decimal_places must be provided in order to map to avro decimals'
 	return {
 		'type': 'bytes',
