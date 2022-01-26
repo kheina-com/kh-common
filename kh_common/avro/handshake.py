@@ -1,9 +1,7 @@
+from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, conbytes
 from avro.schema import parse, Schema
-from typing import Dict, List, Optional, Type, Union
 from enum import Enum
-from kh_common.avro.schema import convert_schema
-from json import dumps
 
 
 class MD5(conbytes(min_length=16, max_length=16)) :

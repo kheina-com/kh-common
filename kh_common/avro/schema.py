@@ -106,6 +106,7 @@ def _convert_decimal(model: Type[Decimal], refs: set, namespace: str) :
 
 
 def _convert_condecimal(model: Type[ConstrainedDecimal], refs: set, namespace: str) :
+	assert model.max_digits is not None and model.decimal_places is not None, 'Decimal attributes max_digits and decimal_places must be provided in order to map to avro decimals'
 	return {
 		'type': 'bytes',
 		'logicalType': 'decimal',
