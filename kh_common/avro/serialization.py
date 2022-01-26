@@ -4,6 +4,7 @@ from avro.errors import AvroException, AvroTypeException, IgnoredLogicalType
 from avro.io import BinaryEncoder, DatumWriter
 from typing import Mapping, Sequence
 from decimal import Decimal
+from uuid import UUID
 from enum import Enum
 import warnings
 import datetime
@@ -26,6 +27,10 @@ class ABetterDatumWriter(DatumWriter) :
 	def _writer_type_str_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
 		if isinstance(datum, str) :
 			return encoder.write_utf8(datum)
+
+		elif isinstance(datum, UUID) :
+			return encoder.write_utf8(str(datum))
+
 		raise AvroTypeException(writers_schema, datum)
 
 

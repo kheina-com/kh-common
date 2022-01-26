@@ -8,4 +8,4 @@ aiohttp>=3.7.3
 fastapi>=0.61.2
 pydantic>=1.9.0
 avro>=1.11.0
-psycopg2-binary==2.8.5
+psycopg2-binary==2.9.3

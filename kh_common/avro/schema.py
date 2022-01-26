@@ -122,6 +122,7 @@ _conversions_ = {
 	Enum: _convert_enum,
 	ConstrainedBytes: _convert_bytes,
 	Dict: _convert_map,
+	dict: _convert_map,
 	Decimal: _convert_decimal,
 	ConstrainedDecimal: _convert_condecimal,
 	bool: 'boolean',

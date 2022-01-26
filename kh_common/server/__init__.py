@@ -11,7 +11,9 @@ from kh_common.config.constants import environment
 from kh_common.exceptions import jsonErrorHandler
 # from kh_common.caching import SimpleCache
 from fastapi import FastAPI, Request
+from kh_common.models import Error
 from pydantic import BaseModel
+from uuid import uuid4
 from typing import Callable, Iterable, Iterator, Tuple, Type
 
 
@@ -329,6 +331,35 @@ from kh_common.config.repo import name
 ServerProtocol: Tuple[bytes, str] = None
 
 
+def get_server_protocol(route: APIRoute) -> Tuple[bytes, str] :
+	# optimize: this shouldn't be throwing an error as it's defined above, but it is, so I'm redefining it here
+	ServerProtocol: Tuple[bytes, str] = None
+
+	if not ServerProtocol :
+		# optimize: this handshake should be generated for the whole app and return all message types
+		protocol = AvroProtocol(
+			namespace=name,
+			protocol=route.path,
+			messages={
+				route.path: AvroMessage(
+					doc='the openapi description should go here. ex: V1Endpoint',
+					types=[convert_schema(route.secure_cloned_response_field.type_)],
+					# optimize
+					request=convert_schema(route.body_field.type_)['fields'],
+					# optimize
+					response=convert_schema(route.secure_cloned_response_field.type_)['name'],
+					# find and pass in all error responses below
+					# optimize, since this is using ALL possible error responses, this can be globally cached for the whole application
+					# like response, this should be a list of strings that point to types in the types list
+					errors=list(map(lambda x : convert_schema(x, error=True), [Error])),
+				),
+			},
+		).json()
+		ServerProtocol = md5(protocol.encode()).digest(), protocol
+
+	return ServerProtocol
+
+
 class AvroRoute(APIRoute) :
 
 	def __init__(self, *args, **kwargs) :
@@ -421,10 +452,22 @@ class AvroRoute(APIRoute) :
 			
 			except AvroDecodeError :
 				# optimize
-				print('whoops, client incompatible!')
 				protocol_match: HandshakeMatch = HandshakeMatch.none
+				server_protocol, protocol_hash = get_server_protocol(self)
 				# return avro response with full handshake
-				raise
+				return AvroJsonResponse(
+					{
+						'status': 400,
+						'error': 'whoops, client incompatible!',
+						'refid': uuid4().hex,
+					},
+					Error,
+					HandshakeResponse(
+						match=HandshakeMatch.none,
+						serverProtocol=server_protocol,
+						serverHash=protocol_hash
+					),
+				)
 
 			except Exception as e :
 				print(e)
@@ -444,6 +487,9 @@ class AvroRoute(APIRoute) :
 				raise RequestValidationError(errors, body=body)
 
 			else:
+				# can I create the handshake here and attach it to the request somehow?
+				# inject into the scope maybe?
+
 				raw_response = await run_endpoint_function(
 					dependant=dependant, values=values, is_coroutine=is_coroutine
 				)
@@ -484,32 +530,8 @@ class AvroRoute(APIRoute) :
 				if response_compatibility.compatibility == SchemaCompatibilityType.compatible :
 					protocol_match = HandshakeMatch.both
 
-				# optimize: this shouldn't be throwing an error as it's defined above, but it is, so I'm redefining it here
-				ServerProtocol: Tuple[bytes, str] = None
-
-				if not ServerProtocol :
-					# optimize: this handshake should be generated for the whole app and return all message types
-					protocol = AvroProtocol(
-						namespace=name,
-						protocol=self.path,
-						messages={
-							self.path: AvroMessage(
-								doc='the openapi description should go here. ex: V1Endpoint',
-								types=[convert_schema(type(raw_response))],
-								# optimize
-								request=convert_schema(body_field.type_)['fields'],
-								# optimize
-								response=convert_schema(type(raw_response))['name'],
-								# find and pass in all error responses below
-								# optimize, since this is using ALL possible error responses, this can be globally cached for the whole application
-								# like response, this should be a list of strings that point to types in the types list
-								errors=list(map(lambda x : convert_schema(x, error=True), [])),
-							),
-						},
-					).json()
-					ServerProtocol = md5(protocol.encode()).digest(), protocol
-
 				avro_handshake: HandshakeResponse = None
+				server_protocol, protocol_hash = get_server_protocol(self)
 
 				# optimize
 				if protocol_match == HandshakeMatch.both :
@@ -520,8 +542,8 @@ class AvroRoute(APIRoute) :
 				else :
 					avro_handshake = HandshakeResponse(
 						match=protocol_match,
-						serverHash=ServerProtocol[0],
-						serverProtocol=ServerProtocol[1],
+						serverHash=protocol_hash,
+						serverProtocol=server_protocol,
 					)
 
 				response = actual_response_class(response_data, model=raw_response, handshake=avro_handshake, **response_args)
