@@ -18,17 +18,17 @@ class HandshakeMatch(Enum) :
 class HandshakeRequest(BaseModel) :
 	__namespace__: str = 'org.apache.avro.ipc'
 	clientHash: MD5
-	clientProtocol: Optional[str]
+	clientProtocol: Union[None, str]
 	serverHash: MD5
-	meta: Optional[Dict[str, bytes]]
+	meta: Union[None, Dict[str, bytes]]
 
 
 class HandshakeResponse(BaseModel) :
 	__namespace__: str = 'org.apache.avro.ipc'
 	match: HandshakeMatch
-	serverProtocol: Optional[str]
-	serverHash: Optional[MD5]
-	meta: Optional[Dict[str, bytes]]
+	serverProtocol: Union[None, str]
+	serverHash: Union[None, MD5]
+	meta: Union[None, Dict[str, bytes]]
 
 
 HandshakeRequestSchema: Schema = parse("""
