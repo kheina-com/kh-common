@@ -1,10 +1,9 @@
 from kh_common.exceptions.base_error import BaseError
-from kh_common.server.avro import AvroJsonResponse
 from kh_common.logging import getLogger, Logger
 from fastapi.requests import Request
 from kh_common.models import Error
-from typing import Dict, Union
 from uuid import UUID, uuid4
+from kh_common.avro.routing import AvroJsonResponse
 
 
 logger: Logger = getLogger()
@@ -26,18 +25,16 @@ def jsonErrorHandler(request: Request, e: Exception) -> AvroJsonResponse :
 		error = 'Internal Server Error'
 
 	return AvroJsonResponse(
-		{
+		serializable_body={
 			'status': status,
 			'error': error,
 			'refid': refid.hex,
 		},
-		Error(
+		model=Error(
 			status=status,
 			error=error,
 			refid=refid.bytes,
 		),
-		# optimize: we still need to retrieve this value after it's been set by the router
-		handshake=None,
 		error=True,
 		status_code=status,
 	)

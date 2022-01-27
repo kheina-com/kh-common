@@ -7,7 +7,7 @@ from kh_common.exceptions.base_error import BaseError
 from starlette.exceptions import ExceptionMiddleware
 from kh_common.config.constants import environment
 from kh_common.exceptions import jsonErrorHandler
-from kh_common.server.avro import AvroRoute
+from kh_common.avro.routing import AvroRoute
 from fastapi import FastAPI, Request
 from starlette.types import ASGIApp
 from typing import Iterable

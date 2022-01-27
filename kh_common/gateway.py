@@ -28,6 +28,7 @@ class Gateway(Hashable) :
 		self._model: Type[BaseModel] = model
 		self._method: str = method.lower()
 		self._timeout: float = timeout
+		self._avro: bool = True
 
 
 	async def __call__(

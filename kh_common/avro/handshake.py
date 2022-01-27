@@ -7,6 +7,7 @@ from enum import Enum
 class MD5(conbytes(min_length=16, max_length=16)) :
 	pass
 
+
 class HandshakeMatch(Enum) :
 	both: str = 'BOTH'
 	client: str = 'CLIENT'
@@ -29,6 +30,7 @@ class HandshakeResponse(BaseModel) :
 	meta: Union[None, Dict[str, bytes]]
 
 
+# these should no longer be necessary as the models above should map to these schemas correctly (null first) even though convert_schema adds unnecessary "default" fields
 HandshakeRequestSchema: Schema = parse("""
 {
 	"type": "record",
@@ -43,6 +45,7 @@ HandshakeRequestSchema: Schema = parse("""
 """)
 
 
+# these should no longer be necessary as the models above should map to these schemas correctly (null first) even though convert_schema adds unnecessary "default" fields
 HandshakeResponseSchema: Schema = parse("""
 {
 	"type": "record",
@@ -80,14 +83,14 @@ class AvroProtocol(BaseModel) :
 
 
 class CallRequest(BaseModel) :
-	meta: Dict[str, bytes] = { }  # a map with values of type bytes
+	meta: Union[None, Dict[str, bytes]]  # a map with values of type bytes
 	messageName: str  # an Avro string, this is used as lookup key in the response handshake's messages field
-	parameters: bytes  # parameters are serialized according to the message's request declaration
+	request: bytes  # parameters are serialized according to the message's request declaration
 
 
 class CallResponse(BaseModel) :
-	meta: Dict[str, bytes] = { }  # a map with values of type bytes
-	error: bool  # a one-byte error flag boolean, followed by either:
+	meta: Union[None, Dict[str, bytes]]  # a map with values of type bytes
+	error: bool  # a one-byte error flag boolean, followed by either
 	# if the error flag is false, the message response, serialized per the message's response schema.
 	# if the error flag is true, the error, serialized per the message's effective error union schema.
-	messageResponse: bytes
+	response: bytes

@@ -94,7 +94,8 @@ def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> 
 
 
 def _convert_map(model: Type[Dict[str, Any]], refs: set, namespace: str) -> dict :
-	assert model.__args__[0] == str
+	assert hasattr(model, '__args__'), 'typing.Dict must be used to determine key/value type, not dict'
+	assert model.__args__[0] == str, 'maps must have string keys'
 	return {
 		'type': 'map',
 		'values': _get_type(model.__args__[1], refs, namespace),
@@ -140,6 +141,7 @@ _conversions_ = {
 		'logicalType': 'uuid',
 	},
 	# optimize: are these necessary? do they map to any python/pydanitic types?
+	# update: there are several pydantic date/time types that these can be mapped to
 	# ('string', 'date'): {
 	# 	'type': 'int',
 	# 	'logicalType': 'date',
