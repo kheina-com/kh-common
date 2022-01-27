@@ -60,6 +60,7 @@ class AvroJsonResponse(JSONResponse) :
 
 			if handshake :
 				if self._model :
+					print(1)
 					self.body = (
 						avro_frame(handshake_serializer(handshake)) +
 						avro_frame(
@@ -74,12 +75,15 @@ class AvroJsonResponse(JSONResponse) :
 					)
 
 				else :
+					print(2)
 					self.body = (
 						avro_frame(handshake_serializer(handshake)) +
 						avro_frame()
 					)
 
 			elif self._model :
+				print(3)
+				print(self._model)
 				self.body = (
 					avro_frame(
 						call_serializer(
@@ -343,7 +347,6 @@ class AvroRoute(APIRoute) :
 
 		async def app(request: Request) -> Response :
 			# optimize
-			client_response_schema = None
 			try:
 				body: Any = None
 
@@ -379,7 +382,7 @@ class AvroRoute(APIRoute) :
 										avro_body = settleAvroHandshake(body_bytes, request, self)
 										json_body = avro_body.dict()
 
-							if json_body != Undefined:
+							if json_body != Undefined :
 								body = json_body
 
 							else:

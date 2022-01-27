@@ -15,6 +15,7 @@ class BasicModelBaseTypes(BaseModel) :
 	B: int
 	C: float
 	D: bytes
+	E: bool
 
 
 class BasicEnum(Enum) :
@@ -44,9 +45,9 @@ class BasicModelTypingTypes(BaseModel) :
 
 @pytest.mark.parametrize(
 	'input_model', [
-		BasicModelBaseTypes(A='string', B=1, C=1.1, D=b'abc'),
+		BasicModelBaseTypes(A='string', B=1, C=1.1, D=b'abc', E=True),
 		BasicModelAdvancedTypes(A=datetime.now(), B='abcde12345', C=Decimal('12.345'), D=BasicEnum.test2),
-		NestedModelBasicTypes(A=BasicModelBaseTypes(A='string', B=1, C=1.1, D=b'abc'), B=2),
+		NestedModelBasicTypes(A=BasicModelBaseTypes(A='string', B=1, C=1.1, D=b'abc', E=True), B=2),
 		BasicModelTypingTypes(A=[1], B={ 'a': 2 }, C=None, D=3),
 		BasicModelTypingTypes(A=[1], B={ 'a': 2 }, C=None, D='3'),
 	],
