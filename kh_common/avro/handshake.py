@@ -30,36 +30,6 @@ class HandshakeResponse(BaseModel) :
 	meta: Union[None, Dict[str, bytes]]
 
 
-# these should no longer be necessary as the models above should map to these schemas correctly (null first) even though convert_schema adds unnecessary "default" fields
-HandshakeRequestSchema: Schema = parse("""
-{
-	"type": "record",
-	"name": "HandshakeRequest", "namespace":"org.apache.avro.ipc",
-	"fields": [
-		{ "name": "clientHash", "type": { "type": "fixed", "name": "MD5", "size": 16 } },
-		{ "name": "clientProtocol", "type": ["null", "string"] },
-		{ "name": "serverHash", "type": "MD5" },
-		{ "name": "meta", "type": ["null", { "type": "map", "values": "bytes" }] }
-	]
-}
-""")
-
-
-# these should no longer be necessary as the models above should map to these schemas correctly (null first) even though convert_schema adds unnecessary "default" fields
-HandshakeResponseSchema: Schema = parse("""
-{
-	"type": "record",
-	"name": "HandshakeResponse", "namespace": "org.apache.avro.ipc",
-	"fields": [
-		{ "name": "match", "type": { "type": "enum", "name": "HandshakeMatch", "symbols": ["BOTH", "CLIENT", "NONE"] } },
-		{ "name": "serverProtocol", "type": ["null", "string"] },
-		{ "name": "serverHash", "type": ["null", { "type": "fixed", "name": "MD5", "size": 16 }] },
-		{ "name": "meta", "type": ["null", { "type": "map", "values": "bytes" }] }
-	]
-}
-""")
-
-
 class AvroMessage(BaseModel) :
 	"""
 	each 'dict' in this definition refers to a parsed avro schema. request is the 'fields' of a schema

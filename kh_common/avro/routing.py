@@ -1,5 +1,5 @@
 
-from kh_common.avro.handshake import HandshakeRequest, HandshakeResponse, HandshakeMatch, AvroMessage, AvroProtocol, CallRequest, CallResponse, HandshakeRequestSchema, HandshakeResponseSchema
+from kh_common.avro.handshake import HandshakeRequest, HandshakeResponse, HandshakeMatch, AvroMessage, AvroProtocol, CallRequest, CallResponse
 from kh_common.avro import AvroSerializer, AvroDeserializer, avro_frame, read_avro_frames
 from kh_common.avro.schema import convert_schema
 from fastapi.routing import APIRoute, run_endpoint_function, serialize_response
@@ -56,7 +56,7 @@ class AvroJsonResponse(JSONResponse) :
 			serializer: AvroSerializer = AvroSerializer(type(self._model))
 
 			# optimize
-			handshake_serializer: AvroSerializer = AvroSerializer(HandshakeResponseSchema)
+			handshake_serializer: AvroSerializer = AvroSerializer(HandshakeResponse)
 			call_serializer: AvroSerializer = AvroSerializer(CallResponse)
 
 			if handshake :
@@ -368,7 +368,7 @@ class AvroRoute(APIRoute) :
 
 		async def app(request: Request) -> Response :
 			# optimize
-			try:
+			try :
 				body: Any = None
 				content_type_value: Optional[str] = request.headers.get('content-type')
 				print(content_type_value)
@@ -409,7 +409,7 @@ class AvroRoute(APIRoute) :
 							if json_body != Undefined :
 								body = json_body
 
-							else:
+							else :
 								body = body_bytes
 
 			except json.JSONDecodeError as e :
@@ -441,8 +441,6 @@ class AvroRoute(APIRoute) :
 				)
 
 			except Exception as e :
-				print(e)
-				print(e.__dict__)
 				raise HTTPException(
 					status_code=400, detail='There was an error parsing the body'
 				) from e
@@ -455,16 +453,16 @@ class AvroRoute(APIRoute) :
 			)
 			values, errors, background_tasks, sub_response, _ = solved_result
 
-			if errors:
+			if errors :
 				raise RequestValidationError(errors, body=body)
 
-			else:
+			else :
 				raw_response = await run_endpoint_function(
 					dependant=dependant, values=values, is_coroutine=is_coroutine
 				)
 
-				if isinstance(raw_response, Response):
-					if raw_response.background is None:
+				if isinstance(raw_response, Response) :
+					if raw_response.background is None :
 						raw_response.background = background_tasks
 					return raw_response
 
@@ -483,13 +481,13 @@ class AvroRoute(APIRoute) :
 
 				# If status_code was set, use it, otherwise use the default from the
 				# response class, in the case of redirect it's 307
-				if status_code is not None:
+				if status_code is not None :
 					response_args['status_code'] = status_code
 
 				response = actual_response_class(response_data, model=raw_response, **response_args)
 				response.headers.raw.extend(sub_response.headers.raw)
 
-				if sub_response.status_code:
+				if sub_response.status_code :
 					response.status_code = sub_response.status_code
 
 				return response
