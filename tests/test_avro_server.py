@@ -1,11 +1,15 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
-from kh_common.avro import AvroDeserializer, AvroSerializer, read_avro_frames
-from kh_common.avro.handshake import CallResponse, HandshakeRequest
+from kh_common.avro.handshake import CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
+from kh_common.avro import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
+from kh_common.avro.schema import convert_schema
 from kh_common.avro.routing import AvroRoute
 from fastapi.testclient import TestClient
+from kh_common.models import Error
 from pydantic import BaseModel
 from fastapi import FastAPI
+from hashlib import md5
 import pytest
+import json
 
 
 endpoint = '/'
@@ -20,6 +24,7 @@ model_deserializer: AvroDeserializer = AvroDeserializer(ResponseModel)
 call_deserializer: AvroDeserializer = AvroDeserializer(CallResponse)
 
 handshake_serializer: AvroSerializer = AvroSerializer(HandshakeRequest)
+handshake_deserializer: AvroDeserializer = AvroDeserializer(HandshakeResponse)
 
 
 def get_second_frame(response: bytes) :
@@ -53,7 +58,14 @@ class TestAvroServer :
 		assert { 'result': True } == response.json()
 
 
-	def test_AvroRoute_AvroHeaders_ReturnsAvro(self) :
+	@pytest.mark.parametrize(
+		"payload",
+		[
+			None,
+			avro_frame(handshake_serializer(HandshakeRequest(clientHash=b'deadbeefdeadbeef', serverHash=b'deadbeefdeadbeef'))),
+		],
+	)
+	def test_AvroRoute_AllAvroHeadersInvalidHandshake_ReturnsAvroHandshake(self, payload: bytes) :
 
 		# arrange
 		app = FastAPI()
@@ -70,13 +82,30 @@ class TestAvroServer :
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
-			headers={ 'accept': 'avro/binary' },
-			data=handshake_serializer(HandshakeRequest(clientHash=b'deadbeefdeadbeef', serverHash=b'deadbeefdeadbeef'))
+			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
+			data=payload,
 		)
 
-		from kh_common.avro.handshake import HandshakeResponse
-		from kh_common.models import Error
-
 		# assert
+		frames = read_avro_frames(response._content)
 		assert 200 == response.status_code
-		assert ResponseModel(result=True) == model_deserializer(call_deserializer(next(read_avro_frames(response._content))).response)
+		handshake: HandshakeResponse = handshake_deserializer(next(frames))
+		assert HandshakeMatch.none == handshake.match
+		assert handshake.serverHash == md5(handshake.serverProtocol.encode()).digest()
+		assert json.loads(handshake.serverProtocol) == {
+			'namespace': 'kh-common',
+			'protocol': '/',
+			'messages': {
+				'/': {
+					'doc': 'the openapi description should go here. ex: V1Endpoint',
+					'request': None,
+					'response': ResponseModel.__name__,
+					'errors': [Error.__name__],
+					'types': [
+						convert_schema(ResponseModel),
+						convert_schema(Error, error=True),
+					],
+				},
+			},
+		}
+		assert not next(frames)
