@@ -227,17 +227,10 @@ def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) -> Any :
 	server_protocol, protocol_hash = get_server_protocol(route)
 
 	# optimize
-	if response_compatibility.compatibility == SchemaCompatibilityType.compatible :
-		if handshake_request.serverHash == protocol_hash :
-			request.scope['avro_handshake'] = HandshakeResponse(
-				match=HandshakeMatch.both,
-			)
-
-		else :
-			request.scope['avro_handshake'] = HandshakeResponse(
-				match=HandshakeMatch.both,
-				serverHash=protocol_hash,
-			)
+	if handshake_request.serverHash == protocol_hash and response_compatibility.compatibility == SchemaCompatibilityType.compatible :
+		request.scope['avro_handshake'] = HandshakeResponse(
+			match=HandshakeMatch.both,
+		)
 
 	else :
 		request.scope['avro_handshake'] = HandshakeResponse(
