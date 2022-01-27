@@ -1,5 +1,6 @@
 from pydantic import BaseModel, ConstrainedBytes, ConstrainedDecimal
 from typing import Any, Callable, Dict, Iterable, List, Type, Union
+from avro.errors import AvroException
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
@@ -20,10 +21,16 @@ def convert_schema(model: Type[BaseModel], error: bool = False) -> dict :
 
 
 def _get_name(model: Type[BaseModel]) -> str :
-	origin = getattr(model, '__origin__', None)
+	origin = getattr(model, '__origin__', None)  # for types from typing library
 
 	if origin :
-		return str(origin) + '(' + ', '.join(list(map(_get_name, model.__args__))) + ')'
+		return str(origin) + '_' + '_'.join(list(map(_get_name, model.__args__)))
+
+	if issubclass(model, ConstrainedBytes) and model.__name__ == 'ConstrainedBytesValue' :
+		return 'Bytes_' + str(model.max_length)
+
+	if issubclass(model, ConstrainedDecimal) and model.__name__ == 'ConstrainedDecimalValue' :
+		return 'Decimal_' + '_'.join(list(map(str, [model.max_digits, model.decimal_places])))
 
 	return model.__name__
 
@@ -75,6 +82,9 @@ def _convert_union(model: Type[Union[Any, Any]], refs: set, namespace: str) -> L
 
 
 def _convert_enum(model: Type[Enum], refs: set, namespace: str) -> dict :
+	if len(model.__members__.values()) != len(set(model.__members__.values())) :
+		raise AvroException('enums must contain all unique values to be avro encoded')
+
 	return {
 		'type': 'enum',
 		'name': _get_name(model),
@@ -94,8 +104,12 @@ def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> 
 
 
 def _convert_map(model: Type[Dict[str, Any]], refs: set, namespace: str) -> dict :
-	assert hasattr(model, '__args__'), 'typing.Dict must be used to determine key/value type, not dict'
-	assert model.__args__[0] == str, 'maps must have string keys'
+	if not  hasattr(model, '__args__') :
+		raise AvroException('typing.Dict must be used to determine key/value type, not dict')
+
+	if model.__args__[0] != str :
+		raise AvroException('maps must have string keys')
+
 	return {
 		'type': 'map',
 		'values': _get_type(model.__args__[1], refs, namespace),
@@ -103,11 +117,13 @@ def _convert_map(model: Type[Dict[str, Any]], refs: set, namespace: str) -> dict
 
 
 def _convert_decimal(model: Type[Decimal], refs: set, namespace: str) -> None :
-	raise TypeError('Support for unconstrained decimals is not possible due to the nature of avro decimals. please use pydantic.condecimal(max_digits=int, decimal_places=int)')
+	raise AvroException('Support for unconstrained decimals is not possible due to the nature of avro decimals. please use pydantic.condecimal(max_digits=int, decimal_places=int)')
 
 
 def _convert_condecimal(model: Type[ConstrainedDecimal], refs: set, namespace: str) -> dict :
-	assert model.max_digits is not None and model.decimal_places is not None, 'Decimal attributes max_digits and decimal_places must be provided in order to map to avro decimals'
+	if not model.max_digits or not model.decimal_places :
+		raise AvroException('Decimal attributes max_digits and decimal_places must be provided in order to map to avro decimals')
+
 	return {
 		'type': 'bytes',
 		'logicalType': 'decimal',
@@ -119,7 +135,7 @@ def _convert_condecimal(model: Type[ConstrainedDecimal], refs: set, namespace: s
 _conversions_ = {
 	BaseModel: _convert_object,
 	Union: _convert_union,
-	Iterable: _convert_array,
+	list: _convert_array,
 	Enum: _convert_enum,
 	ConstrainedBytes: _convert_bytes,
 	Dict: _convert_map,
@@ -155,9 +171,11 @@ _conversions_ = {
 
 def _get_type(model: Type[BaseModel], refs: set, namespace: str) -> Union[dict, str] :
 	model_name = _get_name(model)
-	origin = getattr(model, '__origin__', None)
+
 	if model_name in refs :
 		return model_name
+
+	origin = getattr(model, '__origin__', None)
 
 	if origin in _conversions_ :
 		# none of these can be converted without funcs
