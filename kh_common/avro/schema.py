@@ -8,11 +8,12 @@ from uuid import UUID
 
 
 def convert_schema(model: Type[BaseModel], error: bool = False) -> dict :
-	namespace = _get_name(model)
-	avro_schema: dict = _get_type(model, set(), namespace)
+	namespace: Union[None, str] = getattr(model, '__namespace__', None)
+	name: str = _get_name(model)
+	avro_schema: dict = _get_type(model, set(), namespace or name)
 
 	if isinstance(avro_schema, dict) :
-		avro_schema['name'] = namespace
+		avro_schema['name'] = name
 
 		if error :
 			avro_schema['type'] = 'error'
@@ -54,7 +55,6 @@ def _convert_array(model: Type[Iterable[Any]], refs: set, namespace: str) -> dic
 
 
 def _convert_object(model: Type[BaseModel], refs: set, namespace: str) -> dict :
-	namespace = getattr(model, '__namespace__', namespace)
 	fields = []
 
 	for name, field in model.__fields__.items() :
