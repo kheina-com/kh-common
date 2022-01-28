@@ -1,5 +1,4 @@
-from pydantic import BaseModel, conbytes, Field
-from uuid import UUID, uuid4
+from pydantic import BaseModel, conbytes, validator
 
 
 class RefId(conbytes(max_length=16, min_length=16)) :
@@ -7,7 +6,7 @@ class RefId(conbytes(max_length=16, min_length=16)) :
 
 
 class Error(BaseModel) :
-	refid: RefId = Field(default_factory=lambda : uuid4().bytes)
+	refid: RefId
 	status: int
 	error: str
 

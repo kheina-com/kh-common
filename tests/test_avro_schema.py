@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Type, Union
 from kh_common.avro.schema import convert_schema
 from kh_common.datetime import datetime
 from avro.errors import AvroException
+from kh_common.models import Error
 from decimal import Decimal
 from pytest import raises
 from enum import Enum
@@ -60,6 +61,7 @@ class NestedModelCustomNamespace(BaseModel) :
 		(BasicModelTypingTypes, { 'namespace': 'BasicModelTypingTypes', 'name': 'BasicModelTypingTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': { 'type': 'array', 'namespace': 'BasicModelTypingTypes', 'items': 'long' } }, { 'name': 'B', 'type': { 'type': 'map', 'values': 'long' } }, { 'name': 'C', 'type': ['long', 'null'], 'default': None }, { 'name': 'D', 'type': ['long', 'string'] }] }),
 		(BasicModelCustomNamespace, { 'namespace': 'custom_namespace', 'name': 'BasicModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'long' }] }),
 		(NestedModelCustomNamespace, { 'namespace': 'NestedModelCustomNamespace', 'name': 'NestedModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': { 'namespace': 'NestedModelCustomNamespace', 'name': 'BasicModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'long' }] } }] }),
+		(Error, { 'type': 'record', 'name': 'Error', 'namespace': 'Error', 'fields': [{ 'name': 'refid', 'type': { 'type': 'fixed', 'name': 'RefId', 'size': 16 } }, { 'name': 'status', 'type': 'long' }, { 'name': 'error', 'type': 'string' }] }),
 	],
 )
 def test_ConvertSchema_ValidInputError_ModelConvertedSuccessfully(input_model: Type[BaseModel], expected: dict) :
@@ -79,6 +81,7 @@ def test_ConvertSchema_ValidInputError_ModelConvertedSuccessfully(input_model: T
 		(BasicModelTypingTypes, { 'namespace': 'BasicModelTypingTypes', 'name': 'BasicModelTypingTypes', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'type': 'array', 'namespace': 'BasicModelTypingTypes', 'items': 'long' } }, { 'name': 'B', 'type': { 'type': 'map', 'values': 'long' } }, { 'name': 'C', 'type': ['long', 'null'], 'default': None }, { 'name': 'D', 'type': ['long', 'string'] }] }),
 		(BasicModelCustomNamespace, { 'namespace': 'custom_namespace', 'name': 'BasicModelCustomNamespace', 'type': 'error', 'fields': [{ 'name': 'A', 'type': 'long' }] }),
 		(NestedModelCustomNamespace, { 'namespace': 'NestedModelCustomNamespace', 'name': 'NestedModelCustomNamespace', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'namespace': 'NestedModelCustomNamespace', 'name': 'BasicModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'long' }] } }] }),
+		(Error, { 'type': 'error', 'name': 'Error', 'namespace': 'Error', 'fields': [{ 'name': 'refid', 'type': { 'type': 'fixed', 'name': 'RefId', 'size': 16 } }, { 'name': 'status', 'type': 'long' }, { 'name': 'error', 'type': 'string' }] }),
 	],
 )
 def test_ConvertSchema_ValidInputError_ErrorModelConvertedSuccessfully(input_model: Type[BaseModel], expected: dict) :

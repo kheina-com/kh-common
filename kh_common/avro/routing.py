@@ -9,7 +9,7 @@ from pydantic import BaseModel
 from collections import defaultdict, OrderedDict
 from starlette.types import ASGIApp, Receive, Send, Scope
 from uuid import uuid4
-from typing import Iterator, Tuple, Type, Optional, Union, Any, Dict
+from typing import Iterator, Tuple, Type, Optional, Union, Any, Dict, List
 from fastapi.dependencies.models import Dependant
 from fastapi.datastructures import Default, DefaultPlaceholder
 import asyncio
@@ -125,8 +125,8 @@ class AvroDecodeError(Exception) :
 
 
 def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> Tuple[AvroDeserializer, Schema, dict] :
-	if handshake.clientHash in client_protocol_cache[route.path] :
-		return client_protocol_cache[route.path][handshake.clientHash]
+	if handshake.clientHash in client_protocol_cache[route.unique_id] :
+		return client_protocol_cache[route.unique_id][handshake.clientHash]
 
 	if handshake.clientProtocol :
 		if handshake.clientHash != md5(handshake.clientProtocol.encode()).digest() :
@@ -142,10 +142,28 @@ def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> Tuple[A
 		elif route.body_field or request_schema :
 			raise AvroDecodeError('client request protocol is incompatible.')
 
-		data = client_protocol_cache[route.path][handshake.clientHash] = request_deserializer, parse(json.dumps(response_schema))
+		client_compatible: bool = False
+		print('response_model', response_schema, route.response_model)
 
-		if len(client_protocol_cache[route.path]) > client_protocol_max_size :
-			del client_protocol_cache[route.path][next(reversed(client_protocol_cache[route.path].keys()))]
+		if response_schema :
+			if route.response_model :
+				print('response_schema', response_schema, route.response_schema)
+				response_compatibility: SchemaCompatibilityResult = AvroChecker.get_compatibility(
+					reader=response_schema,
+					# optimize: this should *definitely* be cached
+					writer=parse(json.dumps(route.response_schema)),
+				)
+				client_compatible = response_compatibility.compatibility == SchemaCompatibilityType.compatible
+
+		elif not route.response_model :
+			client_compatible = True
+
+		print('client_compatible', client_compatible)
+
+		data = client_protocol_cache[route.unique_id][handshake.clientHash] = request_deserializer, client_compatible
+
+		if len(client_protocol_cache[route.unique_id]) > client_protocol_max_size :
+			del client_protocol_cache[route.unique_id][next(reversed(client_protocol_cache[route.unique_id].keys()))]
 
 		return data
 
@@ -156,7 +174,7 @@ def get_request_schemas(handshake: HandshakeRequest, route: APIRoute) :
 	# optimize
 	client_protocol = json.loads(handshake.clientProtocol)
 	client_protocol_message = client_protocol.get('messages', { })
-	client_protocol_request = client_protocol_message.get(route.path, { })
+	client_protocol_request = client_protocol_message.get(route.unique_id, { })
 	client_protocol_response = client_protocol_request.get('response')
 
 	client_protocol_types = { v['name']: v for v in client_protocol_request.get('types', []) }
@@ -193,12 +211,12 @@ def get_request_schemas(handshake: HandshakeRequest, route: APIRoute) :
 		client_protocol_request_schema = None
 
 
-	if client_protocol_response :
-		client_protocol_response_schema = (
+	if client_protocol_response != 'null' :
+		client_protocol_response_schema = parse(json.dumps(
 			client_protocol_types[client_protocol_response]
 			if client_protocol_response in client_protocol_types
 			else client_protocol_response
-		)
+		))
 
 	else :
 		client_protocol_response_schema = None
@@ -230,22 +248,14 @@ def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) -> Any :
 	if not handshake_request :
 		raise AvroDecodeError('There was an error parsing the avro handshake.')
 
-	request_deserializer, client_response_schema = get_client_protocol(handshake_request, route)
-	print(request_deserializer, client_response_schema)
-
-	# optimize: can this whole thing be cached with the clienthash?
-	response_compatibility: SchemaCompatibilityResult = AvroChecker.get_compatibility(
-		# optimize
-		reader=client_response_schema,
-		# optimize: this should *definitely* be cached
-		writer=parse(json.dumps(convert_schema(route.response_model))),
-	)
+	request_deserializer, response_compatibility = get_client_protocol(handshake_request, route)
+	print(request_deserializer, response_compatibility)
 
 	server_protocol, protocol_hash = get_server_protocol(route)
 	print(server_protocol, protocol_hash)
 
 	# optimize
-	if handshake_request.serverHash == protocol_hash and response_compatibility.compatibility == SchemaCompatibilityType.compatible :
+	if handshake_request.serverHash == protocol_hash and response_compatibility :
 		request.scope['avro_handshake'] = HandshakeResponse(
 			match=HandshakeMatch.both,
 		)
@@ -256,6 +266,8 @@ def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) -> Any :
 			serverHash=protocol_hash,
 			serverProtocol=server_protocol,
 		)
+
+	print(request.scope['avro_handshake'])
 
 	avro_body: Optional[dict] = None
 
@@ -279,7 +291,7 @@ def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) -> Any :
 			raise ValueError('There was an error parsing the avro request.')
 
 		# optimize: figure out something better to say here
-		assert call_request.messageName == route.path, 'request message name must match routh path'
+		assert call_request.messageName == route.unique_id, 'request message name must match routh path'
 
 		avro_body = request_deserializer(call_request.request).dict()
 
@@ -295,25 +307,41 @@ def get_server_protocol(route: APIRoute) -> Tuple[bytes, str] :
 
 	if not ServerProtocol :
 		# optimize: this handshake should be generated for the whole app and return all message types
+		types: List[dict] = []
+
+		if route.response_model :
+			types.append(route.response_schema)
+
+		# optimize: fetch all error types and append them here
+		errors = [Error]
+		enames = []
+
+		for error in errors :
+			error = convert_schema(error, error=True)
+			types.append(error)
+			enames.append(error['name'])
+
 		protocol = AvroProtocol(
 			namespace=name,
-			protocol=route.path,
+			protocol=route.unique_id,
 			messages={
-				route.path: AvroMessage(
+				route.unique_id: AvroMessage(
 					doc='the openapi description should go here. ex: V1Endpoint',
-					types=[convert_schema(route.response_model), convert_schema(Error, error=True)],
+					types=types,
 					# optimize
 					request=convert_schema(route.body_field.type_)['fields'] if route.body_field else [],
 					# optimize
-					response=convert_schema(route.response_model)['name'],
+					response=route.response_schema['name'] if route.response_model else 'null',
 					# find and pass in all error responses below
 					# optimize: since this is using ALL possible error responses, this can be globally cached for the whole application
 					# like response, this should be a list of strings that point to types in the types list
-					errors=list(map(lambda x : convert_schema(x, error=True)['name'], [Error])),
+					errors=enames,
 				),
 			},
 		).json()
 		ServerProtocol = protocol, md5(protocol.encode()).digest()
+
+	print(ServerProtocol)
 
 	return ServerProtocol
 
@@ -337,6 +365,9 @@ class AvroRoute(APIRoute) :
 
 		if self.response_model is None and self.status_code not in { 204 } :
 			warn('in order for the avro handshake to be performed, a response model must be passed or the status code set to 204')
+
+		if self.response_model :
+			self.response_schema = convert_schema(self.response_model)
 
 
 	def get_route_handler(self) -> ASGIApp :
@@ -413,6 +444,7 @@ class AvroRoute(APIRoute) :
 								body = body_bytes
 
 			except json.JSONDecodeError as e :
+				# optimize: this will need to be replaced as well
 				raise RequestValidationError([ErrorWrapper(e, ('body', e.pos))], body=e.doc)
 
 			except AvroDecodeError :
@@ -441,6 +473,7 @@ class AvroRoute(APIRoute) :
 				)
 
 			except Exception as e :
+				# optimize: this will need to be replaced as well
 				raise HTTPException(
 					status_code=400, detail='There was an error parsing the body'
 				) from e

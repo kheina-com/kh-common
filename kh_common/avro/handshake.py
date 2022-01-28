@@ -1,4 +1,4 @@
-from pydantic import BaseModel, conbytes, ValidationError, validator
+from pydantic import BaseModel, conbytes, validator
 from typing import Dict, List, Union
 from enum import Enum
 
@@ -47,7 +47,7 @@ class AvroMessage(BaseModel) :
 		if value is None :
 			return value
 
-		types = { v['name'] for v in values['types'] }
+		types = { v['name'] for v in values['types'] } | { 'null' }
 		missing_types = []
 
 		for model in value :
@@ -60,7 +60,7 @@ class AvroMessage(BaseModel) :
 
 	@validator('response')
 	def validate_response_exists(cls, value, values) :
-		if isinstance(value, str) :
+		if isinstance(value, str) and value != 'null' :
 			assert value in { v['name'] for v in values['types'] }, f'string types must exist in types, {value} missing from types'
 		return value
 
