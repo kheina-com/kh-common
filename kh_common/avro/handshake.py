@@ -1,4 +1,4 @@
-from pydantic import BaseModel, conbytes
+from pydantic import BaseModel, conbytes, ValidationError, validator
 from typing import Dict, List, Union
 from enum import Enum
 
@@ -37,9 +37,36 @@ class AvroMessage(BaseModel) :
 	"""
 	doc: Union[None, str]
 	types: List[dict] = []
-	request: Union[None, List[dict]]
-	response: Union[None, str, dict]
+	request: List[dict] = []
+	response: Union[str, dict] = 'null'
 	errors: Union[None, List[Union[str, dict]]]
+	oneWay: bool = None
+
+	@validator('request', 'errors')
+	def validate_models_exist(cls, value, values) :
+		if value is None :
+			return value
+
+		types = { v['name'] for v in values['types'] }
+		missing_types = []
+
+		for model in value :
+			model = model if isinstance(model, str) else model['type']
+			if isinstance(model, str) and model not in types :
+				missing_types.append(model)
+
+		assert not missing_types, f'string types must exist in types, [{", ".join(missing_types)}] missing from types'
+		return value
+
+	@validator('response')
+	def validate_response_exists(cls, value, values) :
+		if isinstance(value, str) :
+			assert value in { v['name'] for v in values['types'] }, f'string types must exist in types, {value} missing from types'
+		return value
+
+	@validator('oneWay', pre=True, always=True)
+	def set_oneWay(cls, value, values) :
+		return value or values.get('response', 'null') == 'null'
 
 
 class AvroProtocol(BaseModel) :

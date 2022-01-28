@@ -109,7 +109,7 @@ def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> 
 
 
 def _convert_map(model: Type[Dict[str, Any]], refs: set, namespace: str) -> dict :
-	if not  hasattr(model, '__args__') :
+	if not hasattr(model, '__args__') :
 		raise AvroException('typing.Dict must be used to determine key/value type, not dict')
 
 	if model.__args__[0] != str :

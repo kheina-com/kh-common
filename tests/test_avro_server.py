@@ -103,9 +103,10 @@ class TestAvroServer :
 			'messages': {
 				'/': {
 					'doc': 'the openapi description should go here. ex: V1Endpoint',
-					'request': None,
+					'request': [],
 					'response': ResponseModel.__name__,
 					'errors': [Error.__name__],
+					'oneWay': False,
 					'types': [
 						convert_schema(ResponseModel),
 						convert_schema(Error, error=True),
@@ -125,11 +126,11 @@ class TestAvroServer :
 			messages={
 				'/': AvroMessage(
 					types=[convert_schema(ResponseModel)],
-					request=None,
 					response=ResponseModel.__name__,
 				),
 			}
 		).json()
+
 		handshake = HandshakeRequest(
 			clientHash=md5(protocol.encode()).digest(),
 			serverHash=b'deadbeefdeadbeef',
@@ -168,9 +169,10 @@ class TestAvroServer :
 			'messages': {
 				'/': {
 					'doc': 'the openapi description should go here. ex: V1Endpoint',
-					'request': None,
+					'request': [],
 					'response': ResponseModel.__name__,
 					'errors': [Error.__name__],
+					'oneWay': False,
 					'types': [
 						convert_schema(ResponseModel),
 						convert_schema(Error, error=True),
@@ -190,7 +192,6 @@ class TestAvroServer :
 			messages={
 				'/': AvroMessage(
 					types=[convert_schema(ResponseModel)],
-					request=None,
 					response=ResponseModel.__name__,
 				),
 			}
@@ -243,3 +244,39 @@ class TestAvroServer :
 		assert None == handshake.serverHash
 		assert None == handshake.serverProtocol
 		assert ResponseModel(result=True) == model_deserializer(call_deserializer(next(frame)).response)
+
+
+	def test_AvroRoute_AllAvroHeadersNullResponse_ReturnsHandshakeAndResponse(self) :
+
+		# arrange
+		protocol = AvroProtocol(
+			namespace='idk',
+			protocol='idk',
+			messages={
+				'/': AvroMessage(),
+			}
+		).json()
+
+		handshake = HandshakeRequest(
+			clientHash=md5(protocol.encode()).digest(),
+			serverHash=b'deadbeefdeadbeef',
+			clientProtocol=protocol,
+		)
+
+		app = FastAPI()
+		app.router.route_class = AvroRoute
+
+		@app.post(endpoint, response_model=ResponseModel)
+		async def test_func() :
+			assert True
+			return
+
+		client = TestClient(app, base_url=base_url)
+
+
+		# act
+		response = client.post(
+			schema + base_url + endpoint,
+			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
+			data=avro_frame(handshake_serializer(handshake)),
+		)

@@ -303,7 +303,7 @@ def get_server_protocol(route: APIRoute) -> Tuple[bytes, str] :
 					doc='the openapi description should go here. ex: V1Endpoint',
 					types=[convert_schema(route.response_model), convert_schema(Error, error=True)],
 					# optimize
-					request=convert_schema(route.body_field.type_)['fields'] if route.body_field else None,
+					request=convert_schema(route.body_field.type_)['fields'] if route.body_field else [],
 					# optimize
 					response=convert_schema(route.response_model)['name'],
 					# find and pass in all error responses below
