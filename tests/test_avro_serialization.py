@@ -4,6 +4,7 @@ from pydantic import BaseModel, conbytes, condecimal
 from typing import Dict, List, Optional, Type, Union
 from kh_common.datetime import datetime
 from avro.errors import AvroException
+from datetime import date, time
 from decimal import Decimal
 from pytest import raises
 from enum import Enum
@@ -29,6 +30,8 @@ class BasicModelAdvancedTypes(BaseModel) :
 	B: conbytes(max_length=10, min_length=10)
 	C: condecimal(max_digits=5, decimal_places=3)
 	D: BasicEnum
+	E: date
+	F: time
 
 
 class NestedModelBasicTypes(BaseModel) :
@@ -46,7 +49,7 @@ class BasicModelTypingTypes(BaseModel) :
 @pytest.mark.parametrize(
 	'input_model', [
 		BasicModelBaseTypes(A='string', B=1, C=1.1, D=b'abc', E=True),
-		BasicModelAdvancedTypes(A=datetime.now(), B='abcde12345', C=Decimal('12.345'), D=BasicEnum.test2),
+		BasicModelAdvancedTypes(A=datetime.now(), B='abcde12345', C=Decimal('12.345'), D=BasicEnum.test2, E=date.today(), F=time(1, 2, 3, 4)),
 		NestedModelBasicTypes(A=BasicModelBaseTypes(A='string', B=1, C=1.1, D=b'abc', E=True), B=2),
 		BasicModelTypingTypes(A=[1], B={ 'a': 2 }, C=None, D=3),
 		BasicModelTypingTypes(A=[1], B={ 'a': 2 }, C=None, D='3'),

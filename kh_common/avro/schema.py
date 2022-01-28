@@ -1,7 +1,7 @@
 from pydantic import BaseModel, ConstrainedBytes, ConstrainedDecimal
 from typing import Any, Callable, Dict, Iterable, List, Type, Union
+from datetime import date, datetime, time
 from avro.errors import AvroException
-from datetime import datetime
 from decimal import Decimal
 from enum import Enum
 from uuid import UUID
@@ -157,20 +157,18 @@ _conversions_ = {
 		'type': 'long',
 		'logicalType': 'timestamp-micros',
 	},
+	date: {
+		'type': 'int',
+		'logicalType': 'date',
+	},
+	time: {
+		'type': 'long',
+		'logicalType': 'time-micros',
+	},
 	UUID: {
 		'type': 'string',
 		'logicalType': 'uuid',
 	},
-	# optimize: are these necessary? do they map to any python/pydanitic types?
-	# update: there are several pydantic date/time types that these can be mapped to
-	# ('string', 'date'): {
-	# 	'type': 'int',
-	# 	'logicalType': 'date',
-	# },
-	# ('string', 'time'): {
-	# 	'type': 'long',
-	# 	'logicalType': 'time-micros',
-	# },
 }
 
 
