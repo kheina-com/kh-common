@@ -1,6 +1,5 @@
 from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, conbytes
-from avro.schema import parse, Schema
 from enum import Enum
 
 
