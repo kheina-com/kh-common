@@ -1,5 +1,5 @@
-from typing import Dict, List, Optional, Union
 from pydantic import BaseModel, conbytes
+from typing import Dict, List, Union
 from enum import Enum
 
 
@@ -35,11 +35,11 @@ class AvroMessage(BaseModel) :
 	these can be obtained through the kh_common.avro.schema.convert_schema(Type[BaseModel]) function
 	NOTE: these are never avro-encoded. only json-stringified.
 	"""
-	doc: Optional[str]
+	doc: Union[None, str]
 	types: List[dict] = []
-	request: Optional[List[dict]]
-	response: Optional[Union[str, dict]]
-	errors: Optional[List[Union[str, dict]]]
+	request: Union[None, List[dict]]
+	response: Union[None, str, dict]
+	errors: Union[None, List[Union[str, dict]]]
 
 
 class AvroProtocol(BaseModel) :
