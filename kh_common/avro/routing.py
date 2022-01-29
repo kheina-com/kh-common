@@ -1,4 +1,5 @@
 
+from pickletools import optimize
 from kh_common.avro.handshake import HandshakeRequest, HandshakeResponse, HandshakeMatch, AvroMessage, AvroProtocol, CallRequest, CallResponse
 from kh_common.avro import AvroSerializer, AvroDeserializer, avro_frame, read_avro_frames
 from kh_common.avro.schema import convert_schema
@@ -30,7 +31,24 @@ from fastapi.requests import Request
 from warnings import warn
 
 
+# number of client protocols to cache per endpoint
+# this should be set to something reasonable based on the number of expected consumers per endpoint
+# optimize: potentially dynamically set this based on number of clients in a given timeframe?
+client_protocol_max_size = 10
+
+# format: { route_uniqueid: { hash: request_deserializer } }
+client_protocol_cache = defaultdict(lambda : OrderedDict())
+
+# format { endpoint_path: (md5 hash, protocol string) }
+server_protocol_cache: Dict[str, Tuple[bytes, str]] = { }
+
 AvroChecker = ReaderWriterCompatibilityChecker()
+handshake_deserializer: AvroDeserializer = AvroDeserializer(HandshakeRequest)
+call_request_deserializer: AvroDeserializer = AvroDeserializer(CallRequest)
+
+
+class AvroDecodeError(Exception) :
+	pass
 
 
 class AvroJsonResponse(JSONResponse) :
@@ -108,22 +126,6 @@ class AvroJsonResponse(JSONResponse) :
 		await super().__call__(scope, receive, send)
 
 
-
-handshake_deserializer: AvroDeserializer = AvroDeserializer(HandshakeRequest)
-call_request_deserializer: AvroDeserializer = AvroDeserializer(CallRequest)
-
-
-# number of protocols to cache per endpoint
-client_protocol_max_size = 10
-
-# format: { endpont_path: { hash: request_deserializer } }
-client_protocol_cache = defaultdict(lambda : OrderedDict())
-
-
-class AvroDecodeError(Exception) :
-	pass
-
-
 def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> Tuple[AvroDeserializer, Schema, dict] :
 	if handshake.clientHash in client_protocol_cache[route.unique_id] :
 		return client_protocol_cache[route.unique_id][handshake.clientHash]
@@ -162,7 +164,9 @@ def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> Tuple[A
 
 		data = client_protocol_cache[route.unique_id][handshake.clientHash] = request_deserializer, client_compatible
 
-		if len(client_protocol_cache[route.unique_id]) > client_protocol_max_size :
+		for _ in range(len(client_protocol_cache[route.unique_id]) - client_protocol_max_size) :
+			# optimize: potentially track the frequency with which protocols are removed from the cache
+			# this should happen infrequently (or never) for greatest efficiency
 			del client_protocol_cache[route.unique_id][next(reversed(client_protocol_cache[route.unique_id].keys()))]
 
 		return data
@@ -290,60 +294,56 @@ def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) -> Any :
 		if not call_request :
 			raise ValueError('There was an error parsing the avro request.')
 
-		# optimize: figure out something better to say here
-		assert call_request.messageName == route.unique_id, 'request message name must match routh path'
+		# optimize: this may not be right. all methods will need to be coalesced under the POST method, call_request.message should be used to determine which route's handler to use
+		assert call_request.message == route.unique_id, 'invalid request received'
 
 		avro_body = request_deserializer(call_request.request).dict()
 
 	return avro_body
 
 
-ServerProtocol: Tuple[bytes, str] = None
-
-
 def get_server_protocol(route: APIRoute) -> Tuple[bytes, str] :
-	# optimize: this shouldn't be throwing an error as it's defined above, but it is, so I'm redefining it here
-	ServerProtocol: Tuple[bytes, str] = None
+	if route.path in server_protocol_cache :
+		return server_protocol_cache[route.path]
 
-	if not ServerProtocol :
-		# optimize: this handshake should be generated for the whole app and return all message types
-		types: List[dict] = []
+	# optimize: this handshake should be generated for all routes that share a url format
+	types: List[dict] = []
 
-		if route.response_model :
-			types.append(route.response_schema)
+	if route.response_model :
+		types.append(route.response_schema)
 
-		# optimize: fetch all error types and append them here
-		errors = [Error]
-		enames = []
+	# optimize: fetch all error types and append them here
+	errors = [Error]
+	enames = []
 
-		for error in errors :
-			error = convert_schema(error, error=True)
-			types.append(error)
-			enames.append(error['name'])
+	for error in errors :
+		error = convert_schema(error, error=True)
+		types.append(error)
+		enames.append(error['name'])
 
-		protocol = AvroProtocol(
-			namespace=name,
-			protocol=route.unique_id,
-			messages={
-				route.unique_id: AvroMessage(
-					doc='the openapi description should go here. ex: V1Endpoint',
-					types=types,
-					# optimize
-					request=convert_schema(route.body_field.type_)['fields'] if route.body_field else [],
-					# optimize
-					response=route.response_schema['name'] if route.response_model else 'null',
-					# find and pass in all error responses below
-					# optimize: since this is using ALL possible error responses, this can be globally cached for the whole application
-					# like response, this should be a list of strings that point to types in the types list
-					errors=enames,
-				),
-			},
-		).json()
-		ServerProtocol = protocol, md5(protocol.encode()).digest()
+	protocol = AvroProtocol(
+		namespace=name,
+		protocol=route.unique_id,
+		messages={
+			route.unique_id: AvroMessage(
+				doc='the openapi description should go here. ex: V1Endpoint',
+				types=types,
+				# optimize
+				request=convert_schema(route.body_field.type_)['fields'] if route.body_field else [],
+				# optimize
+				response=route.response_schema['name'] if route.response_model else 'null',
+				# find and pass in all error responses below
+				# optimize: since this is using ALL possible error responses, this can be globally cached for the whole application
+				# like response, this should be a list of strings that point to types in the types list
+				errors=enames,
+			),
+		},
+	).json()
+	server_protocol_cache[route.path] = protocol, md5(protocol.encode()).digest()
 
-	print(ServerProtocol)
+	print(server_protocol_cache[route.path])
 
-	return ServerProtocol
+	return server_protocol_cache[route.path]
 
 
 class AvroRoute(APIRoute) :

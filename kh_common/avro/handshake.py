@@ -79,12 +79,14 @@ class AvroProtocol(BaseModel) :
 
 
 class CallRequest(BaseModel) :
+	__namespace__: str = 'org.apache.avro.ipc'
 	meta: Union[None, Dict[str, bytes]]  # a map with values of type bytes
-	messageName: str  # an Avro string, this is used as lookup key in the response handshake's messages field
+	message: str  # an Avro string, this is used as lookup key in the response handshake's messages field
 	request: bytes  # parameters are serialized according to the message's request declaration
 
 
 class CallResponse(BaseModel) :
+	__namespace__: str = 'org.apache.avro.ipc'
 	meta: Union[None, Dict[str, bytes]]  # a map with values of type bytes
 	error: bool  # a one-byte error flag boolean, followed by either
 	# if the error flag is false, the message response, serialized per the message's response schema.

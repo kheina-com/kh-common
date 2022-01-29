@@ -1,6 +1,7 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
-from kh_common.avro.handshake import AvroMessage, AvroProtocol, CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
+from kh_common.avro.handshake import AvroMessage, AvroProtocol, CallRequest, CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
 from kh_common.avro import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
+from kh_common.avro.routing import client_protocol_cache, server_protocol_cache
 from kh_common.avro.schema import convert_schema
 from kh_common.avro.routing import AvroRoute
 from fastapi.testclient import TestClient
@@ -17,10 +18,18 @@ base_url = 'dev.kheina.com'
 schema = 'https://'
 
 
+class RequestModel(BaseModel) :
+	ask: int
+
+
 class ResponseModel(BaseModel) :
 	result: bool
 
+
+model_serializer: AvroSerializer = AvroSerializer(RequestModel)
 model_deserializer: AvroDeserializer = AvroDeserializer(ResponseModel)
+
+call_serializer: AvroSerializer = AvroSerializer(CallRequest)
 call_deserializer: AvroDeserializer = AvroDeserializer(CallResponse)
 
 handshake_serializer: AvroSerializer = AvroSerializer(HandshakeRequest)
@@ -32,6 +41,25 @@ def get_second_frame(response: bytes) :
 	next(frames)
 	return next(frames)
 
+
+def format_request(handshake: HandshakeRequest = None, request: RequestModel = None, message: str = None) :
+	req = b''
+
+	if handshake :
+		req += avro_frame(handshake_serializer(handshake))
+
+	if request and message :
+		req += avro_frame(call_serializer(CallRequest(
+			message=message,
+			request=model_serializer(request),
+		)))
+
+	return req
+
+
+def wipe_caches() :
+	client_protocol_cache.clear()
+	server_protocol_cache.clear()
 
 @pytest.mark.asyncio
 class TestAvroServer :
@@ -69,6 +97,7 @@ class TestAvroServer :
 		],
 	)
 	def test_AvroRoute_AllAvroHeadersInvalidHandshake_ReturnsAvroHandshake(self, payload: bytes) :
+		wipe_caches()
 
 		# arrange
 		app = FastAPI()
@@ -118,6 +147,7 @@ class TestAvroServer :
 
 
 	def test_AvroRoute_AllAvroHeadersValidHandshakeNoBody_ReturnsHandshakeAndResponse(self) :
+		wipe_caches()
 
 		# arrange
 		protocol = AvroProtocol(
@@ -153,7 +183,7 @@ class TestAvroServer :
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=avro_frame(handshake_serializer(handshake)),
+			data=format_request(handshake=handshake),
 		)
 
 
@@ -184,6 +214,7 @@ class TestAvroServer :
 
 
 	def test_AvroRoute_AllAvroHeadersValidHandshakeHandshakeCached_ReturnsHandshakeAndResponse(self) :
+		wipe_caches()
 
 		# arrange
 		protocol = AvroProtocol(
@@ -216,7 +247,7 @@ class TestAvroServer :
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=avro_frame(handshake_serializer(handshake)),
+			data=format_request(handshake=handshake),
 		)
 
 		handshake = handshake_deserializer(next(read_avro_frames(response._content)))
@@ -231,7 +262,7 @@ class TestAvroServer :
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=avro_frame(handshake_serializer(handshake)),
+			data=format_request(handshake=handshake),
 		)
 
 
@@ -246,6 +277,7 @@ class TestAvroServer :
 
 
 	def test_AvroRoute_AllAvroHeadersNullResponse_ReturnsHandshakeAndResponse(self) :
+		wipe_caches()
 
 		# arrange
 		protocol = AvroProtocol(
@@ -277,7 +309,7 @@ class TestAvroServer :
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=avro_frame(handshake_serializer(handshake)),
+			data=format_request(handshake=handshake),
 		)
 
 
@@ -308,6 +340,7 @@ class TestAvroServer :
 
 
 	def test_AvroRoute_AllAvroHeadersCachedNullResponse_ReturnsHandshakeAndResponse(self) :
+		wipe_caches()
 
 		# arrange
 		protocol = AvroProtocol(
@@ -336,7 +369,7 @@ class TestAvroServer :
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=avro_frame(handshake_serializer(handshake)),
+			data=format_request(handshake=handshake),
 		)
 
 		handshake = handshake_deserializer(next(read_avro_frames(response._content)))
@@ -352,7 +385,7 @@ class TestAvroServer :
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=avro_frame(handshake_serializer(handshake)),
+			data=format_request(handshake=handshake),
 		)
 
 
