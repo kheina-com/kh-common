@@ -409,7 +409,7 @@ class TestAvroServer :
 		assert not next(frame)
 
 
-	def test_AvroRoute_AllAvroHeadersCachedNullResponse_ReturnsHandshakeAndResponse(self) :
+	def test_AvroRoute_AllAvroHeadersInvalidRequest_ReturnsHandshakeAndError(self) :
 		wipe_caches()
 
 		# arrange
@@ -453,17 +453,12 @@ class TestAvroServer :
 
 
 		# assert
-		print(handshake.clientProtocol)
 		frame = read_avro_frames(response._content)
 		assert 200 == response.status_code
 		handshake: HandshakeResponse = handshake_deserializer(next(frame))
-		print(handshake.serverProtocol)
-		call = call_deserializer(next(frame))
-		if call.error :
-			print('error')
-			print('response error:', AvroDeserializer(Union[Error, ValidationError, str])(call.response))
 		assert HandshakeMatch.client == handshake.match
-		# assert None == handshake.serverHash
-		# assert None == handshake.serverProtocol
-		# assert False
+		call = call_deserializer(next(frame))
+		assert call.error
+		error = AvroDeserializer(Union[Error, ValidationError, str])(call.response)
+		assert ValidationError == type(error)
 

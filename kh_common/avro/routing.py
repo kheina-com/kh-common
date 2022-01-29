@@ -58,11 +58,11 @@ class AvroDecodeError(Exception) :
 
 class AvroJsonResponse(Response) :
 
-	# items are written to the cache in the form of type: writer
+	# items are written to the cache in the form of type: serializer
+	# this only occurs with response models, error models are cached elsewhere
 	__writer_cache__ = CalcDict(AvroSerializer)
 
 	def __init__(self, serializable_body: dict = None, model: BaseModel = None, *args: Tuple[Any], serializer: AvroSerializer = None, handshake: HandshakeResponse = None, error: bool = False, **kwargs: Dict[str, Any]) :
-		# optimize: in the end, we don't want to run json init to avoid encoding something twice
 		super().__init__(None, *args, **kwargs)
 		self._serializable_body: Optional[dict] = serializable_body
 		self._model: Optional[BaseModel] = model
