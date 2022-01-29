@@ -29,6 +29,9 @@ class HandshakeResponse(BaseModel) :
 	meta: Union[None, Dict[str, bytes]]
 
 
+__built_in_types__ = { 'null', 'boolean', 'int', 'long', 'float', 'double', 'bytes', 'string' }
+
+
 class AvroMessage(BaseModel) :
 	"""
 	each 'dict' in this definition refers to a parsed avro schema. request is the 'fields' of a schema
@@ -47,7 +50,7 @@ class AvroMessage(BaseModel) :
 		if value is None :
 			return value
 
-		types = { v['name'] for v in values['types'] } | { 'null' }
+		types = { v['name'] for v in values['types'] } | __built_in_types__
 		missing_types = []
 
 		for model in value :
@@ -60,7 +63,7 @@ class AvroMessage(BaseModel) :
 
 	@validator('response')
 	def validate_response_exists(cls, value, values) :
-		if isinstance(value, str) and value != 'null' :
+		if isinstance(value, str) and value not in __built_in_types__ :
 			assert value in { v['name'] for v in values['types'] }, f'string types must exist in types, {value} missing from types'
 		return value
 

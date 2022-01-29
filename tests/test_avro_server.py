@@ -1,3 +1,5 @@
+from typing import Union
+from urllib import request
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.avro.handshake import AvroMessage, AvroProtocol, CallRequest, CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
 from kh_common.avro import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
@@ -6,7 +8,7 @@ from kh_common.models import Error, ValidationError
 from kh_common.avro.schema import convert_schema
 from kh_common.avro.routing import AvroRoute
 from fastapi.testclient import TestClient
-from pydantic import BaseModel
+from pydantic import BaseModel, conint
 from fastapi import FastAPI
 from hashlib import md5
 import pytest
@@ -19,7 +21,9 @@ schema = 'https://'
 
 
 class RequestModel(BaseModel) :
-	ask: int
+	A: str
+	B: int
+	C: float
 
 
 class ResponseModel(BaseModel) :
@@ -383,7 +387,7 @@ class TestAvroServer :
 
 		handshake = HandshakeRequest(
 			clientHash=md5(protocol.encode()).digest(),
-			serverHash=handshake.serverHash,
+			serverHash=handshake.serverHash, 
 		)
 
 
@@ -405,51 +409,61 @@ class TestAvroServer :
 		assert not next(frame)
 
 
-	# def test_AvroRoute_AllAvroHeadersCachedNullResponse_ReturnsHandshakeAndResponse(self) :
-	# 	wipe_caches()
+	def test_AvroRoute_AllAvroHeadersCachedNullResponse_ReturnsHandshakeAndResponse(self) :
+		wipe_caches()
 
-	# 	# arrange
-	# 	protocol = AvroProtocol(
-	# 		namespace='idk',
-	# 		protocol='idk',
-	# 		messages={
-	# 			'test_func__post': AvroMessage(),
-	# 		}
-	# 	).json()
+		# arrange
+		protocol = AvroProtocol(
+			namespace='idk',
+			protocol='idk',
+			messages={
+				'test_func__post': AvroMessage(
+					request=convert_schema(RequestModel)['fields'],
+				),
+			}
+		).json()
 
-	# 	handshake = HandshakeRequest(
-	# 		clientHash=md5(protocol.encode()).digest(),
-	# 		serverHash=b'deadbeefdeadbeef',
-	# 		clientProtocol=protocol,
-	# 	)
+		handshake = HandshakeRequest(
+			clientHash=md5(protocol.encode()).digest(),
+			serverHash=b'deadbeefdeadbeef',
+			clientProtocol=protocol,
+		)
 
-	# 	app = FastAPI()
-	# 	app.router.route_class = AvroRoute
+		app = FastAPI()
+		app.router.route_class = AvroRoute
 
-	# 	@app.post(endpoint, response_model=ResponseModel, responses={ 404: { 'model': Error } })
-	# 	async def test_func() :
-	# 		return ResponseModel(
-	# 			result=True
-	# 		)
+		class TestModel(BaseModel) :
+			A: str
+			B: conint(gt=0)
+			C: float
 
-	# 	client = TestClient(app, base_url=base_url)
+		@app.post(endpoint, status_code=204)
+		async def test_func(body: TestModel) :
+			return
 
-
-	# 	# act
-	# 	response = client.post(
-	# 		schema + base_url + endpoint,
-	# 		headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-	# 		data=format_request(handshake=handshake),
-	# 	)
+		client = TestClient(app, base_url=base_url)
 
 
-	# 	# assert
-	# 	print(response._content)
-	# 	frame = read_avro_frames(response._content)
-	# 	assert 200 == response.status_code
-	# 	handshake: HandshakeResponse = handshake_deserializer(next(frame))
-	# 	assert HandshakeMatch.both == handshake.match
-	# 	assert None == handshake.serverHash
-	# 	assert None == handshake.serverProtocol
-	# 	assert False
+		# act
+		response = client.post(
+			schema + base_url + endpoint,
+			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
+			data=format_request(handshake=handshake, request=RequestModel(A='1', B=-2, C=3.1), message='test_func__post'),
+		)
+
+
+		# assert
+		print(handshake.clientProtocol)
+		frame = read_avro_frames(response._content)
+		assert 200 == response.status_code
+		handshake: HandshakeResponse = handshake_deserializer(next(frame))
+		print(handshake.serverProtocol)
+		call = call_deserializer(next(frame))
+		if call.error :
+			print('error')
+			print('response error:', AvroDeserializer(Union[Error, ValidationError, str])(call.response))
+		assert HandshakeMatch.client == handshake.match
+		# assert None == handshake.serverHash
+		# assert None == handshake.serverProtocol
+		# assert False
 

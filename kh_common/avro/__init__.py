@@ -1,8 +1,8 @@
 from avro.io import BinaryDecoder, BinaryEncoder, DatumReader
 from kh_common.avro.serialization import ABetterDatumWriter
+from avro.schema import Schema, parse as parse_avro_schema
 from kh_common.avro.schema import convert_schema
 from pydantic import BaseModel, parse_obj_as
-from avro.schema import parse, Schema
 from typing import Type, Union
 from io import BytesIO, FileIO
 from json import dumps
@@ -22,32 +22,46 @@ def read_avro_frames(avro_bytes: bytes) -> bytes :
 		avro_bytes = avro_bytes[frame_len:]
 
 
+_data_converter_map = {
+	dict: lambda d : d,
+	list: lambda d : list(map(BaseModel.dict, d)),
+	tuple: lambda d : list(map(BaseModel.dict, d)),
+	BaseModel: lambda d : d.dict(),
+}
+
+
 class AvroSerializer :
 
 	def __init__(self, model: Union[Schema, Type[BaseModel]]) :
-		schema: Schema = model if isinstance(model, Schema) else parse(dumps(convert_schema(model)))
+		schema: Schema = model if isinstance(model, Schema) else parse_avro_schema(dumps(convert_schema(model)))
 		self._writer: ABetterDatumWriter = ABetterDatumWriter(schema)
 
 
 	def __call__(self, data: BaseModel) :
 		io_object: BytesIO = BytesIO()
 		encoder: BinaryEncoder = BinaryEncoder(io_object)
-		self._writer.write_data(self._writer.writers_schema, data.dict() if isinstance(data, BaseModel) else list(map(BaseModel.dict, data)), encoder)
-		return io_object.getvalue()
+
+		for cls in type(data).__mro__ :
+			if cls in _data_converter_map :
+				self._writer.write_data(self._writer.writers_schema, _data_converter_map[cls](data), encoder)
+				return io_object.getvalue()
+
+		raise NotImplementedError(f'unable to convert {type(data)} for encoding')
 
 
 class AvroDeserializer :
 
-	def __init__(self, read_model: Type[BaseModel], read_schema: Union[Schema, str] = None, write_model: Union[Schema, Type[BaseModel], str] = None) :
+	def __init__(self, read_model: Type[BaseModel], read_schema: Union[Schema, str] = None, write_model: Union[Schema, Type[BaseModel], str] = None, parse: bool = True) :
 		self._reader: DatumReader
 		self._model: Type[BaseModel] = read_model
+		self._parse = parse
 		write_schema: Schema
 
 		if not read_schema :
-			read_schema = parse(dumps(convert_schema(read_model)))
+			read_schema = parse_avro_schema(dumps(convert_schema(read_model)))
 
 		elif isinstance(read_schema, str) :
-			read_schema = parse(read_schema)
+			read_schema = parse_avro_schema(read_schema)
 
 		elif not isinstance(read_schema, Schema) :
 			raise NotImplementedError(f'the type for read_schema "{type(read_schema)} is not supported.')
@@ -60,10 +74,10 @@ class AvroDeserializer :
 			write_schema = write_model
 
 		elif isinstance(write_model, str) :
-			write_schema = parse(write_model)
+			write_schema = parse_avro_schema(write_model)
 
 		elif issubclass(write_model, BaseModel) :
-			write_schema = parse(dumps(convert_schema(write_model)))
+			write_schema = parse_avro_schema(dumps(convert_schema(write_model)))
 
 		else :
 			raise NotImplementedError(f'the type for write_model "{type(write_model)} is not supported.')
@@ -72,4 +86,6 @@ class AvroDeserializer :
 
 
 	def __call__(self, data: bytes) :
-		return parse_obj_as(self._model, self._reader.read(BinaryDecoder(BytesIO(data))))
+		if self._parse :
+			return parse_obj_as(self._model, self._reader.read(BinaryDecoder(BytesIO(data))))
+		return self._reader.read(BinaryDecoder(BytesIO(data)))
