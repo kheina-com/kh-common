@@ -1,3 +1,5 @@
+![python-package.yml workflow](https://github.com/kheina-com/kh-common/actions/workflows/python-package.yml/badge.svg)
+
 ## Installation
 `pip install kh-common`
 

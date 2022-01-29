@@ -3,9 +3,9 @@ from kh_common.avro.serialization import ABetterDatumWriter
 from avro.schema import Schema, parse as parse_avro_schema
 from kh_common.avro.schema import convert_schema
 from pydantic import BaseModel, parse_obj_as
-from typing import Type, Union
-from io import BytesIO, FileIO
+from typing import Callable, Type, Union
 from json import dumps
+from io import BytesIO
 
 
 def avro_frame(bytes_to_frame: bytes = None) -> bytes :
@@ -46,15 +46,12 @@ class AvroSerializer :
 				self._writer.write_data(self._writer.writers_schema, _data_converter_map[cls](data), encoder)
 				return io_object.getvalue()
 
-		raise NotImplementedError(f'unable to convert {type(data)} for encoding')
+		raise NotImplementedError(f'unable to convert "{type(data)}" for encoding')
 
 
 class AvroDeserializer :
 
 	def __init__(self, read_model: Type[BaseModel], read_schema: Union[Schema, str] = None, write_model: Union[Schema, Type[BaseModel], str] = None, parse: bool = True) :
-		self._reader: DatumReader
-		self._model: Type[BaseModel] = read_model
-		self._parse = parse
 		write_schema: Schema
 
 		if not read_schema :
@@ -64,7 +61,7 @@ class AvroDeserializer :
 			read_schema = parse_avro_schema(read_schema)
 
 		elif not isinstance(read_schema, Schema) :
-			raise NotImplementedError(f'the type for read_schema "{type(read_schema)} is not supported.')
+			raise NotImplementedError(f'the type for read_schema "{type(read_schema)}" is not supported.')
 
 
 		if not write_model :
@@ -80,12 +77,16 @@ class AvroDeserializer :
 			write_schema = parse_avro_schema(dumps(convert_schema(write_model)))
 
 		else :
-			raise NotImplementedError(f'the type for write_model "{type(write_model)} is not supported.')
+			raise NotImplementedError(f'the type for write_model "{type(write_model)}" is not supported.')
 
-		self._reader = DatumReader(write_schema, read_schema)
+		reader: DatumReader = DatumReader(write_schema, read_schema)
+
+		if parse :
+			self._parser: Callable[[bytes], read_model] = lambda x : parse_obj_as(read_model, reader.read(x))
+
+		else :
+			self._parser: Callable[[bytes], dict] = reader.read
 
 
 	def __call__(self, data: bytes) :
-		if self._parse :
-			return parse_obj_as(self._model, self._reader.read(BinaryDecoder(BytesIO(data))))
-		return self._reader.read(BinaryDecoder(BytesIO(data)))
+		return self._parser(BinaryDecoder(BytesIO(data)))

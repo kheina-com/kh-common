@@ -43,7 +43,7 @@ client_protocol_cache = defaultdict(OrderedDict)
 cache_locks = defaultdict(Lock)
 
 # format { endpoint_path: (md5 hash, protocol string) }
-server_protocol_cache: Dict[str, Tuple[bytes, str]] = { }
+server_protocol_cache: Dict[str, Tuple[bytes, str, AvroSerializer]] = { }
 
 AvroChecker = ReaderWriterCompatibilityChecker()
 handshake_deserializer: AvroDeserializer = AvroDeserializer(HandshakeRequest)
