@@ -60,18 +60,20 @@ def _convert_object(model: Type[BaseModel], refs: set, namespace: str) -> dict :
 
 	for name, field in model.__fields__.items() :
 		submodel = model.__annotations__[name]
-		f = {
-			'name': name,
-			'type': _get_type(submodel, refs, namespace),
-		}
+		f = { 'name': name }
 
-		if getattr(submodel, '__origin__', None) is Union and len(submodel.__args__) == 2 and submodel.__args__[0] is type(None) and field.default is None :
+		if getattr(submodel, '__origin__', None) is Union and len(submodel.__args__) == 2 and type(None) in submodel.__args__ and field.default is None :
 			# this is a special case where the field is nullable and the default value is null, but the actual value can be omitted from the schema
-			pass
+			# we rearrange Optional[Type] and Union[Type, None] to Union[None, Type] so that null becomes the default type and the 'default' key is unnecessary
+			type_index: int = 0 if submodel.__args__.index(type(None)) else 1
+			f['type'] = _get_type(Union[None, submodel.__args__[type_index]], refs, namespace)
 
-		elif not field.required :
-			# optimize: does this value need to be avro-encoded?
-			f['default'] = field.default
+		else :
+			f['type'] = _get_type(submodel, refs, namespace)
+
+			if not field.required :
+				# optimize: does this value need to be avro-encoded?
+				f['default'] = field.default
 
 		fields.append(f)
 
