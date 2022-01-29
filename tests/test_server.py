@@ -4,7 +4,9 @@ from tests.utilities.auth import mock_pk, mock_token
 from kh_common.server import Request, ServerApp
 from kh_common.config.repo import short_hash
 from fastapi.testclient import TestClient
+from typing import Dict, List, Optional
 from kh_common.auth import Scope
+from pydantic import BaseModel
 from fastapi import FastAPI
 from uuid import uuid4
 import pytest
@@ -15,6 +17,15 @@ base_url = 'dev.kheina.com'
 schema = 'https://'
 
 
+class ResponseModel(BaseModel) :
+	result: bool
+
+
+class AuthorizedModel(BaseModel) :
+	user_id: int
+	data: Optional[Dict[str, List[str]]]
+
+
 @pytest.mark.asyncio
 class TestAppServer :
 
@@ -23,7 +34,7 @@ class TestAppServer :
 		# arrange
 		app = ServerApp(auth=False)
 
-		@app.get(endpoint)
+		@app.get(endpoint, response_model=ResponseModel)
 		async def test_func() :
 			return { 'result': True }
 
@@ -44,7 +55,7 @@ class TestAppServer :
 		app = ServerApp(auth=False)
 		refid = uuid4()
 
-		@app.get(endpoint)
+		@app.get(endpoint, status_code=204)
 		async def test_func() :
 			raise HttpError('test', refid=refid)
 
@@ -63,7 +74,7 @@ class TestAppServer :
 		# arrange
 		app = ServerApp(auth=False)
 
-		@app.get(endpoint)
+		@app.get(endpoint, status_code=204)
 		async def test_func() :
 			raise ValueError('test')
 
@@ -84,7 +95,7 @@ class TestAppServer :
 		# arrange
 		app = ServerApp(auth=True, auth_required=False)
 
-		@app.get(endpoint)
+		@app.get(endpoint, status_code=204)
 		async def test_func(req: Request) :
 			await req.user.authenticated()
 
@@ -102,9 +113,9 @@ class TestAppServer :
 		# arrange
 		app = ServerApp(auth=True, auth_required=False)
 
-		@app.get(endpoint)
+		@app.get(endpoint, response_model=ResponseModel)
 		async def test_func(req: Request) :
-			return { 'authenticated': await req.user.authenticated(raise_error=False) }
+			return { 'result': await req.user.authenticated(raise_error=False) }
 
 		client = TestClient(app, base_url=base_url)
 
@@ -113,7 +124,7 @@ class TestAppServer :
 
 		# assert
 		assert 200 == response.status_code
-		assert { 'authenticated': False } == response.json()
+		assert { 'result': False } == response.json()
 
 
 	def test_ServerApp_GetRequiresAuth_Unauthorized(self) :
@@ -121,7 +132,7 @@ class TestAppServer :
 		# arrange
 		app = ServerApp(auth=True, auth_required=True)
 
-		@app.get(endpoint)
+		@app.get(endpoint, response_model=ResponseModel)
 		async def test_func() :
 			return { 'result': True }
 
@@ -141,7 +152,7 @@ class TestAppServer :
 
 		app = ServerApp(auth=True, auth_required=True)
 
-		@app.get(endpoint)
+		@app.get(endpoint, response_model=AuthorizedModel)
 		async def test_func(req: Request) :
 			return { 'user_id': req.user.user_id }
 
@@ -154,7 +165,7 @@ class TestAppServer :
 
 		# assert
 		assert 200 == response.status_code
-		assert { 'user_id': 1 } == response.json()
+		assert { 'user_id': 1, 'data': None } == response.json()
 
 
 	def test_ServerApp_GetRequiresScope_Authorized(self, mocker) :
@@ -164,7 +175,7 @@ class TestAppServer :
 
 		app = ServerApp(auth=True, auth_required=True)
 
-		@app.get(endpoint)
+		@app.get(endpoint, response_model=AuthorizedModel)
 		async def test_func(req: Request) :
 			await req.user.verify_scope(Scope.mod)
 			return { 'user_id': req.user.user_id, 'data': req.user.token.data }
@@ -186,7 +197,7 @@ class TestAppServer :
 		# arrange
 		app = ServerApp(auth=True, auth_required=True)
 
-		@app.get(endpoint)
+		@app.get(endpoint, response_model=ResponseModel)
 		async def test_func() :
 			return { 'result': True }
 
@@ -209,9 +220,9 @@ class TestAppServer :
 		# arrange
 		app = ServerApp(auth=False, cors=True, custom_headers=False)
 
-		@app.get(endpoint)
+		@app.get(endpoint, response_model=ResponseModel)
 		async def app_func() :
-			return { 'success': True }
+			return { 'result': True }
 
 		client = TestClient(app, base_url=base_url)
 
@@ -220,7 +231,7 @@ class TestAppServer :
 
 		# assert
 		assert 200 == result.status_code
-		assert { 'success': True } == result.json()
+		assert { 'result': True } == result.json()
 
 
 	def test_CorsMiddleware_NoOrigin_Success(self, mocker) :
@@ -233,9 +244,9 @@ class TestAppServer :
 		app = FastAPI()
 		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
-		@app.get('/')
+		@app.get('/', response_model=ResponseModel)
 		async def app_func(req: Request) :
-			return { 'success': True }
+			return { 'result': True }
 
 		client = TestClient(app)
 
@@ -244,7 +255,7 @@ class TestAppServer :
 
 		# assert
 		assert 200 == result.status_code
-		assert { 'success': True } == result.json()
+		assert { 'result': True } == result.json()
 
 
 	def test_CorsMiddleware_InvalidOrigin_BadRequest(self, mocker) :
@@ -257,9 +268,9 @@ class TestAppServer :
 		app = FastAPI()
 		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
-		@app.get('/')
+		@app.get('/', response_model=ResponseModel)
 		async def app_func(req: Request) :
-			return { 'success': True }
+			return { 'result': True }
 
 		client = TestClient(app)
 
@@ -283,9 +294,9 @@ class TestAppServer :
 		app = FastAPI()
 		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' })
 
-		@app.get('/')
+		@app.get('/', response_model=ResponseModel)
 		async def app_func(req: Request) :
-			return { 'success': True }
+			return { 'result': True }
 
 		client = TestClient(app)
 
@@ -309,9 +320,9 @@ class TestAppServer :
 		app = FastAPI()
 		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' }, allowed_protocols={ 'https' })
 
-		@app.get('/')
+		@app.get('/', response_model=ResponseModel)
 		async def app_func(req: Request) :
-			return { 'success': True }
+			return { 'result': True }
 
 		client = TestClient(app)
 
@@ -335,9 +346,9 @@ class TestAppServer :
 		app = FastAPI()
 		app.add_middleware(KhCorsMiddleware, allowed_origins={ 'kheina.com' }, allowed_protocols={ 'https' })
 
-		@app.get('/')
+		@app.get('/', response_model=ResponseModel)
 		async def app_func(req: Request) :
-			return { 'success': True }
+			return { 'result': True }
 
 		client = TestClient(app)
 
@@ -346,7 +357,7 @@ class TestAppServer :
 
 		# assert
 		assert 200 == result.status_code
-		assert { 'success': True } == result.json()
+		assert { 'result': True } == result.json()
 
 
 	def test_CustomHeaderMiddleware_HeadersInjected_Success(self) :
@@ -354,9 +365,9 @@ class TestAppServer :
 		# arrange
 		app = ServerApp(auth=False, cors=False, custom_headers=True)
 
-		@app.get(endpoint)
+		@app.get(endpoint, response_model=ResponseModel)
 		async def app_func() :
-			return { 'success': True }
+			return { 'result': True }
 
 		client = TestClient(app, base_url=base_url)
 
@@ -365,5 +376,5 @@ class TestAppServer :
 
 		# assert
 		assert 200 == result.status_code
-		assert { 'success': True } == result.json()
+		assert { 'result': True } == result.json()
 		assert short_hash == result.headers['kh-hash']

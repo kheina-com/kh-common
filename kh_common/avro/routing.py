@@ -413,7 +413,6 @@ class AvroRoute(APIRoute) :
 			try :
 				body: Any = None
 				content_type_value: Optional[str] = request.headers.get('content-type')
-				print(content_type_value)
 
 				if content_type_value == 'avro/binary' :
 					body_bytes = await request.body()
