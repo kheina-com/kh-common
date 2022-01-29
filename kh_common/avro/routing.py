@@ -25,10 +25,11 @@ from fastapi.dependencies.utils import solve_dependencies
 import email.message
 from hashlib import md5
 from avro.schema import parse, Schema
-from kh_common.models import Error
+from kh_common.models import Error, ValidationError
 from kh_common.config.repo import name
 from fastapi.requests import Request
 from warnings import warn
+from asyncio import Lock
 
 
 # number of client protocols to cache per endpoint
@@ -38,6 +39,7 @@ client_protocol_max_size = 10
 
 # format: { route_uniqueid: { hash: request_deserializer } }
 client_protocol_cache = defaultdict(lambda : OrderedDict())
+cache_locks = defaultdict(Lock)
 
 # format { endpoint_path: (md5 hash, protocol string) }
 server_protocol_cache: Dict[str, Tuple[bytes, str]] = { }
@@ -126,7 +128,7 @@ class AvroJsonResponse(JSONResponse) :
 		await super().__call__(scope, receive, send)
 
 
-def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> Tuple[AvroDeserializer, Schema, dict] :
+async def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> Tuple[AvroDeserializer, Schema, dict] :
 	if handshake.clientHash in client_protocol_cache[route.unique_id] :
 		return client_protocol_cache[route.unique_id][handshake.clientHash]
 
@@ -164,10 +166,14 @@ def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> Tuple[A
 
 		data = client_protocol_cache[route.unique_id][handshake.clientHash] = request_deserializer, client_compatible
 
-		for _ in range(len(client_protocol_cache[route.unique_id]) - client_protocol_max_size) :
-			# optimize: potentially track the frequency with which protocols are removed from the cache
-			# this should happen infrequently (or never) for greatest efficiency
-			del client_protocol_cache[route.unique_id][next(reversed(client_protocol_cache[route.unique_id].keys()))]
+		if len(client_protocol_cache[route.unique_id]) > client_protocol_max_size :
+			# lock required in case two threads try to purge the cache at once
+			async with cache_locks[route.unique_id] :
+				# fetches all the keys that should be deleted
+				for key in list(reversed(client_protocol_cache[route.unique_id].keys()))[len(client_protocol_cache[route.unique_id]) - client_protocol_max_size:] :
+					# optimize: potentially track the frequency with which protocols are removed from the cache
+					# this should happen infrequently (or never) for greatest efficiency
+					del client_protocol_cache[route.unique_id][key]
 
 		return data
 
@@ -229,7 +235,7 @@ def get_request_schemas(handshake: HandshakeRequest, route: APIRoute) :
 	return client_protocol_request_schema, client_protocol_response_schema
 
 
-def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) -> Any :
+async def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) -> Any :
 	handshake_request: HandshakeRequest = None
 	handshake_body: bytes = b''
 
@@ -252,10 +258,10 @@ def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) -> Any :
 	if not handshake_request :
 		raise AvroDecodeError('There was an error parsing the avro handshake.')
 
-	request_deserializer, response_compatibility = get_client_protocol(handshake_request, route)
+	request_deserializer, response_compatibility = await get_client_protocol(handshake_request, route)
 	print(request_deserializer, response_compatibility)
 
-	server_protocol, protocol_hash = get_server_protocol(route)
+	server_protocol, protocol_hash = get_server_protocol(route, request)
 	print(server_protocol, protocol_hash)
 
 	# optimize
@@ -302,28 +308,33 @@ def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) -> Any :
 	return avro_body
 
 
-def get_server_protocol(route: APIRoute) -> Tuple[bytes, str] :
+def get_server_protocol(route: APIRoute, request: Request) -> Tuple[bytes, str] :
 	if route.path in server_protocol_cache :
 		return server_protocol_cache[route.path]
 
+	# NOTE: these two errors are used automatically by this library and FastAPI, respectively
 	# optimize: this handshake should be generated for all routes that share a url format
-	types: List[dict] = []
+	types: List[dict] = [convert_schema(Error, error=True), convert_schema(ValidationError, error=True)]
+	# optimize: fetch all error types and append them here
+	enames = { Error.__name__, ValidationError.__name__ }
+
+	# print(dir(request.scope['router'].routes[-1]))
+	# print(request.scope['router'].routes[-1].__dict__)
+
+	for r in request.scope['router'].routes :
+		for status, response in getattr(r, 'responses', { }).items() :
+			if status >= 400 and 'model' in response :
+				error = convert_schema(error, error=True)
+				if error['name'] not in enames :
+					types.append(error)
+					enames.add(error['name'])
 
 	if route.response_model :
 		types.append(route.response_schema)
 
-	# optimize: fetch all error types and append them here
-	errors = [Error]
-	enames = []
-
-	for error in errors :
-		error = convert_schema(error, error=True)
-		types.append(error)
-		enames.append(error['name'])
-
 	protocol = AvroProtocol(
 		namespace=name,
-		protocol=route.unique_id,
+		protocol=route.path,
 		messages={
 			route.unique_id: AvroMessage(
 				doc='the openapi description should go here. ex: V1Endpoint',
@@ -335,7 +346,7 @@ def get_server_protocol(route: APIRoute) -> Tuple[bytes, str] :
 				# find and pass in all error responses below
 				# optimize: since this is using ALL possible error responses, this can be globally cached for the whole application
 				# like response, this should be a list of strings that point to types in the types list
-				errors=enames,
+				errors=list(enames),
 			),
 		},
 	).json()
@@ -410,7 +421,7 @@ class AvroRoute(APIRoute) :
 					if not body_bytes :
 						raise AvroDecodeError('no body was included with the avro request. a handshake must be provided with every request')
 
-					avro_body = settleAvroHandshake(body_bytes, request, self)
+					avro_body = await settleAvroHandshake(body_bytes, request, self)
 					body = avro_body
 
 				elif body_field :
@@ -449,20 +460,17 @@ class AvroRoute(APIRoute) :
 
 			except AvroDecodeError :
 				# optimize
-				server_protocol, protocol_hash = get_server_protocol(self)
+				server_protocol, protocol_hash = get_server_protocol(self, request)
 				error: str = 'avro handshake failed, client protocol incompatible'
-				refid = uuid4()
 				# return avro response with full handshake
 				return AvroJsonResponse(
 					serializable_body={
 						'status': 400,
 						'error': error,
-						'refid': refid.hex,
 					},
 					model=Error(
 						status=400,
 						error=error,
-						refid=refid.bytes,
 					),
 					handshake=HandshakeResponse(
 						match=HandshakeMatch.none,

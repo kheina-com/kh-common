@@ -1,4 +1,5 @@
-from pydantic import BaseModel, conbytes, validator
+from pydantic import BaseModel, conbytes
+from typing import List, Union
 
 
 class RefId(conbytes(max_length=16, min_length=16)) :
@@ -6,7 +7,7 @@ class RefId(conbytes(max_length=16, min_length=16)) :
 
 
 class Error(BaseModel) :
-	refid: RefId
+	refid: Union[None, RefId]
 	status: int
 	error: str
 
@@ -14,3 +15,13 @@ class Error(BaseModel) :
 		json_encoders = {
 			bytes: lambda x : x.hex(),
 		}
+
+
+class ValidationErrorDetail(BaseModel) :
+	loc: List[str]
+	msg: str
+	type: str
+
+
+class ValidationError(BaseModel) :
+	detail: List[ValidationErrorDetail]

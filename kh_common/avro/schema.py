@@ -10,6 +10,7 @@ from uuid import UUID
 def convert_schema(model: Type[BaseModel], error: bool = False) -> dict :
 	namespace: Union[None, str] = getattr(model, '__namespace__', None)
 	name: str = _get_name(model)
+	error = error or name.lower().endswith('error')
 	avro_schema: dict = _get_type(model, set(), namespace or name)
 
 	if isinstance(avro_schema, dict) :

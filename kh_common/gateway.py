@@ -1,7 +1,6 @@
 from aiohttp import ClientTimeout, request as async_request
 from kh_common.avro import AvroDeserializer, AvroSerializer
 from pydantic import BaseModel, parse_obj_as
-from kh_common.caching import KwargsCache
 from kh_common.hashing import Hashable
 from typing import Any, Dict, Type
 from hashlib import md5

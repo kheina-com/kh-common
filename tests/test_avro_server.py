@@ -2,10 +2,10 @@ from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.avro.handshake import AvroMessage, AvroProtocol, CallRequest, CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
 from kh_common.avro import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
 from kh_common.avro.routing import client_protocol_cache, server_protocol_cache
+from kh_common.models import Error, ValidationError
 from kh_common.avro.schema import convert_schema
 from kh_common.avro.routing import AvroRoute
 from fastapi.testclient import TestClient
-from kh_common.models import Error
 from pydantic import BaseModel
 from fastapi import FastAPI
 from hashlib import md5
@@ -60,6 +60,7 @@ def format_request(handshake: HandshakeRequest = None, request: RequestModel = N
 def wipe_caches() :
 	client_protocol_cache.clear()
 	server_protocol_cache.clear()
+
 
 @pytest.mark.asyncio
 class TestAvroServer :
@@ -126,19 +127,21 @@ class TestAvroServer :
 		handshake: HandshakeResponse = handshake_deserializer(next(frame))
 		assert HandshakeMatch.none == handshake.match
 		assert handshake.serverHash == md5(handshake.serverProtocol.encode()).digest()
-		assert json.loads(handshake.serverProtocol) == {
+		server_protocol = json.loads(handshake.serverProtocol)
+		assert { Error.__name__, ValidationError.__name__ } == set(server_protocol['messages']['test_func__post'].pop('errors'))
+		assert server_protocol == {
 			'namespace': 'kh-common',
-			'protocol': 'test_func__post',
+			'protocol': '/',
 			'messages': {
 				'test_func__post': {
 					'doc': 'the openapi description should go here. ex: V1Endpoint',
 					'request': [],
 					'response': ResponseModel.__name__,
-					'errors': [Error.__name__],
 					'oneWay': False,
 					'types': [
-						convert_schema(ResponseModel),
 						convert_schema(Error, error=True),
+						convert_schema(ValidationError, error=True),
+						convert_schema(ResponseModel),
 					],
 				},
 			},
@@ -193,19 +196,21 @@ class TestAvroServer :
 		handshake: HandshakeResponse = handshake_deserializer(next(frame))
 		assert HandshakeMatch.client == handshake.match
 		assert handshake.serverHash == md5(handshake.serverProtocol.encode()).digest()
-		assert json.loads(handshake.serverProtocol) == {
+		server_protocol = json.loads(handshake.serverProtocol)
+		assert { Error.__name__, ValidationError.__name__ } == set(server_protocol['messages']['test_func__post'].pop('errors'))
+		assert server_protocol == {
 			'namespace': 'kh-common',
-			'protocol': 'test_func__post',
+			'protocol': '/',
 			'messages': {
 				'test_func__post': {
 					'doc': 'the openapi description should go here. ex: V1Endpoint',
 					'request': [],
 					'response': ResponseModel.__name__,
-					'errors': [Error.__name__],
 					'oneWay': False,
 					'types': [
-						convert_schema(ResponseModel),
 						convert_schema(Error, error=True),
+						convert_schema(ValidationError, error=True),
+						convert_schema(ResponseModel),
 					],
 				},
 			},
@@ -314,24 +319,25 @@ class TestAvroServer :
 
 
 		# assert
-		print(response._content)
 		frame = read_avro_frames(response._content)
 		assert 200 == response.status_code
 		handshake: HandshakeResponse = handshake_deserializer(next(frame))
 		assert HandshakeMatch.client == handshake.match
 		assert handshake.serverHash == md5(handshake.serverProtocol.encode()).digest()
-		assert json.loads(handshake.serverProtocol) == {
+		server_protocol = json.loads(handshake.serverProtocol)
+		assert { Error.__name__, ValidationError.__name__ } == set(server_protocol['messages']['test_func__post'].pop('errors'))
+		assert server_protocol == {
 			'namespace': 'kh-common',
-			'protocol': 'test_func__post',
+			'protocol': '/',
 			'messages': {
 				'test_func__post': {
 					'doc': 'the openapi description should go here. ex: V1Endpoint',
 					'request': [],
 					'response': 'null',
-					'errors': [Error.__name__],
 					'oneWay': True,
 					'types': [
 						convert_schema(Error, error=True),
+						convert_schema(ValidationError, error=True),
 					],
 				},
 			},
@@ -390,7 +396,6 @@ class TestAvroServer :
 
 
 		# assert
-		print(response._content)
 		frame = read_avro_frames(response._content)
 		assert 200 == response.status_code
 		handshake: HandshakeResponse = handshake_deserializer(next(frame))
@@ -398,4 +403,53 @@ class TestAvroServer :
 		assert None == handshake.serverHash
 		assert None == handshake.serverProtocol
 		assert not next(frame)
+
+
+	# def test_AvroRoute_AllAvroHeadersCachedNullResponse_ReturnsHandshakeAndResponse(self) :
+	# 	wipe_caches()
+
+	# 	# arrange
+	# 	protocol = AvroProtocol(
+	# 		namespace='idk',
+	# 		protocol='idk',
+	# 		messages={
+	# 			'test_func__post': AvroMessage(),
+	# 		}
+	# 	).json()
+
+	# 	handshake = HandshakeRequest(
+	# 		clientHash=md5(protocol.encode()).digest(),
+	# 		serverHash=b'deadbeefdeadbeef',
+	# 		clientProtocol=protocol,
+	# 	)
+
+	# 	app = FastAPI()
+	# 	app.router.route_class = AvroRoute
+
+	# 	@app.post(endpoint, response_model=ResponseModel, responses={ 404: { 'model': Error } })
+	# 	async def test_func() :
+	# 		return ResponseModel(
+	# 			result=True
+	# 		)
+
+	# 	client = TestClient(app, base_url=base_url)
+
+
+	# 	# act
+	# 	response = client.post(
+	# 		schema + base_url + endpoint,
+	# 		headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
+	# 		data=format_request(handshake=handshake),
+	# 	)
+
+
+	# 	# assert
+	# 	print(response._content)
+	# 	frame = read_avro_frames(response._content)
+	# 	assert 200 == response.status_code
+	# 	handshake: HandshakeResponse = handshake_deserializer(next(frame))
+	# 	assert HandshakeMatch.both == handshake.match
+	# 	assert None == handshake.serverHash
+	# 	assert None == handshake.serverProtocol
+	# 	assert False
 
