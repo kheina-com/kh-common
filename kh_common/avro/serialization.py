@@ -1,5 +1,5 @@
 from avro.schema import ArraySchema, EnumSchema, FixedSchema, MapSchema, RecordSchema, Schema, UnionSchema
-from avro.constants import DATE, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIME_MICROS, TIME_MILLIS
+from avro.constants import DATE, DECIMAL, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIME_MICROS, TIME_MILLIS
 from avro.errors import AvroException, AvroTypeException, IgnoredLogicalType
 from avro.io import BinaryEncoder, DatumWriter
 from typing import Mapping, Sequence
@@ -92,7 +92,7 @@ class ABetterDatumWriter(DatumWriter) :
 	def _writer_type_bytes_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
 		logical_type = getattr(writers_schema, 'logical_type', None)
 
-		if logical_type == 'decimal' :
+		if logical_type == DECIMAL :
 			scale = writers_schema.get_prop('scale')
 
 			if not (isinstance(scale, int) and scale > 0) :
@@ -116,7 +116,7 @@ class ABetterDatumWriter(DatumWriter) :
 	def _writer_type_fixed_(self, writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
 		logical_type = getattr(writers_schema, 'logical_type', None)
 
-		if logical_type == 'decimal' :
+		if logical_type == DECIMAL :
 			scale = writers_schema.get_prop('scale')
 			size = writers_schema.size
 
@@ -125,6 +125,9 @@ class ABetterDatumWriter(DatumWriter) :
 
 			elif not isinstance(datum, Decimal) :
 				warn(IgnoredLogicalType(f'{datum} is not a decimal type'))
+
+			elif not datum.same_quantum(Decimal(1) / 10 ** scale) :
+				raise AvroTypeException(writers_schema, datum)
 
 			else :
 				return encoder.write_decimal_fixed(datum, scale, size)
