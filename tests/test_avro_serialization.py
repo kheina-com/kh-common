@@ -1,9 +1,9 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.avro import AvroSerializer, AvroDeserializer
+from avro.errors import AvroException, AvroTypeException
 from pydantic import BaseModel, conbytes, condecimal
 from typing import Dict, List, Optional, Type, Union
 from kh_common.datetime import datetime
-from avro.errors import AvroException
 from datetime import date, time
 from decimal import Decimal
 from pytest import raises
@@ -114,3 +114,31 @@ def test_serialize_InvalidModel_SerializerThrowsError(input_model: Type[BaseMode
 	# assert
 	with raises(AvroException) :
 		AvroSerializer(input_model)
+
+
+class DecimalModel(BaseModel) :
+	A: condecimal(max_digits=7, decimal_places=4)
+
+
+@pytest.mark.parametrize(
+	'value, errors', [
+		(Decimal('12.3'), True),
+		(Decimal('12.34'), True),
+		(Decimal('12.345'), True),
+		(Decimal('12.3456'), False),
+		(Decimal('1.0000'), False),
+	],
+)
+def test_serialize_InvalidDecimal_SerializerThrowsError(value: Decimal, errors: bool) :
+
+	# arrange
+	serializer: AvroSerializer = AvroSerializer(DecimalModel)
+	deserializer: AvroDeserializer = AvroDeserializer(DecimalModel)
+
+	# assert
+	if errors :
+		with raises(AvroTypeException) :
+			serializer(DecimalModel(A=value))
+
+	else :
+		assert value == deserializer(serializer(DecimalModel(A=value))).A

@@ -1,4 +1,4 @@
-![python-package.yml workflow](https://github.com/kheina-com/kh-common/actions/workflows/python-package.yml/badge.svg)
+[![python-package.yml workflow](https://github.com/kheina-com/kh-common/actions/workflows/python-package.yml/badge.svg)](https://github.com/kheina-com/kh-common/actions/workflows/python-package.yml)
 
 ## Installation
 `pip install kh-common`
