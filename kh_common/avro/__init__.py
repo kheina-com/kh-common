@@ -51,7 +51,8 @@ class AvroSerializer :
 
 class AvroDeserializer :
 
-	def __init__(self, read_model: Type[BaseModel], read_schema: Union[Schema, str] = None, write_model: Union[Schema, Type[BaseModel], str] = None, parse: bool = True) :
+	def __init__(self, read_model: Type[BaseModel] = None, read_schema: Union[Schema, str] = None, write_model: Union[Schema, Type[BaseModel], str] = None, parse: bool = True) :
+		assert read_model or (read_schema and parse == False), 'either read_model or read_schema must be provided. if only read schema is provided, parse must be false'
 		write_schema: Schema
 
 		if not read_schema :

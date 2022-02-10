@@ -1,5 +1,5 @@
 from pydantic import BaseModel, conbytes, validator
-from typing import Dict, List, Union
+from typing import Dict, List, Optional, Union
 from enum import Enum
 
 
@@ -16,17 +16,17 @@ class HandshakeMatch(Enum) :
 class HandshakeRequest(BaseModel) :
 	__namespace__: str = 'org.apache.avro.ipc'
 	clientHash: MD5
-	clientProtocol: Union[None, str]
+	clientProtocol: Optional[str]
 	serverHash: MD5
-	meta: Union[None, Dict[str, bytes]]
+	meta: Optional[Dict[str, bytes]]
 
 
 class HandshakeResponse(BaseModel) :
 	__namespace__: str = 'org.apache.avro.ipc'
 	match: HandshakeMatch
-	serverProtocol: Union[None, str]
-	serverHash: Union[None, MD5]
-	meta: Union[None, Dict[str, bytes]]
+	serverProtocol: Optional[str]
+	serverHash: Optional[MD5]
+	meta: Optional[Dict[str, bytes]]
 
 
 __built_in_types__ = { 'null', 'boolean', 'int', 'long', 'float', 'double', 'bytes', 'string' }
@@ -38,11 +38,11 @@ class AvroMessage(BaseModel) :
 	these can be obtained through the kh_common.avro.schema.convert_schema(Type[BaseModel]) function
 	NOTE: these are never avro-encoded. only json-stringified.
 	"""
-	doc: Union[None, str]
+	doc: Optional[str]
 	types: List[dict] = []
 	request: List[dict] = []
 	response: Union[str, dict] = 'null'
-	errors: Union[None, List[Union[str, dict]]]
+	errors: Optional[List[Union[str, dict]]]
 	oneWay: bool = None
 
 	@validator('request', 'errors')
@@ -83,15 +83,15 @@ class AvroProtocol(BaseModel) :
 
 class CallRequest(BaseModel) :
 	__namespace__: str = 'org.apache.avro.ipc'
-	meta: Union[None, Dict[str, bytes]]  # a map with values of type bytes
+	meta: Optional[Dict[str, bytes]]  # a map with values of type bytes
 	message: str  # an Avro string, this is used as lookup key in the response handshake's messages field
 	request: bytes  # parameters are serialized according to the message's request declaration
 
 
 class CallResponse(BaseModel) :
 	__namespace__: str = 'org.apache.avro.ipc'
-	meta: Union[None, Dict[str, bytes]]  # a map with values of type bytes
+	meta: Optional[Dict[str, bytes]]  # a map with values of type bytes
 	error: bool  # a one-byte error flag boolean, followed by either
-	# if the error flag is false, the message response, serialized per the message's response schema.
-	# if the error flag is true, the error, serialized per the message's effective error union schema.
+	# if the error flag is false: the message response, serialized per the message's response schema.
+	# if the error flag is true: the error, serialized per the message's effective error union schema.
 	response: bytes

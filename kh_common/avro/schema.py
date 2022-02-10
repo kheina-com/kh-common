@@ -7,9 +7,17 @@ from enum import Enum
 from uuid import UUID
 
 
+class AvroInt(int) :
+	pass
+
+
+class AvroFloat(float) :
+	pass
+
+
 def convert_schema(model: Type[BaseModel], error: bool = False) -> dict :
 	namespace: Union[None, str] = getattr(model, '__namespace__', None)
-	name: str = _get_name(model)
+	name: str = get_name(model)
 	error = error or name.lower().endswith('error')
 	avro_schema: dict = _get_type(model, set(), namespace or name)
 
@@ -22,11 +30,11 @@ def convert_schema(model: Type[BaseModel], error: bool = False) -> dict :
 	return avro_schema
 
 
-def _get_name(model: Type[BaseModel]) -> str :
+def get_name(model: Type[BaseModel]) -> str :
 	origin = getattr(model, '__origin__', None)  # for types from typing library
 
 	if origin :
-		return str(origin) + '_' + '_'.join(list(map(_get_name, model.__args__)))
+		return str(origin) + '_' + '_'.join(list(map(get_name, model.__args__)))
 
 	if issubclass(model, ConstrainedBytes) and model.__name__ == 'ConstrainedBytesValue' :
 		return 'Bytes_' + str(model.max_length)
@@ -79,7 +87,7 @@ def _convert_object(model: Type[BaseModel], refs: set, namespace: str) -> dict :
 
 	return {
 		'type': 'record',
-		'name': _get_name(model),
+		'name': get_name(model),
 		'namespace': namespace,
 		'fields': fields,
 	}
@@ -95,7 +103,7 @@ def _convert_enum(model: Type[Enum], refs: set, namespace: str) -> dict :
 
 	return {
 		'type': 'enum',
-		'name': _get_name(model),
+		'name': get_name(model),
 		'symbols': list(map(lambda x : x.value, model.__members__.values())),
 	}
 
@@ -104,7 +112,7 @@ def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> 
 	if model.min_length == model.max_length and model.max_length :
 		return {
 			'type': 'fixed',
-			'name': _get_name(model),
+			'name': get_name(model),
 			'size': model.max_length,
 		}
 
@@ -151,7 +159,9 @@ _conversions_ = {
 	Decimal: _convert_decimal,
 	ConstrainedDecimal: _convert_condecimal,
 	bool: 'boolean',
+	AvroInt: 'int',
 	int: 'long',
+	AvroFloat: 'float',
 	float: 'double',
 	bytes: 'bytes',
 	type(None): 'null',
@@ -176,7 +186,7 @@ _conversions_ = {
 
 
 def _get_type(model: Type[BaseModel], refs: set, namespace: str) -> Union[dict, str] :
-	model_name = _get_name(model)
+	model_name = get_name(model)
 
 	if model_name in refs :
 		return model_name

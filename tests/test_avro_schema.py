@@ -1,9 +1,9 @@
 from datetime import date
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
+from kh_common.avro.schema import AvroInt, AvroFloat, convert_schema
 from pydantic import BaseModel, conbytes, condecimal
 from typing import Dict, List, Optional, Type, Union
 from kh_common.models import Error, ValidationError
-from kh_common.avro.schema import convert_schema
 from kh_common.datetime import datetime
 from avro.errors import AvroException
 from datetime import date, time
@@ -65,6 +65,11 @@ class BasicModelDefaultValues(BaseModel) :
 	E: bool = True
 
 
+class BasicModelCustomTypes(BaseModel) :
+	A: AvroInt
+	B: AvroFloat
+
+
 @pytest.mark.parametrize(
 	'input_model, expected', [
 		(BasicModelBaseTypes, { 'namespace': 'BasicModelBaseTypes', 'name': 'BasicModelBaseTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'string' }, { 'name': 'B', 'type': 'long' }, { 'name': 'C', 'type': 'double' }, { 'name': 'D', 'type': 'bytes' }, { 'name': 'E', 'type': 'boolean' }] }),
@@ -76,6 +81,7 @@ class BasicModelDefaultValues(BaseModel) :
 		(Error, { 'namespace': 'Error', 'name': 'Error', 'type': 'error', 'fields': [{ 'name': 'refid', 'type': ['null', { 'type': 'fixed', 'name': 'RefId', 'size': 16 }] }, { 'name': 'status', 'type': 'long' }, { 'name': 'error', 'type': 'string' }] }),
 		(ValidationError, { 'namespace': 'ValidationError', 'name': 'ValidationError', 'type': 'error', 'fields': [{ 'name': 'detail', 'type': { 'items': { 'fields': [{ 'name': 'loc', 'type': { 'items': 'string', 'namespace': 'ValidationError', 'type': 'array' } }, { 'name': 'msg', 'type': 'string' }, { 'name': 'type', 'type': 'string' }], 'name': 'ValidationErrorDetail', 'namespace': 'ValidationError', 'type': 'record' }, 'namespace': 'ValidationError', 'type': 'array' } }] }),
 		(BasicModelDefaultValues, { 'namespace': 'BasicModelDefaultValues', 'name': 'BasicModelDefaultValues', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'string', 'default': '1' }, { 'name': 'B', 'type': 'long', 'default': 2 }, { 'name': 'C', 'type': 'double', 'default': 3.1 }, { 'name': 'D', 'type': 'bytes', 'default': b'abc' }, { 'name': 'E', 'type': 'boolean', 'default': True }] }),
+		(BasicModelCustomTypes, { 'namespace': 'BasicModelCustomTypes', 'name': 'BasicModelCustomTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'int' }, { 'name': 'B', 'type': 'float' }] }),
 	],
 )
 def test_ConvertSchema_ValidInputError_ModelConvertedSuccessfully(input_model: Type[BaseModel], expected: dict) :
@@ -98,6 +104,7 @@ def test_ConvertSchema_ValidInputError_ModelConvertedSuccessfully(input_model: T
 		(Error, { 'namespace': 'Error', 'name': 'Error', 'type': 'error', 'fields': [{ 'name': 'refid', 'type': ['null', { 'type': 'fixed', 'name': 'RefId', 'size': 16 }] }, { 'name': 'status', 'type': 'long' }, { 'name': 'error', 'type': 'string' }] }),
 		(ValidationError, { 'namespace': 'ValidationError', 'name': 'ValidationError', 'type': 'error', 'fields': [{ 'name': 'detail', 'type': { 'items': { 'fields': [{ 'name': 'loc', 'type': { 'items': 'string', 'namespace': 'ValidationError', 'type': 'array' } }, { 'name': 'msg', 'type': 'string' }, { 'name': 'type', 'type': 'string' }], 'name': 'ValidationErrorDetail', 'namespace': 'ValidationError', 'type': 'record' }, 'namespace': 'ValidationError', 'type': 'array' } }] }),
 		(BasicModelDefaultValues, { 'namespace': 'BasicModelDefaultValues', 'name': 'BasicModelDefaultValues', 'type': 'error', 'fields': [{ 'name': 'A', 'type': 'string', 'default': '1' }, { 'name': 'B', 'type': 'long', 'default': 2 }, { 'name': 'C', 'type': 'double', 'default': 3.1 }, { 'name': 'D', 'type': 'bytes', 'default': b'abc' }, { 'name': 'E', 'type': 'boolean', 'default': True }] }),
+		(BasicModelCustomTypes, { 'namespace': 'BasicModelCustomTypes', 'name': 'BasicModelCustomTypes', 'type': 'error', 'fields': [{ 'name': 'A', 'type': 'int' }, { 'name': 'B', 'type': 'float' }] }),
 	],
 )
 def test_ConvertSchema_ValidInputError_ErrorModelConvertedSuccessfully(input_model: Type[BaseModel], expected: dict) :

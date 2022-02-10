@@ -1,8 +1,8 @@
 from avro.schema import ArraySchema, EnumSchema, FixedSchema, MapSchema, RecordSchema, Schema, UnionSchema
 from avro.constants import DATE, DECIMAL, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIME_MICROS, TIME_MILLIS
 from avro.errors import AvroException, AvroTypeException, IgnoredLogicalType
+from typing import Any, Dict, Mapping, Sequence, Union
 from avro.io import BinaryEncoder, DatumWriter
-from typing import Mapping, Sequence
 from decimal import Decimal
 from warnings import warn
 from uuid import UUID
@@ -10,21 +10,43 @@ from enum import Enum
 import datetime
 
 
+def _validate_enum(self, datum: Union[Enum, str]) :
+	"""
+	Return self if datum is a valid member of this Enum, else None.
+	python Enums are converted to their value
+	"""
+	datum: str = datum.value if isinstance(datum, Enum) else datum
+	return self if datum in self.symbols else None
+
+
+EnumSchema.validate = _validate_enum
+
+
 class ABetterDatumWriter(DatumWriter) :
 
-	def _writer_type_null_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def write_enum(self, writers_schema: EnumSchema, datum: Union[Enum, str], encoder: BinaryEncoder) -> None:
+		"""
+		An enum is encoded by a int, representing the zero-based position of the symbol in the schema.
+		python Enums are converted to their value
+		"""
+		datum: str = datum.value if isinstance(datum, Enum) else datum
+		index_of_datum = writers_schema.symbols.index(datum)
+		return encoder.write_int(index_of_datum)
+
+
+	def _writer_type_null_(writers_schema: Schema, datum: None, encoder: BinaryEncoder) -> None :
 		if datum is None :
 			return encoder.write_null(datum)
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_bool_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_bool_(writers_schema: Schema, datum: bool, encoder: BinaryEncoder) -> None :
 		if isinstance(datum, bool) :
 			return encoder.write_boolean(datum)
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_str_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_str_(writers_schema: Schema, datum: Union[str, UUID], encoder: BinaryEncoder) -> None :
 		if isinstance(datum, str) :
 			return encoder.write_utf8(datum)
 
@@ -34,7 +56,7 @@ class ABetterDatumWriter(DatumWriter) :
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_int_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_int_(writers_schema: Schema, datum: int, encoder: BinaryEncoder) -> None :
 		logical_type = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == DATE :
@@ -53,19 +75,19 @@ class ABetterDatumWriter(DatumWriter) :
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_float_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_float_(writers_schema: Schema, datum: Union[int, float], encoder: BinaryEncoder) -> None :
 		if isinstance(datum, (int, float)) :
 			return encoder.write_float(datum)
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_double_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_double_(writers_schema: Schema, datum: Union[int, float], encoder: BinaryEncoder) -> None :
 		if isinstance(datum, (int, float)) :
 			return encoder.write_double(datum)
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_long_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_long_(writers_schema: Schema, datum: int, encoder: BinaryEncoder) -> None :
 		logical_type = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == TIME_MICROS :
@@ -89,7 +111,7 @@ class ABetterDatumWriter(DatumWriter) :
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_bytes_(writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_bytes_(writers_schema: Schema, datum: Union[Decimal, bytes], encoder: BinaryEncoder) -> None :
 		logical_type = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == DECIMAL :
@@ -113,12 +135,11 @@ class ABetterDatumWriter(DatumWriter) :
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_fixed_(self, writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_fixed_(self, writers_schema: Schema, datum: Union[Decimal, bytes], encoder: BinaryEncoder) -> None :
 		logical_type = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == DECIMAL :
 			scale = writers_schema.get_prop('scale')
-			size = writers_schema.size
 
 			if not (isinstance(scale, int) and scale > 0) :
 				warn(IgnoredLogicalType(f'Invalid decimal scale {scale}. Must be a positive integer.'))
@@ -130,7 +151,7 @@ class ABetterDatumWriter(DatumWriter) :
 				raise AvroTypeException(writers_schema, datum)
 
 			else :
-				return encoder.write_decimal_fixed(datum, scale, size)
+				return encoder.write_decimal_fixed(datum, scale, writers_schema.size)
 
 		if isinstance(datum, bytes) :
 			return self.write_fixed(writers_schema, datum, encoder)
@@ -138,35 +159,26 @@ class ABetterDatumWriter(DatumWriter) :
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_enum_(self, writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
-		if isinstance(datum, str) :
+	def _writer_type_enum_(self, writers_schema: Schema, datum: Union[str, Enum], encoder: BinaryEncoder) -> None :
+		if isinstance(datum, (str, Enum)) :
 			return self.write_enum(writers_schema, datum, encoder)
-
-		if isinstance(datum, Enum) :
-			return self.write_enum(writers_schema, datum.value, encoder)
 
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_array_(self, writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_array_(self, writers_schema: Schema, datum: Sequence, encoder: BinaryEncoder) -> None :
 		if isinstance(datum, Sequence) :
 			return self.write_array(writers_schema, datum, encoder)
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_map_schema_(self, writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_map_schema_(self, writers_schema: Schema, datum: Dict[str, Any], encoder: BinaryEncoder) -> None :
 		if isinstance(datum, Mapping) :
 			return self.write_map(writers_schema, datum, encoder)
 		raise AvroTypeException(writers_schema, datum)
 
 
-	def _writer_type_union_(self, writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
-		if isinstance(datum, Enum) :
-			datum = datum.name
-		return self.write_union(writers_schema, datum, encoder)
-
-
-	def _writer_type_record_(self, writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def _writer_type_record_(self, writers_schema: Schema, datum: dict, encoder: BinaryEncoder) -> None :
 		if isinstance(datum, Mapping) :
 			return self.write_record(writers_schema, datum, encoder)
 		raise AvroTypeException(writers_schema, datum)
@@ -185,12 +197,12 @@ class ABetterDatumWriter(DatumWriter) :
 		EnumSchema: _writer_type_enum_,
 		ArraySchema: _writer_type_array_,
 		MapSchema: _writer_type_map_schema_,
-		UnionSchema: _writer_type_union_,
+		UnionSchema: DatumWriter.write_union,
 		RecordSchema: _writer_type_record_,
 	}
 
 
-	def write_data(self, writers_schema: Schema, datum: object, encoder: BinaryEncoder) -> None :
+	def write_data(self, writers_schema: Schema, datum: Any, encoder: BinaryEncoder) -> None :
 		# we're re-writing the function to dispatch writing datum, cause, frankly, theirs sucks
 
 		if writers_schema.type in self._writer_type_map_ :

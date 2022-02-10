@@ -3,6 +3,7 @@ from kh_common.avro import AvroSerializer, AvroDeserializer
 from avro.errors import AvroException, AvroTypeException
 from pydantic import BaseModel, conbytes, condecimal
 from typing import Dict, List, Optional, Type, Union
+from kh_common.avro.schema import AvroInt, AvroFloat
 from kh_common.datetime import datetime
 from datetime import date, time
 from decimal import Decimal
@@ -46,6 +47,15 @@ class BasicModelTypingTypes(BaseModel) :
 	D: Union[int, str]
 
 
+class BasicModelCustomTypes(BaseModel) :
+	A: AvroInt
+	B: AvroFloat
+
+
+class NestedModelUnionRecords(BaseModel) :
+	A: Union[BasicModelAdvancedTypes, int]
+
+
 @pytest.mark.parametrize(
 	'input_model', [
 		BasicModelBaseTypes(A='string', B=1, C=1.1, D=b'abc', E=True),
@@ -53,6 +63,8 @@ class BasicModelTypingTypes(BaseModel) :
 		NestedModelBasicTypes(A=BasicModelBaseTypes(A='string', B=1, C=1.1, D=b'abc', E=True), B=2),
 		BasicModelTypingTypes(A=[1], B={ 'a': 2 }, C=None, D=3),
 		BasicModelTypingTypes(A=[1], B={ 'a': 2 }, C=None, D='3'),
+		BasicModelCustomTypes(A=123, B=34.5),
+		NestedModelUnionRecords(A=BasicModelAdvancedTypes(A=datetime.now(), B='abcde12345', C=Decimal('12.345'), D=BasicEnum.test2, E=date.today(), F=time(1, 2, 3, 4))),
 	],
 )
 def test_serialize_ValidInput_ModelEncodedAndDecodedSuccessfully(input_model: BaseModel) :
