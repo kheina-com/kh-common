@@ -104,7 +104,7 @@ class BasicModelInvalidType6(BaseModel) :
 	A: condecimal(decimal_places=10)
 
 
-class BasicModelInvalidType7(Enum) :
+class BasicEnumInvalidType7(Enum) :
 	test1: str = 'TEST1'
 	test2: str = 'TEST2'
 	test3: str = 'TEST1'
@@ -118,7 +118,7 @@ class BasicModelInvalidType7(Enum) :
 		BasicModelInvalidType4,
 		BasicModelInvalidType5,
 		BasicModelInvalidType6,
-		BasicModelInvalidType7,
+		BasicEnumInvalidType7,
 	],
 )
 def test_serialize_InvalidModel_SerializerThrowsError(input_model: Type[BaseModel]) :
