@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConstrainedBytes, ConstrainedDecimal
+from pydantic import BaseModel, conint, ConstrainedBytes, ConstrainedDecimal, ConstrainedInt
 from typing import Any, Callable, Dict, Iterable, List, Type, Union
 from datetime import date, datetime, time
 from avro.errors import AvroException
@@ -7,8 +7,7 @@ from enum import Enum
 from uuid import UUID
 
 
-class AvroInt(int) :
-	pass
+AvroInt: ConstrainedInt = conint(ge=-2147483648, le=2147483647)
 
 
 class AvroFloat(float) :
@@ -40,7 +39,7 @@ def get_name(model: Type[BaseModel]) -> str :
 		return 'Bytes_' + str(model.max_length)
 
 	if issubclass(model, ConstrainedDecimal) and model.__name__ == 'ConstrainedDecimalValue' :
-		return 'Decimal_' + '_'.join(list(map(str, [model.max_digits, model.decimal_places])))
+		return f'Decimal_{model.max_digits}_{model.decimal_places}'
 
 	return model.__name__
 

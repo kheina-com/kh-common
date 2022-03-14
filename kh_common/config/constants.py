@@ -3,6 +3,7 @@ from enum import Enum, unique
 from typing import Dict
 from os import environ
 
+
 @unique
 class Environment(Enum) :
 	local: str = 'local'

@@ -124,6 +124,8 @@ class ABetterDatumWriter(DatumWriter) :
 				warn(IgnoredLogicalType(f'{datum} is not a decimal type'))
 
 			elif not datum.same_quantum(Decimal(1) / 10 ** scale) :
+				# round can be used here if we want to force all decimals to the correct scale
+				# round(datum, scale)
 				raise AvroTypeException(writers_schema, datum)
 
 			else :

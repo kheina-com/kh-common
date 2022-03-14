@@ -26,7 +26,7 @@ _data_converter_map = {
 	dict: lambda d : d,
 	list: lambda d : list(map(BaseModel.dict, d)),
 	tuple: lambda d : list(map(BaseModel.dict, d)),
-	BaseModel: lambda d : d.dict(),
+	BaseModel: BaseModel.dict,
 }
 
 

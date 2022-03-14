@@ -1,5 +1,6 @@
-from pydantic import BaseModel, conbytes
-from typing import List, Union
+from pydantic import BaseModel, conbytes, validator
+from typing import List, Optional
+from uuid import UUID
 
 
 class RefId(conbytes(max_length=16, min_length=16)) :
@@ -7,14 +8,20 @@ class RefId(conbytes(max_length=16, min_length=16)) :
 
 
 class Error(BaseModel) :
-	refid: Union[None, RefId]
+	refid: Optional[RefId]
 	status: int
 	error: str
 
 	class Config:
 		json_encoders = {
-			bytes: lambda x : x.hex(),
+			bytes: bytes.hex,
 		}
+
+	@validator('refid', pre=True)
+	def convert_uuid_bytes(cls, value, values):
+		if isinstance(value, UUID) :
+			return value.bytes
+		return value
 
 
 class ValidationErrorDetail(BaseModel) :
