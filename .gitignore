@@ -8,6 +8,7 @@ credentials
 
 # config files
 .vscode
+.DS_Store
 
 # database files
 **/*.db
