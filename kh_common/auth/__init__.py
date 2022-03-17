@@ -25,15 +25,15 @@ class InvalidToken(ValueError) :
 
 
 class KhUser(KhUser) :
-	async def authenticated(self, raise_error=True) :
+	async def authenticated(self, raise_error: bool = True) :
 		if not self.token or self.token != await verifyToken(self.token.token_string) :
 			if raise_error :
 				raise Unauthorized('User is not authenticated.')
 			return False
 		return True
 
-	async def verify_scope(self, scope: Scope) :
-		await self.authenticated()
+	async def verify_scope(self, scope: Scope, raise_error: bool = True) :
+		await self.authenticated(raise_error)
 		if scope not in self.scope :
 			raise Forbidden('User is not authorized to access this resource.')
 		return True
@@ -143,14 +143,14 @@ def browserFingerprint(request: Request) -> str :
 		'host': request.headers.get('host'),
 		'accept-language': request.headers.get('accept-language'),
 		'dnt': request.headers.get('dnt'),
-		# "sec-fetch-dest": "empty",
-		# "sec-fetch-mode": "cors",
-		# "sec-fetch-site": "same-origin",
+		# 'sec-fetch-dest': 'empty',
+		# 'sec-fetch-mode': 'cors',
+		# 'sec-fetch-site': 'same-origin',
 		'pragma': request.headers.get('pragma'),
 		'cache-control': request.headers.get('cache-control'),
 		'cdn-loop': request.headers.get('cdn-loop'),
-		'cf-ipcountry': request.headers.get('cf-ipcountry'),
-		'ip': request.headers.get('cf-connecting-ip') or request.client.host,
+		# 'cf-ipcountry': request.headers.get('cf-ipcountry'),
+		# 'ip': request.headers.get('cf-connecting-ip') or request.client.host,
 	})
 
 	return b64encode(sha1(headers.encode()).digest()).decode()
