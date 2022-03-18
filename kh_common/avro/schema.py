@@ -1,5 +1,5 @@
 from pydantic import BaseModel, conint, ConstrainedBytes, ConstrainedDecimal, ConstrainedInt
-from typing import Any, Callable, Dict, Iterable, List, Type, Union
+from typing import Any, Callable, Dict, Iterable, List, Optional, Type, Union
 from datetime import date, datetime, time
 from avro.errors import AvroException
 from decimal import Decimal
@@ -21,7 +21,7 @@ def convert_schema(model: Type[BaseModel], error: bool = False) -> AvroSchema :
 	namespace: Union[None, str] = getattr(model, '__namespace__', None)
 	name: str = get_name(model)
 	error: bool = error or name.lower().endswith('error')
-	avro_schema: dict = _get_type(model, set(), namespace or name)
+	avro_schema: AvroSchema = _get_type(model, set(), namespace or name)
 
 	if isinstance(avro_schema, dict) :
 		avro_schema['name'] = name
@@ -48,7 +48,7 @@ def get_name(model: Type[BaseModel]) -> str :
 
 
 def _convert_array(model: Type[Iterable[Any]], refs: set, namespace: str) -> Dict[str, AvroSchema] :
-	object_type = _get_type(model.__args__[0], refs, namespace)
+	object_type: AvroSchema = _get_type(model.__args__[0], refs, namespace)
 
 	# optimize: does this do anything?
 	if (
@@ -70,7 +70,7 @@ def _convert_object(model: Type[BaseModel], refs: set, namespace: str) -> Dict[s
 
 	for name, field in model.__fields__.items() :
 		submodel = model.__annotations__[name]
-		f = { 'name': name }
+		f: AvroSchema = { 'name': name }
 
 		if getattr(submodel, '__origin__', None) is Union and len(submodel.__args__) == 2 and type(None) in submodel.__args__ and field.default is None :
 			# this is a special case where the field is nullable and the default value is null, but the actual value can be omitted from the schema
@@ -139,7 +139,7 @@ def _convert_decimal(model: Type[Decimal], refs: set, namespace: str) -> None :
 
 
 def _convert_condecimal(model: Type[ConstrainedDecimal], refs: set, namespace: str) -> Dict[str, Union[str, int]] :
-	if not model.max_digits or not model.decimal_places :
+	if not model.max_digits or model.decimal_places is None :
 		raise AvroException('Decimal attributes max_digits and decimal_places must be provided in order to map to avro decimals')
 
 	return {
@@ -188,16 +188,16 @@ _conversions_ = {
 
 
 def _get_type(model: Type[BaseModel], refs: set, namespace: str) -> AvroSchema :
-	model_name = get_name(model)
+	model_name: str = get_name(model)
 
 	if model_name in refs :
 		return model_name
 
-	origin = getattr(model, '__origin__', None)
+	origin: Optional[Type] = getattr(model, '__origin__', None)
 
 	if origin in _conversions_ :
 		# none of these can be converted without funcs
-		t = _conversions_[origin](model, refs, namespace)
+		t: AvroSchema = _conversions_[origin](model, refs, namespace)
 		if isinstance(t, dict) and 'name' in t :
 			refs.add(t['name'])
 		return t
@@ -205,7 +205,7 @@ def _get_type(model: Type[BaseModel], refs: set, namespace: str) -> AvroSchema :
 	for cls in model.__mro__ :
 		if cls in _conversions_ :
 			if isinstance(_conversions_[cls], Callable) :
-				t = _conversions_[cls](model, refs, namespace)
+				t: AvroSchema = _conversions_[cls](model, refs, namespace)
 				if 'name' in t :
 					refs.add(t['name'])
 				return t
