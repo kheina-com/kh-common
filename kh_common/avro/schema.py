@@ -14,10 +14,13 @@ class AvroFloat(float) :
 	pass
 
 
-def convert_schema(model: Type[BaseModel], error: bool = False) -> dict :
+AvroSchema: Type = Union[str, Dict[str, Union['AvroSchema', int]], List['AvroSchema']]
+
+
+def convert_schema(model: Type[BaseModel], error: bool = False) -> AvroSchema :
 	namespace: Union[None, str] = getattr(model, '__namespace__', None)
 	name: str = get_name(model)
-	error = error or name.lower().endswith('error')
+	error: bool = error or name.lower().endswith('error')
 	avro_schema: dict = _get_type(model, set(), namespace or name)
 
 	if isinstance(avro_schema, dict) :
@@ -44,7 +47,7 @@ def get_name(model: Type[BaseModel]) -> str :
 	return model.__name__
 
 
-def _convert_array(model: Type[Iterable[Any]], refs: set, namespace: str) -> dict :
+def _convert_array(model: Type[Iterable[Any]], refs: set, namespace: str) -> Dict[str, AvroSchema] :
 	object_type = _get_type(model.__args__[0], refs, namespace)
 
 	# optimize: does this do anything?
@@ -62,7 +65,7 @@ def _convert_array(model: Type[Iterable[Any]], refs: set, namespace: str) -> dic
 	}
 
 
-def _convert_object(model: Type[BaseModel], refs: set, namespace: str) -> dict :
+def _convert_object(model: Type[BaseModel], refs: set, namespace: str) -> Dict[str, Union[str, List[AvroSchema]]] :
 	fields = []
 
 	for name, field in model.__fields__.items() :
@@ -92,11 +95,11 @@ def _convert_object(model: Type[BaseModel], refs: set, namespace: str) -> dict :
 	}
 
 
-def _convert_union(model: Type[Union[Any, Any]], refs: set, namespace: str) -> List[Union[dict, str]] :
+def _convert_union(model: Type[Union[Any, Any]], refs: set, namespace: str) -> List[AvroSchema] :
 	return list(map(lambda x : _get_type(x, refs, namespace), model.__args__))
 
 
-def _convert_enum(model: Type[Enum], refs: set, namespace: str) -> dict :
+def _convert_enum(model: Type[Enum], refs: set, namespace: str) -> Dict[str, Union[str, List[str]]] :
 	if len(model.__members__.values()) != len(set(model.__members__.values())) :
 		raise AvroException('enums must contain all unique values to be avro encoded')
 
@@ -107,7 +110,7 @@ def _convert_enum(model: Type[Enum], refs: set, namespace: str) -> dict :
 	}
 
 
-def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> Union[dict, str] :
+def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> Dict[str, Union[str, int]] :
 	if model.min_length == model.max_length and model.max_length :
 		return {
 			'type': 'fixed',
@@ -118,7 +121,7 @@ def _convert_bytes(model: Type[ConstrainedBytes], refs: set, namespace: str) -> 
 	return 'bytes'
 
 
-def _convert_map(model: Type[Dict[str, Any]], refs: set, namespace: str) -> dict :
+def _convert_map(model: Type[Dict[str, Any]], refs: set, namespace: str) -> Dict[str, AvroSchema] :
 	if not hasattr(model, '__args__') :
 		raise AvroException('typing.Dict must be used to determine key/value type, not dict')
 
@@ -135,7 +138,7 @@ def _convert_decimal(model: Type[Decimal], refs: set, namespace: str) -> None :
 	raise AvroException('Support for unconstrained decimals is not possible due to the nature of avro decimals. please use pydantic.condecimal(max_digits=int, decimal_places=int)')
 
 
-def _convert_condecimal(model: Type[ConstrainedDecimal], refs: set, namespace: str) -> dict :
+def _convert_condecimal(model: Type[ConstrainedDecimal], refs: set, namespace: str) -> Dict[str, Union[str, int]] :
 	if not model.max_digits or not model.decimal_places :
 		raise AvroException('Decimal attributes max_digits and decimal_places must be provided in order to map to avro decimals')
 
@@ -184,7 +187,7 @@ _conversions_ = {
 }
 
 
-def _get_type(model: Type[BaseModel], refs: set, namespace: str) -> Union[dict, str] :
+def _get_type(model: Type[BaseModel], refs: set, namespace: str) -> AvroSchema :
 	model_name = get_name(model)
 
 	if model_name in refs :
