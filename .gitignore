@@ -8,6 +8,7 @@ credentials
 
 # config files
 .vscode
+.DS_Store
 
 # database files
 **/*.db
@@ -26,11 +27,12 @@ credentials
 **/.py*
 server.py
 
-# text files, except a requirements file, should it exist
+# text files, except requirements files, should they exist
 *.log
 *.txt
 *.out
 !requirements.txt
+!requirements*.txt
 
 # back ups of files hosted remotely
 **/backups
