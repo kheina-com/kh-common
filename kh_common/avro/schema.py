@@ -90,7 +90,7 @@ class AvroSchemaGenerator :
 			schema['namespace'] = self.namespace
 			schema['name'] = self.name
 
-			if self.error :
+			if schema.get('type') == 'record' and self.error :
 				schema['type'] = 'error'
 
 		return schema
