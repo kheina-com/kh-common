@@ -1,7 +1,12 @@
+try :
+	from typing import Literal
+except ImportError :
+	Literal: type = str
+
 from avro.schema import ArraySchema, EnumSchema, FixedSchema, MapSchema, RecordSchema, Schema, UnionSchema
 from avro.constants import DATE, DECIMAL, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIME_MICROS, TIME_MILLIS
 from avro.errors import AvroException, AvroTypeException, IgnoredLogicalType
-from typing import Any, Dict, Literal, Mapping, Optional, Sequence, Union
+from typing import Any, Dict, Mapping, Optional, Sequence, Union
 from avro.io import BinaryEncoder, DatumWriter
 from decimal import Decimal
 from warnings import warn
