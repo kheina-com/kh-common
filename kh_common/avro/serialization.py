@@ -1,7 +1,7 @@
 from avro.schema import ArraySchema, EnumSchema, FixedSchema, MapSchema, RecordSchema, Schema, UnionSchema
 from avro.constants import DATE, DECIMAL, TIMESTAMP_MICROS, TIMESTAMP_MILLIS, TIME_MICROS, TIME_MILLIS
 from avro.errors import AvroException, AvroTypeException, IgnoredLogicalType
-from typing import Any, Dict, Mapping, Sequence, Union
+from typing import Any, Dict, Literal, Mapping, Optional, Sequence, Union
 from avro.io import BinaryEncoder, DatumWriter
 from decimal import Decimal
 from warnings import warn
@@ -24,13 +24,13 @@ EnumSchema.validate = _validate_enum
 
 class ABetterDatumWriter(DatumWriter) :
 
-	def write_enum(self, writers_schema: EnumSchema, datum: Union[Enum, str], encoder: BinaryEncoder) -> None:
+	def write_enum(self, writers_schema: EnumSchema, datum: Union[Enum, str], encoder: BinaryEncoder) -> None :
 		"""
 		An enum is encoded by a int, representing the zero-based position of the symbol in the schema.
 		python Enums are converted to their value
 		"""
 		datum: str = datum.value if isinstance(datum, Enum) else datum
-		index_of_datum = writers_schema.symbols.index(datum)
+		index_of_datum: int = writers_schema.symbols.index(datum)
 		return encoder.write_int(index_of_datum)
 
 
@@ -57,7 +57,7 @@ class ABetterDatumWriter(DatumWriter) :
 
 
 	def _writer_type_int_(writers_schema: Schema, datum: int, encoder: BinaryEncoder) -> None :
-		logical_type = getattr(writers_schema, 'logical_type', None)
+		logical_type: Optional[Literal] = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == DATE :
 			if isinstance(datum, datetime.date) :
@@ -88,7 +88,7 @@ class ABetterDatumWriter(DatumWriter) :
 
 
 	def _writer_type_long_(writers_schema: Schema, datum: int, encoder: BinaryEncoder) -> None :
-		logical_type = getattr(writers_schema, 'logical_type', None)
+		logical_type: Optional[Literal] = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == TIME_MICROS :
 			if isinstance(datum, datetime.time) :
@@ -112,7 +112,7 @@ class ABetterDatumWriter(DatumWriter) :
 
 
 	def _writer_type_bytes_(writers_schema: Schema, datum: Union[Decimal, bytes], encoder: BinaryEncoder) -> None :
-		logical_type = getattr(writers_schema, 'logical_type', None)
+		logical_type: Optional[Literal] = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == DECIMAL :
 			scale = writers_schema.get_prop('scale')
@@ -138,7 +138,7 @@ class ABetterDatumWriter(DatumWriter) :
 
 
 	def _writer_type_fixed_(self, writers_schema: Schema, datum: Union[Decimal, bytes], encoder: BinaryEncoder) -> None :
-		logical_type = getattr(writers_schema, 'logical_type', None)
+		logical_type: Optional[Literal] = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == DECIMAL :
 			scale = writers_schema.get_prop('scale')

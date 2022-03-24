@@ -8,6 +8,7 @@ class MD5(conbytes(min_length=16, max_length=16)) :
 
 
 class HandshakeMatch(Enum) :
+	__use_enum_names__: bool = False
 	both: str = 'BOTH'
 	client: str = 'CLIENT'
 	none: str = 'NONE'

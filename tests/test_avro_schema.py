@@ -1,4 +1,3 @@
-from datetime import date
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.avro.schema import AvroInt, AvroFloat, convert_schema
 from pydantic import BaseModel, conbytes, condecimal
@@ -22,6 +21,7 @@ class BasicModelBaseTypes(BaseModel) :
 
 
 class BasicEnum(Enum) :
+	__use_enum_names__: bool = False
 	test1: str = 'TEST1'
 	test2: str = 'TEST2'
 	test3: str = 'TEST3'
@@ -49,12 +49,20 @@ class BasicModelTypingTypes(BaseModel) :
 
 
 class BasicModelCustomNamespace(BaseModel) :
-	__namespace__: str = 'custom_namespace'
+	__namespace__: str = 'custom.namespace'
 	A: int
 
 
-class NestedModelCustomNamespace(BaseModel) :
+class BasicModelCustomNestedNamespace(BaseModel) :
+	__namespace__: str = 'custom'
 	A: BasicModelCustomNamespace
+
+
+class BasicEnumUsesNames(Enum) :
+	__use_enum_names__: bool = True
+	test1: str = 'TEST1'
+	test2: str = 'TEST2'
+	test3: str = 'TEST3'
 
 
 class BasicModelDefaultValues(BaseModel) :
@@ -74,14 +82,15 @@ class BasicModelCustomTypes(BaseModel) :
 	'input_model, expected', [
 		(BasicModelBaseTypes, { 'namespace': 'BasicModelBaseTypes', 'name': 'BasicModelBaseTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'string' }, { 'name': 'B', 'type': 'long' }, { 'name': 'C', 'type': 'double' }, { 'name': 'D', 'type': 'bytes' }, { 'name': 'E', 'type': 'boolean' }] }),
 		(BasicModelAdvancedTypes, { 'namespace': 'BasicModelAdvancedTypes', 'name': 'BasicModelAdvancedTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': { 'type': 'long', 'logicalType': 'timestamp-micros' } }, { 'name': 'B', 'type': { 'name': 'Bytes_10', 'type': 'fixed', 'size': 10 } }, { 'name': 'C', 'type': { 'type': 'bytes', 'logicalType': 'decimal', 'precision': 5, 'scale': 3 } }, { 'name': 'D', 'type': { 'name': 'BasicEnum', 'type': 'enum', 'symbols': ['TEST1', 'TEST2', 'TEST3'] } }, { 'name': 'E', 'type': { 'type': 'int', 'logicalType': 'date' } }, { 'name': 'F', 'type': { 'type': 'long', 'logicalType': 'time-micros' } }] }),
-		(NestedModelBasicTypes, { 'namespace': 'NestedModelBasicTypes', 'name': 'NestedModelBasicTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': { 'namespace': 'NestedModelBasicTypes', 'name': 'BasicModelBaseTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'string' }, { 'name': 'B', 'type': 'long' }, { 'name': 'C', 'type': 'double' }, { 'name': 'D', 'type': 'bytes' }, { 'name': 'E', 'type': 'boolean' }] } }, { 'name': 'B', 'type': 'long' }] }),
-		(BasicModelTypingTypes, { 'namespace': 'BasicModelTypingTypes', 'name': 'BasicModelTypingTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': { 'type': 'array', 'namespace': 'BasicModelTypingTypes', 'items': 'long' } }, { 'name': 'B', 'type': { 'type': 'map', 'values': 'long' } }, { 'name': 'C', 'type': ['null', 'long'] }, { 'name': 'D', 'type': ['long', 'string'] }] }),
-		(BasicModelCustomNamespace, { 'namespace': 'custom_namespace', 'name': 'BasicModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'long' }] }),
-		(NestedModelCustomNamespace, { 'namespace': 'NestedModelCustomNamespace', 'name': 'NestedModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': { 'namespace': 'NestedModelCustomNamespace', 'name': 'BasicModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'long' }] } }] }),
+		(NestedModelBasicTypes, { 'namespace': 'NestedModelBasicTypes', 'name': 'NestedModelBasicTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': { 'name': 'BasicModelBaseTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'string' }, { 'name': 'B', 'type': 'long' }, { 'name': 'C', 'type': 'double' }, { 'name': 'D', 'type': 'bytes' }, { 'name': 'E', 'type': 'boolean' }] } }, { 'name': 'B', 'type': 'long' }] }),
+		(BasicModelTypingTypes, { 'namespace': 'BasicModelTypingTypes', 'name': 'BasicModelTypingTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': { 'type': 'array', 'items': 'long' } }, { 'name': 'B', 'type': { 'type': 'map', 'values': 'long' } }, { 'name': 'C', 'type': ['null', 'long'] }, { 'name': 'D', 'type': ['long', 'string'] }] }),
+		(BasicModelCustomNamespace, { 'namespace': 'custom.namespace', 'name': 'BasicModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'long' }] }),
+		(BasicModelCustomNestedNamespace, { 'namespace': 'custom', 'name': 'BasicModelCustomNestedNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': { 'namespace': 'custom.namespace', 'name': 'BasicModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'long' }] } }] }),
 		(Error, { 'namespace': 'Error', 'name': 'Error', 'type': 'error', 'fields': [{ 'name': 'refid', 'type': ['null', { 'type': 'fixed', 'name': 'RefId', 'size': 16 }] }, { 'name': 'status', 'type': 'long' }, { 'name': 'error', 'type': 'string' }] }),
-		(ValidationError, { 'namespace': 'ValidationError', 'name': 'ValidationError', 'type': 'error', 'fields': [{ 'name': 'detail', 'type': { 'items': { 'fields': [{ 'name': 'loc', 'type': { 'items': 'string', 'namespace': 'ValidationError', 'type': 'array' } }, { 'name': 'msg', 'type': 'string' }, { 'name': 'type', 'type': 'string' }], 'name': 'ValidationErrorDetail', 'namespace': 'ValidationError', 'type': 'record' }, 'namespace': 'ValidationError', 'type': 'array' } }] }),
+		(ValidationError, { 'namespace': 'ValidationError', 'name': 'ValidationError', 'type': 'error', 'fields': [{ 'name': 'detail', 'type': { 'items': { 'fields': [{ 'name': 'loc', 'type': { 'items': 'string', 'type': 'array' } }, { 'name': 'msg', 'type': 'string' }, { 'name': 'type', 'type': 'string' }], 'name': 'ValidationErrorDetail', 'type': 'record' }, 'type': 'array' } }] }),
 		(BasicModelDefaultValues, { 'namespace': 'BasicModelDefaultValues', 'name': 'BasicModelDefaultValues', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'string', 'default': '1' }, { 'name': 'B', 'type': 'long', 'default': 2 }, { 'name': 'C', 'type': 'double', 'default': 3.1 }, { 'name': 'D', 'type': 'bytes', 'default': b'abc' }, { 'name': 'E', 'type': 'boolean', 'default': True }] }),
 		(BasicModelCustomTypes, { 'namespace': 'BasicModelCustomTypes', 'name': 'BasicModelCustomTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'int' }, { 'name': 'B', 'type': 'float' }] }),
+		# (BasicEnumUsesNames, { 'namespace': 'BasicEnumUsesNames', 'name': 'BasicEnumUsesNames', 'type': 'enum', 'symbols': ['test1', 'test2', 'test3'] }),
 	],
 )
 def test_ConvertSchema_ValidInputError_ModelConvertedSuccessfully(input_model: Type[BaseModel], expected: dict) :
@@ -97,14 +106,15 @@ def test_ConvertSchema_ValidInputError_ModelConvertedSuccessfully(input_model: T
 	'input_model, expected', [
 		(BasicModelBaseTypes, { 'namespace': 'BasicModelBaseTypes', 'name': 'BasicModelBaseTypes', 'type': 'error', 'fields': [{ 'name': 'A', 'type': 'string' }, { 'name': 'B', 'type': 'long' }, { 'name': 'C', 'type': 'double' }, { 'name': 'D', 'type': 'bytes' }, { 'name': 'E', 'type': 'boolean' }] }),
 		(BasicModelAdvancedTypes, { 'namespace': 'BasicModelAdvancedTypes', 'name': 'BasicModelAdvancedTypes', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'type': 'long', 'logicalType': 'timestamp-micros' } }, { 'name': 'B', 'type': { 'name': 'Bytes_10', 'type': 'fixed', 'size': 10 } }, { 'name': 'C', 'type': { 'type': 'bytes', 'logicalType': 'decimal', 'precision': 5, 'scale': 3 } }, { 'name': 'D', 'type': { 'name': 'BasicEnum', 'type': 'enum', 'symbols': ['TEST1', 'TEST2', 'TEST3'] } }, { 'name': 'E', 'type': { 'type': 'int', 'logicalType': 'date' } }, { 'name': 'F', 'type': { 'type': 'long', 'logicalType': 'time-micros' } }] }),
-		(NestedModelBasicTypes, { 'namespace': 'NestedModelBasicTypes', 'name': 'NestedModelBasicTypes', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'namespace': 'NestedModelBasicTypes', 'name': 'BasicModelBaseTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'string' }, { 'name': 'B', 'type': 'long' }, { 'name': 'C', 'type': 'double' }, { 'name': 'D', 'type': 'bytes' }, { 'name': 'E', 'type': 'boolean' }] } }, { 'name': 'B', 'type': 'long' }] }),
-		(BasicModelTypingTypes, { 'namespace': 'BasicModelTypingTypes', 'name': 'BasicModelTypingTypes', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'type': 'array', 'namespace': 'BasicModelTypingTypes', 'items': 'long' } }, { 'name': 'B', 'type': { 'type': 'map', 'values': 'long' } }, { 'name': 'C', 'type': ['null', 'long'] }, { 'name': 'D', 'type': ['long', 'string'] }] }),
-		(BasicModelCustomNamespace, { 'namespace': 'custom_namespace', 'name': 'BasicModelCustomNamespace', 'type': 'error', 'fields': [{ 'name': 'A', 'type': 'long' }] }),
-		(NestedModelCustomNamespace, { 'namespace': 'NestedModelCustomNamespace', 'name': 'NestedModelCustomNamespace', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'namespace': 'NestedModelCustomNamespace', 'name': 'BasicModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'long' }] } }] }),
+		(NestedModelBasicTypes, { 'namespace': 'NestedModelBasicTypes', 'name': 'NestedModelBasicTypes', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'name': 'BasicModelBaseTypes', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'string' }, { 'name': 'B', 'type': 'long' }, { 'name': 'C', 'type': 'double' }, { 'name': 'D', 'type': 'bytes' }, { 'name': 'E', 'type': 'boolean' }] } }, { 'name': 'B', 'type': 'long' }] }),
+		(BasicModelTypingTypes, { 'namespace': 'BasicModelTypingTypes', 'name': 'BasicModelTypingTypes', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'type': 'array', 'items': 'long' } }, { 'name': 'B', 'type': { 'type': 'map', 'values': 'long' } }, { 'name': 'C', 'type': ['null', 'long'] }, { 'name': 'D', 'type': ['long', 'string'] }] }),
+		(BasicModelCustomNamespace, { 'namespace': 'custom.namespace', 'name': 'BasicModelCustomNamespace', 'type': 'error', 'fields': [{ 'name': 'A', 'type': 'long' }] }),
+		(BasicModelCustomNestedNamespace, { 'namespace': 'custom', 'name': 'BasicModelCustomNestedNamespace', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'namespace': 'custom.namespace', 'name': 'BasicModelCustomNamespace', 'type': 'record', 'fields': [{ 'name': 'A', 'type': 'long' }] } }] }),
 		(Error, { 'namespace': 'Error', 'name': 'Error', 'type': 'error', 'fields': [{ 'name': 'refid', 'type': ['null', { 'type': 'fixed', 'name': 'RefId', 'size': 16 }] }, { 'name': 'status', 'type': 'long' }, { 'name': 'error', 'type': 'string' }] }),
-		(ValidationError, { 'namespace': 'ValidationError', 'name': 'ValidationError', 'type': 'error', 'fields': [{ 'name': 'detail', 'type': { 'items': { 'fields': [{ 'name': 'loc', 'type': { 'items': 'string', 'namespace': 'ValidationError', 'type': 'array' } }, { 'name': 'msg', 'type': 'string' }, { 'name': 'type', 'type': 'string' }], 'name': 'ValidationErrorDetail', 'namespace': 'ValidationError', 'type': 'record' }, 'namespace': 'ValidationError', 'type': 'array' } }] }),
+		(ValidationError, { 'namespace': 'ValidationError', 'name': 'ValidationError', 'type': 'error', 'fields': [{ 'name': 'detail', 'type': { 'items': { 'fields': [{ 'name': 'loc', 'type': { 'items': 'string', 'type': 'array' } }, { 'name': 'msg', 'type': 'string' }, { 'name': 'type', 'type': 'string' }], 'name': 'ValidationErrorDetail', 'type': 'record' }, 'type': 'array' } }] }),
 		(BasicModelDefaultValues, { 'namespace': 'BasicModelDefaultValues', 'name': 'BasicModelDefaultValues', 'type': 'error', 'fields': [{ 'name': 'A', 'type': 'string', 'default': '1' }, { 'name': 'B', 'type': 'long', 'default': 2 }, { 'name': 'C', 'type': 'double', 'default': 3.1 }, { 'name': 'D', 'type': 'bytes', 'default': b'abc' }, { 'name': 'E', 'type': 'boolean', 'default': True }] }),
 		(BasicModelCustomTypes, { 'namespace': 'BasicModelCustomTypes', 'name': 'BasicModelCustomTypes', 'type': 'error', 'fields': [{ 'name': 'A', 'type': 'int' }, { 'name': 'B', 'type': 'float' }] }),
+		# (BasicModelUseEnumNames, { 'namespace': 'BasicModelUseEnumNames', 'name': 'BasicModelUseEnumNames', 'type': 'error', 'fields': [{ 'name': 'A', 'type': { 'name': 'BasicEnum', 'type': 'enum', 'symbols': ['test1', 'test2', 'test3'] } }], }),
 	],
 )
 def test_ConvertSchema_ValidInputError_ErrorModelConvertedSuccessfully(input_model: Type[BaseModel], expected: dict) :
@@ -146,6 +156,15 @@ class BasicEnumInvalidType7(Enum) :
 	test3: str = 'TEST1'
 
 
+class NestedModelInvalidNamespace1(BaseModel) :
+	A: BasicModelCustomNamespace
+
+
+class NestedModelInvalidNamespace2(BaseModel) :
+	__namespace__: str = 'custom_namespace'
+	A: BasicModelCustomNamespace
+
+
 @pytest.mark.parametrize(
 	'input_model', [
 		BasicModelInvalidType1,
@@ -155,13 +174,15 @@ class BasicEnumInvalidType7(Enum) :
 		BasicModelInvalidType5,
 		BasicModelInvalidType6,
 		BasicEnumInvalidType7,
+		NestedModelInvalidNamespace1,
+		NestedModelInvalidNamespace2,
 	],
 )
 def test_ConvertSchema_InvalidModel_ConvertSchemaThrowsError(input_model: Type[BaseModel]) :
 
 	# assert
 	with raises(AvroException) :
-		convert_schema(input_model)
+		print(convert_schema(input_model))
 
 
 # this is a special case, these schemas are defined by the apache organtization and the schemas generated by convert_schema MUST match
