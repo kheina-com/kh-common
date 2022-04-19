@@ -120,7 +120,7 @@ class ABetterDatumWriter(DatumWriter) :
 		logical_type: Optional[Literal] = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == DECIMAL :
-			scale = writers_schema.get_prop('scale')
+			scale: int = writers_schema.get_prop('scale')
 
 			if not (isinstance(scale, int) and scale > 0) :
 				warn(IgnoredLogicalType(f'Invalid decimal scale {scale}. Must be a positive integer.'))
@@ -146,7 +146,7 @@ class ABetterDatumWriter(DatumWriter) :
 		logical_type: Optional[Literal] = getattr(writers_schema, 'logical_type', None)
 
 		if logical_type == DECIMAL :
-			scale = writers_schema.get_prop('scale')
+			scale: int = writers_schema.get_prop('scale')
 
 			if not (isinstance(scale, int) and scale > 0) :
 				warn(IgnoredLogicalType(f'Invalid decimal scale {scale}. Must be a positive integer.'))

@@ -1,5 +1,3 @@
-
-from pickletools import optimize
 from kh_common.avro.handshake import HandshakeRequest, HandshakeResponse, HandshakeMatch, AvroMessage, AvroProtocol, CallRequest, CallResponse
 from kh_common.avro import AvroSerializer, AvroDeserializer, avro_frame, read_avro_frames
 from kh_common.avro.schema import convert_schema
@@ -9,7 +7,6 @@ from fastapi.responses import Response
 from pydantic import BaseModel
 from collections import defaultdict, OrderedDict
 from starlette.types import ASGIApp, Receive, Send, Scope
-from uuid import uuid4
 from typing import Iterator, Tuple, Type, Optional, Union, Any, Dict, List
 from fastapi.dependencies.models import Dependant
 from fastapi.datastructures import Default, DefaultPlaceholder
@@ -20,9 +17,8 @@ from pydantic.fields import ModelField, Undefined
 import json
 from fastapi.exceptions import RequestValidationError
 from pydantic.error_wrappers import ErrorWrapper
-from starlette.exceptions import HTTPException
 from fastapi.dependencies.utils import solve_dependencies
-import email.message
+from email.message import Message as EmailMessage
 from hashlib import md5
 from avro.schema import parse, Schema
 from kh_common.models import Error, ValidationError, ValidationErrorDetail
@@ -42,7 +38,7 @@ client_protocol_max_size = 10
 client_protocol_cache = defaultdict(OrderedDict)
 cache_locks = defaultdict(Lock)
 
-# format { endpoint_path: (md5 hash, protocol string) }
+# format { route_path: (md5 hash, protocol string) }
 server_protocol_cache: Dict[str, Tuple[bytes, str, AvroSerializer]] = { }
 
 AvroChecker = ReaderWriterCompatibilityChecker()
@@ -313,7 +309,7 @@ async def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) ->
 		return request_deserializer(call_request.request)
 
 
-def get_server_protocol(route: APIRoute, request: Request) -> Tuple[bytes, str] :
+def get_server_protocol(route: APIRoute, request: Request) -> Tuple[str, bytes, AvroSerializer] :
 	if route.path in server_protocol_cache :
 		return server_protocol_cache[route.path]
 
@@ -440,7 +436,7 @@ class AvroRoute(APIRoute) :
 								json_body = await request.json()
 
 							else :
-								message = email.message.Message()
+								message = EmailMessage()
 								message['content-type'] = content_type_value
 
 								if message.get_content_maintype() == 'application' :
@@ -461,6 +457,9 @@ class AvroRoute(APIRoute) :
 				raise RequestValidationError([ErrorWrapper(e, ('body', e.pos))], body=e.doc)
 
 			except AvroDecodeError :
+				server_protocol: str
+				protocol_hash: bytes
+				serializer: AvroSerializer
 				server_protocol, protocol_hash, serializer = get_server_protocol(self, request)
 				error: str = 'avro handshake failed, client protocol incompatible'
 
@@ -479,6 +478,9 @@ class AvroRoute(APIRoute) :
 				)
 
 			except Exception as e :
+				server_protocol: str
+				protocol_hash: bytes
+				serializer: AvroSerializer
 				server_protocol, protocol_hash, serializer = get_server_protocol(self, request)
 				error: str = 'There was an error parsing the body: ' + str(e)
 
@@ -505,6 +507,7 @@ class AvroRoute(APIRoute) :
 			values, errors, background_tasks, sub_response, _ = solved_result
 
 			if errors :
+				serializer: AvroSerializer
 				_, _, serializer = get_server_protocol(self, request)
 				error = ValidationError(detail=[ValidationErrorDetail(**e) for e in errors[0].exc.errors()])
 				return AvroJsonResponse(
