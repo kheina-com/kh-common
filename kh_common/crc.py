@@ -1,4 +1,4 @@
-class CRC:
+class CRC :
 
 	def __init__(self: 'CRC', bit_length: int = 32, polynomial: int = 0x04c11db7, init_value: int = None, xor_out: int = None) -> 'CRC' :
 		if int(bit_length / 8) != float(bit_length / 8) :
