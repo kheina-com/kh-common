@@ -1,64 +1,53 @@
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
-from typing import Any, Callable, Dict, Iterable, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, Set, Tuple, Type
 from kh_common.exceptions.base_error import BaseError
 from kh_common.logging import getLogger, Logger
-from aiohttp import ClientError
-from uuid import UUID, uuid4
+from aiohttp.web import HTTPException
 from functools import wraps
+from uuid import uuid4
 
 
 logger: Logger = getLogger()
 
 
 class HttpError(BaseError) :
-	def __init__(self, message: str, *args:Tuple[Any], status:int=500, **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, **kwargs)
-		self.status = status
-
-
-class NotFound(HttpError) :
-	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, status=404, **kwargs)
+	status: int = 500
 
 
 class BadRequest(HttpError) :
-	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, status=400, **kwargs)
+	status: int = 400
 
 
 class Unauthorized(HttpError) :
-	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, status=401, **kwargs)
+	status: int = 401
 
 
 class Forbidden(HttpError) :
-	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, status=403, **kwargs)
+	status: int = 403
 
 
-class UnsupportedMedia(HttpError) :
-	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, status=415, **kwargs)
-
-
-class UnprocessableEntity(HttpError) :
-	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, status=422, **kwargs)
+class NotFound(HttpError) :
+	status: int = 404
 
 
 class Conflict(HttpError) :
-	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, status=409, **kwargs)
+	status: int = 409
+
+
+class UnsupportedMedia(HttpError) :
+	status: int = 415
+
+
+class UnprocessableEntity(HttpError) :
+	status: int = 422
 
 
 class BadGateway(HttpError) :
-	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, status=502, **kwargs)
+	status: int = 502
 
 
 class ServiceUnavailable(HttpError) :
-	def __init__(self, message: str, *args:Tuple[Any], **kwargs: Dict[str, Any]) -> None :
-		super().__init__(message, *args, status=503, **kwargs)
+	status: int = 503
 
 
 class InternalServerError(HttpError) :
@@ -73,7 +62,7 @@ class BadOrMalformedResponse(HttpError) :
 	pass
 
 
-def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handlers: Dict[type, Tuple[type, str]] = { }) -> Callable :
+def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handlers: Dict[Type[Exception], Tuple[Type[Exception], str]] = { }) -> Callable :
 	"""
 	raises internal server error from any unexpected errors
 	f'an unexpected error occurred while {message}.'
@@ -101,7 +90,7 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 							raise Error(custom_message)
 
 					kwargs.update(zip(arg_spec.args, args))
-					refid: UUID = uuid4().hex
+					refid: str = uuid4().hex
 
 					logdata = {
 						key: kwargs[key]
@@ -109,9 +98,14 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					}
 					logger.exception({ 'params': logdata, 'refid': refid })
 
-					error_type: type = ServiceUnavailable if isinstance(e, ClientError) else InternalServerError
+					if isinstance(e, HTTPException) :
+						raise BadGateway(
+							f'{BadGateway.__name__}: received an invalid response from an upstream server while {message}.',
+							refid = refid,
+							logdata = logdata,
+						)
 
-					raise error_type(
+					raise InternalServerError(
 						f'an unexpected error occurred while {message}.',
 						refid = refid,
 						logdata = logdata,
@@ -133,7 +127,7 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 							raise Error(custom_message)
 
 					kwargs.update(zip(arg_spec.args, args))
-					refid: UUID = uuid4().hex
+					refid: str = uuid4().hex
 
 					logdata = {
 						key: kwargs[key]
@@ -141,7 +135,7 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					}
 					logger.exception({ 'params': logdata, 'refid': refid })
 
-					error_type: type = ServiceUnavailable if isinstance(e, ClientError) else InternalServerError
+					error_type: Type[Exception] = BadGateway if isinstance(e, HTTPException) else InternalServerError
 
 					raise error_type(
 						f'an unexpected error occurred while {message}.',

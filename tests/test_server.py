@@ -58,6 +58,29 @@ class TestAppServer :
 		assert { 'status': 500, 'refid': refid.hex, 'error': 'HttpError: test' } == response.json()
 
 
+	def test_ServerApp_GetRaisesAioHttpError_CorrectErrorFormat(self) :
+
+		# arrange
+		from aiohttp.web import HTTPNotFound
+		app = ServerApp(auth=False)
+		refid = uuid4()
+
+		@app.get(endpoint)
+		async def test_func() :
+			raise HTTPNotFound()
+
+		client = TestClient(app, base_url=base_url)
+
+		# act
+		response = client.get(schema + base_url + endpoint)
+
+		# assert
+		assert 502 == response.status_code
+		response_json = response.json()
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'status': 502, 'error': 'BadGateway: received an invalid response from an upstream server.' } == response_json
+
+
 	def test_ServerApp_GetRaisesValueError_CorrectErrorFormat(self) :
 
 		# arrange
