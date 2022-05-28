@@ -2,7 +2,7 @@ from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from typing import Any, Callable, Dict, Iterable, Set, Tuple, Type
 from kh_common.exceptions.base_error import BaseError
 from kh_common.logging import getLogger, Logger
-from aiohttp.web import HTTPException
+from aiohttp import ClientError
 from functools import wraps
 from uuid import uuid4
 
@@ -98,7 +98,7 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					}
 					logger.exception({ 'params': logdata, 'refid': refid })
 
-					if isinstance(e, HTTPException) :
+					if isinstance(e, ClientError) :
 						raise BadGateway(
 							f'{BadGateway.__name__}: received an invalid response from an upstream server while {message}.',
 							refid = refid,
@@ -135,9 +135,14 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 					}
 					logger.exception({ 'params': logdata, 'refid': refid })
 
-					error_type: Type[Exception] = BadGateway if isinstance(e, HTTPException) else InternalServerError
+					if isinstance(e, ClientError) :
+						raise BadGateway(
+							f'{BadGateway.__name__}: received an invalid response from an upstream server while {message}.',
+							refid = refid,
+							logdata = logdata,
+						)
 
-					raise error_type(
+					raise InternalServerError(
 						f'an unexpected error occurred while {message}.',
 						refid = refid,
 						logdata = logdata,
