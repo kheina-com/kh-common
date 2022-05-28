@@ -1,4 +1,4 @@
-from aiohttp import ClientResponseError, ClientTimeout, request as async_request
+from aiohttp import ClientResponseError, ClientResponse, ClientTimeout, request as async_request
 from typing import Any, Callable, Dict, Iterable, Set, Type
 from pydantic import BaseModel, parse_obj_as
 from kh_common.hashing import Hashable
@@ -20,12 +20,13 @@ class Gateway(Hashable) :
 	def __init__(
 		self: 'Gateway',
 		endpoint: str,
-		model: Type[BaseModel],
+		model: Type[BaseModel] = None,
 		method: str = 'GET',
 		timeout: float = 30,
 		attempts: int = 3,
 		status_to_retry: Iterable[int] = [429, 502, 503, 504],
 		backoff: Callable = lambda attempt : attempt ** 2,
+		decoder: Callable = ClientResponse.json,
 	) -> None :
 		"""
 		Defines an endpoint to be called later.
@@ -38,6 +39,7 @@ class Gateway(Hashable) :
 		:param attempts: how many times to attempt to reach the endpoint, in total
 		:param status_to_retry: which http status codes should be retried
 		:param backoff: backoff function to run on failure to determine how many seconds to wait before retrying call. Must accept attempt count as param, defaults to attempt ** 2
+		:param decoder: async function used to decode the response body. defaults to ClientResponse.json
 		"""
 		self._endpoint: str = endpoint
 		self._model: Type = model
@@ -46,6 +48,7 @@ class Gateway(Hashable) :
 		self._attempts: int = attempts
 		self._status_to_retry: Set[int] = set(status_to_retry)
 		self._backoff: Callable = backoff
+		self._decoder: Callable = decoder
 
 
 	async def __call__(
@@ -91,11 +94,9 @@ class Gateway(Hashable) :
 					self._endpoint.format(**kwargs),
 					**req,
 				) as response :
-					if response.status == 204 :
-						return
-
-					data = await response.json()
-					return parse_obj_as(self._model, data)
+					if self._model :
+						data = await self._decoder(response)
+						return parse_obj_as(self._model, data)
 
 			except ClientResponseError as e :
 				if e.status not in self._status_to_retry or attempt == self._attempts :
