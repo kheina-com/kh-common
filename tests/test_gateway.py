@@ -10,13 +10,13 @@ from pydantic import BaseModel
 from aiohttp import ClientResponseError
 
 
-async def create_test_server(custom_handler: Callable = None, method: str = 'GET') -> TestServer :
+async def create_test_server(custom_handler: Callable = None, method: str = 'GET', path: str = '/') -> TestServer :
 	app: Application = Application()
 
 	async def handler(request: Request):
 		return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
 
-	app.add_routes([RouteDef(method, '/', custom_handler or handler, {})])
+	app.add_routes([RouteDef(method, path, custom_handler or handler, {})])
 	server = TestServer(app)
 	await server.start_server()
 	return server
@@ -108,7 +108,6 @@ class TestGateway :
 		async with await create_test_server(handler) as server :
 			# arrange
 			url = server.make_url('/')
-			# manually set backoff to always be 0
 			gateway: Gateway = Gateway(str(url), attempts=3)
 
 			# act & assert
@@ -133,7 +132,6 @@ class TestGateway :
 		async with await create_test_server(handler, method) as server :
 			# arrange
 			url = server.make_url('/')
-			# manually set backoff to always be 0
 			gateway: Gateway = Gateway(str(url), model=ResponseModel, method=method)
 
 			# act & assert
@@ -157,11 +155,70 @@ class TestGateway :
 		async with await create_test_server(handler, method) as server :
 			# arrange
 			url = server.make_url('/')
-			# manually set backoff to always be 0
 			gateway: Gateway = Gateway(str(url), model=ResponseModel, method=method)
 
 			# act & assert
 			result = await gateway(body=body)
+
+			# assert
+			assert result.success == True
+
+
+	async def test_Gateway_GatewayUsesBodyAndParams_BodyAndParamsAreEncoded(self) :
+		method: str = 'POST'
+		body: Dict[str, str] = { 'hello': 'world' }
+		params: Dict[str, str] = { 'url': 'params' }
+
+		async def handler(request: Request):
+			assert body == await request.json()
+			assert params == dict(request.query)
+			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
+
+		async with await create_test_server(handler, method) as server :
+			# arrange
+			url = server.make_url('/')
+			gateway: Gateway = Gateway(str(url), model=ResponseModel, method=method)
+
+			# act & assert
+			result = await gateway(body=body, params=params)
+
+			# assert
+			assert result.success == True
+
+
+	async def test_Gateway_GatewayUsesOnlyParams_ParamsAreEncoded(self) :
+		method: str = 'POST'
+		params: Dict[str, str] = { 'url': 'params' }
+
+		async def handler(request: Request):
+			assert params == dict(request.query)
+			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
+
+		async with await create_test_server(handler, method) as server :
+			# arrange
+			url = server.make_url('/')
+			gateway: Gateway = Gateway(str(url), model=ResponseModel, method=method)
+
+			# act & assert
+			result = await gateway(params=params)
+
+			# assert
+			assert result.success == True
+
+
+	async def test_Gateway_GatewayUsesUrlFormat_UrlIsFormattedAndReached(self) :
+		path: str = 'biscuit'
+
+		async def handler(request: Request):
+			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
+
+		async with await create_test_server(handler, path='/' + path) as server :
+			# arrange
+			url = server.make_url('/')
+			gateway: Gateway = Gateway(str(url) + '{path}', model=ResponseModel)
+
+			# act & assert
+			result = await gateway(path=path)
 
 			# assert
 			assert result.success == True

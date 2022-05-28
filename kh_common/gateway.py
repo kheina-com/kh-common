@@ -54,6 +54,7 @@ class Gateway(Hashable) :
 	async def __call__(
 		self: 'Gateway',
 		body: dict = None,
+		params: dict = None,
 		auth: str = None,
 		headers: Dict[str, str] = None,
 		**kwargs,
@@ -61,6 +62,7 @@ class Gateway(Hashable) :
 		"""
 		Calls pre-defined endpoint using the provided HTTP method.
 		:param body: body will be encoded either as json body or url params if method is contained in self.MethodsWithoutBody
+		:param params: same as body, but will always be encoded as url params
 		:param headers: headers will be passed to the request
 		:param auth: auth will be passed to the authorization as a bearer token (NOTE: auth will override any authorization header passed via headers)
 		:param kwargs: any other keyword arguments will be passed to endpoint.format if a string format was provided for the endpoint
@@ -80,6 +82,13 @@ class Gateway(Hashable) :
 
 		else :
 			req['json'] = body
+
+		if params :
+			if 'params' in req :
+				req['params'].update(params)
+
+			else :
+				req['params'] = params
 
 		if headers :
 			req['headers'].update(headers)
