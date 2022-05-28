@@ -6,6 +6,7 @@ from kh_common.config.repo import short_hash
 from fastapi.testclient import TestClient
 from kh_common.auth import Scope
 from fastapi import FastAPI
+from aiohttp import request
 from uuid import uuid4
 import pytest
 
@@ -58,15 +59,16 @@ class TestAppServer :
 		assert { 'status': 500, 'refid': refid.hex, 'error': 'HttpError: test' } == response.json()
 
 
-	def test_ServerApp_GetRaisesAioHttpError_CorrectErrorFormat(self) :
+	def test_ServerApp_GetRaisesClientResponseError_CorrectErrorFormat(self) :
 
 		# arrange
-		from aiohttp.web import HTTPNotFound
 		app = ServerApp(auth=False)
 
 		@app.get(endpoint)
 		async def test_func() :
-			raise HTTPNotFound()
+			# send request to a fake url to generate a ClientRequestError
+			async with request('GET', '/') :
+				pass
 
 		client = TestClient(app, base_url=base_url)
 
