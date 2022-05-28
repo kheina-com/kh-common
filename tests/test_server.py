@@ -66,7 +66,7 @@ class TestAppServer :
 
 		@app.get(endpoint)
 		async def test_func() :
-			# send request to a fake url to generate a ClientRequestError
+			# send request to a fake url to generate a ClientResponseError
 			async with request('GET', '/') :
 				pass
 
