@@ -6,6 +6,7 @@ from kh_common.config.repo import short_hash
 from fastapi.testclient import TestClient
 from kh_common.auth import Scope
 from fastapi import FastAPI
+from aiohttp import request
 from uuid import uuid4
 import pytest
 
@@ -56,6 +57,29 @@ class TestAppServer :
 		# assert
 		assert 500 == response.status_code
 		assert { 'status': 500, 'refid': refid.hex, 'error': 'HttpError: test' } == response.json()
+
+
+	def test_ServerApp_GetRaisesClientResponseError_CorrectErrorFormat(self) :
+
+		# arrange
+		app = ServerApp(auth=False)
+
+		@app.get(endpoint)
+		async def test_func() :
+			# send request to a fake url to generate a ClientResponseError
+			async with request('GET', '/') :
+				pass
+
+		client = TestClient(app, base_url=base_url)
+
+		# act
+		response = client.get(schema + base_url + endpoint)
+
+		# assert
+		assert 502 == response.status_code
+		response_json = response.json()
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'status': 502, 'error': 'BadGateway: received an invalid response from an upstream server.' } == response_json
 
 
 	def test_ServerApp_GetRaisesValueError_CorrectErrorFormat(self) :
@@ -150,7 +174,7 @@ class TestAppServer :
 		token = mock_token(1)
 
 		# act
-		response = client.get(schema + base_url + endpoint, headers={ 'authorization': f'bearer {token}' })
+		response = client.get(schema + base_url + endpoint, headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 200 == response.status_code
