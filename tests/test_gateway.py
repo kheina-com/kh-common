@@ -210,10 +210,7 @@ class TestGateway :
 	async def test_Gateway_GatewayUsesUrlFormat_UrlIsFormattedAndReached(self) :
 		path: str = 'biscuit'
 
-		async def handler(request: Request) :
-			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
-
-		async with await create_test_server(handler, path='/' + path) as server :
+		async with await create_test_server(path='/' + path) as server :
 			# arrange
 			url = server.make_url('/')
 			gateway: Gateway = Gateway(str(url) + '{path}', model=ResponseModel)
