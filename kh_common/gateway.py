@@ -39,7 +39,7 @@ class Gateway(Hashable) :
 		:param attempts: how many times to attempt to reach the endpoint, in total
 		:param status_to_retry: which http status codes should be retried
 		:param backoff: backoff function to run on failure to determine how many seconds to wait before retrying call. Must accept attempt count as param, defaults to attempt ** 2
-		:param decoder: async function used to decode the response body. defaults to ClientResponse.json
+		:param decoder: async function used to decode the response body. accepts ClientResponse as arg. defaults to ClientResponse.json
 		"""
 		self._endpoint: str = endpoint
 		self._model: Type = model
@@ -103,9 +103,11 @@ class Gateway(Hashable) :
 					self._endpoint.format(**kwargs),
 					**req,
 				) as response :
-					if self._model :
-						data = await self._decoder(response)
-						return parse_obj_as(self._model, data)
+					if not self._model :
+						return
+
+					data = await self._decoder(response)
+					return parse_obj_as(self._model, data)
 
 			except ClientResponseError as e :
 				if e.status not in self._status_to_retry or attempt == self._attempts :

@@ -7,13 +7,13 @@ from aiohttp.web import Application, RouteDef, Response, Request
 from aiohttp.test_utils import TestServer
 import json
 from pydantic import BaseModel
-from aiohttp import ClientResponseError
+from aiohttp import ClientResponseError, ClientResponse
 
 
 async def create_test_server(custom_handler: Callable = None, method: str = 'GET', path: str = '/') -> TestServer :
 	app: Application = Application()
 
-	async def handler(request: Request):
+	async def handler(request: Request) :
 		return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
 
 	app.add_routes([RouteDef(method, path, custom_handler or handler, {})])
@@ -29,7 +29,8 @@ class ResponseModel(BaseModel) :
 # @pytest.mark.asyncio
 class TestGateway :
 
-	Attempts: int = 0
+	auth: str = 'authorization'
+	attempts: int = 0
 
 	async def test_Gateway_BasicGet_GatewayReturnsModel(self) :
 		async with await create_test_server() as server :
@@ -62,7 +63,7 @@ class TestGateway :
 		[500, 404, 403, 502, 429],
 	)
 	async def test_Gateway_ServerRaisesError_GatewayYieldsError(self, status: int) :
-		async def handler(request: Request):
+		async def handler(request: Request) :
 			return Response(body=json.dumps({ 'success': False }).encode(), status=status, content_type='application/json')
 
 		async with await create_test_server(handler) as server :
@@ -76,11 +77,11 @@ class TestGateway :
 
 
 	async def test_Gateway_ServerRaisesError_GatewayRetriesEndpoint(self) :
-		self.Attempts: int = 0
+		self.attempts = 0
 
-		async def handler(request: Request):
+		async def handler(request: Request) :
 			# 429 is a known retry error code
-			self.Attempts += 1
+			self.attempts += 1
 			return Response(body=json.dumps({ 'success': False }).encode(), status=429, content_type='application/json')
 
 		async with await create_test_server(handler) as server :
@@ -94,15 +95,15 @@ class TestGateway :
 				await gateway()
 
 			# assert
-			assert self.Attempts == 3
+			assert self.attempts == 3
 
 
 	async def test_Gateway_ServerRaisesError_GatewayDoesNotRetryEndpoint(self) :
-		self.Attempts: int = 0
+		self.attempts = 0
 
-		async def handler(request: Request):
+		async def handler(request: Request) :
 			# 404 is a known error code to not attempt to retry
-			self.Attempts += 1
+			self.attempts += 1
 			return Response(body=json.dumps({ 'success': False }).encode(), status=404, content_type='application/json')
 
 		async with await create_test_server(handler) as server :
@@ -115,7 +116,7 @@ class TestGateway :
 				await gateway()
 
 			# assert
-			assert self.Attempts == 1
+			assert self.attempts == 1
 
 
 	@pytest.mark.parametrize(
@@ -125,7 +126,7 @@ class TestGateway :
 	async def test_Gateway_GatewayUsesMethodWithoutBody_ParamsAreUrlEncoded(self, method: str) :
 		body: Dict[str, str] = { 'hello': 'world' }
 
-		async def handler(request: Request):
+		async def handler(request: Request) :
 			assert body == dict(request.query)
 			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
 
@@ -148,7 +149,7 @@ class TestGateway :
 	async def test_Gateway_GatewayUsesMethodWithBody_ParamsAreJsonEncoded(self, method: str) :
 		body: Dict[str, str] = { 'hello': 'world' }
 
-		async def handler(request: Request):
+		async def handler(request: Request) :
 			assert body == await request.json()
 			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
 
@@ -169,7 +170,7 @@ class TestGateway :
 		body: Dict[str, str] = { 'hello': 'world' }
 		params: Dict[str, str] = { 'url': 'params' }
 
-		async def handler(request: Request):
+		async def handler(request: Request) :
 			assert body == await request.json()
 			assert params == dict(request.query)
 			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
@@ -190,7 +191,7 @@ class TestGateway :
 		method: str = 'POST'
 		params: Dict[str, str] = { 'url': 'params' }
 
-		async def handler(request: Request):
+		async def handler(request: Request) :
 			assert params == dict(request.query)
 			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
 
@@ -209,7 +210,7 @@ class TestGateway :
 	async def test_Gateway_GatewayUsesUrlFormat_UrlIsFormattedAndReached(self) :
 		path: str = 'biscuit'
 
-		async def handler(request: Request):
+		async def handler(request: Request) :
 			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
 
 		async with await create_test_server(handler, path='/' + path) as server :
@@ -222,3 +223,82 @@ class TestGateway :
 
 			# assert
 			assert result.success == True
+
+
+	async def test_Gateway_GatewayHasNoModel_EndpointIsCalled(self) :
+		self.attempts = 0
+
+		async def handler(request: Request) :
+			self.attempts += 1
+			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
+
+		async with await create_test_server(handler) as server :
+			# arrange
+			url = server.make_url('/')
+			gateway: Gateway = Gateway(str(url))
+
+			# act & assert
+			result = await gateway()
+
+			# assert
+			assert result == None
+			assert self.attempts == 1
+
+
+	async def test_Gateway_GatewayUsesAuth_AuthIncludedWithBearer(self) :
+		async def handler(request: Request) :
+			assert request.headers['authorization'] == f'Bearer {self.auth}'
+			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
+
+		async with await create_test_server(handler) as server :
+			# arrange
+			url = server.make_url('/')
+			gateway: Gateway = Gateway(str(url), ResponseModel)
+
+			# act & assert
+			result = await gateway(auth=self.auth)
+
+			# assert
+			assert result.success == True
+
+
+	async def test_Gateway_GatewayUsesHeaders_HeadersIncludedWithRequest(self) :
+		headers: Dict[str, str] = {
+			'a': 'b',
+			'c': 'd',
+		}
+
+		async def handler(request: Request) :
+			assert headers == { key: request.headers.get(key) for key in headers }
+			return Response(body=json.dumps({ 'success': True }).encode(), status=200, content_type='application/json')
+
+		async with await create_test_server(handler) as server :
+			# arrange
+			url = server.make_url('/')
+			gateway: Gateway = Gateway(str(url), ResponseModel)
+
+			# act & assert
+			result = await gateway(headers=headers)
+
+			# assert
+			assert result.success == True
+
+
+	async def test_Gateway_GatewayUsesCustomDecoder_DecoderCalledByGateway(self) :
+		self.attempts = 0
+
+		async def decoder(response: ClientResponse) :
+			self.attempts += 1
+			return json.loads(await response.read())
+
+		async with await create_test_server() as server :
+			# arrange
+			url = server.make_url('/')
+			gateway: Gateway = Gateway(str(url), ResponseModel, decoder=decoder)
+
+			# act & assert
+			result = await gateway()
+
+			# assert
+			assert result.success == True
+			assert self.attempts == 1
