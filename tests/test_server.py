@@ -173,7 +173,7 @@ class TestAppServer :
 		token = mock_token(1)
 
 		# act
-		response = client.get(schema + base_url + endpoint, headers={ 'authorization': f'bearer {token}' })
+		response = client.get(schema + base_url + endpoint, headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 200 == response.status_code

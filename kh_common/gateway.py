@@ -82,7 +82,7 @@ class Gateway(Hashable) :
 			req['headers'].update(headers)
 
 		if auth :
-			req['headers']['authorization'] = 'bearer ' + str(auth)
+			req['headers']['authorization'] = 'Bearer ' + str(auth)
 
 		for attempt in range(1, self._attempts + 1) :
 			try :
