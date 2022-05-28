@@ -63,7 +63,6 @@ class TestAppServer :
 		# arrange
 		from aiohttp.web import HTTPNotFound
 		app = ServerApp(auth=False)
-		refid = uuid4()
 
 		@app.get(endpoint)
 		async def test_func() :

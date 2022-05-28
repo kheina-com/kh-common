@@ -26,7 +26,7 @@ class ResponseModel(BaseModel) :
 	success: bool
 
 
-# @pytest.mark.asyncio
+@pytest.mark.asyncio
 class TestGateway :
 
 	auth: str = 'authorization'
@@ -136,7 +136,7 @@ class TestGateway :
 			gateway: Gateway = Gateway(str(url), model=ResponseModel, method=method)
 
 			# act & assert
-			result = await gateway(body=body)
+			result: ResponseModel = await gateway(body=body)
 
 			# assert
 			assert result.success == True
@@ -159,7 +159,7 @@ class TestGateway :
 			gateway: Gateway = Gateway(str(url), model=ResponseModel, method=method)
 
 			# act & assert
-			result = await gateway(body=body)
+			result: ResponseModel = await gateway(body=body)
 
 			# assert
 			assert result.success == True
@@ -181,7 +181,7 @@ class TestGateway :
 			gateway: Gateway = Gateway(str(url), model=ResponseModel, method=method)
 
 			# act & assert
-			result = await gateway(body=body, params=params)
+			result: ResponseModel = await gateway(body=body, params=params)
 
 			# assert
 			assert result.success == True
@@ -201,7 +201,7 @@ class TestGateway :
 			gateway: Gateway = Gateway(str(url), model=ResponseModel, method=method)
 
 			# act & assert
-			result = await gateway(params=params)
+			result: ResponseModel = await gateway(params=params)
 
 			# assert
 			assert result.success == True
@@ -216,7 +216,7 @@ class TestGateway :
 			gateway: Gateway = Gateway(str(url) + '{path}', model=ResponseModel)
 
 			# act & assert
-			result = await gateway(path=path)
+			result: ResponseModel = await gateway(path=path)
 
 			# assert
 			assert result.success == True
@@ -253,7 +253,7 @@ class TestGateway :
 			gateway: Gateway = Gateway(str(url), ResponseModel)
 
 			# act & assert
-			result = await gateway(auth=self.auth)
+			result: ResponseModel = await gateway(auth=self.auth)
 
 			# assert
 			assert result.success == True
@@ -275,7 +275,7 @@ class TestGateway :
 			gateway: Gateway = Gateway(str(url), ResponseModel)
 
 			# act & assert
-			result = await gateway(headers=headers)
+			result: ResponseModel = await gateway(headers=headers)
 
 			# assert
 			assert result.success == True
@@ -294,7 +294,7 @@ class TestGateway :
 			gateway: Gateway = Gateway(str(url), ResponseModel, decoder=decoder)
 
 			# act & assert
-			result = await gateway()
+			result: ResponseModel = await gateway()
 
 			# assert
 			assert result.success == True
