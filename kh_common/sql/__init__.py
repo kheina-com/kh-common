@@ -1,16 +1,19 @@
 from psycopg2.extensions import connection as Connection, cursor as Cursor
 from typing import Any, Callable, Dict, List, Tuple, Union
 from psycopg2 import Binary, connect as dbConnect
+from concurrent.futures import ThreadPoolExecutor
 from psycopg2.errors import ConnectionException
 from kh_common.logging import getLogger, Logger
 from kh_common.config.credentials import db
 from kh_common.sql.query import Query
+from functools import partial, wraps
+from asyncio import get_event_loop
 from kh_common.timing import Timer
 
 
 class SqlInterface :
 
-	def __init__(self, long_query_metric: float = 1, conversions: Dict[type, Callable] = { }) -> None :
+	def __init__(self: 'SqlInterface', long_query_metric: float = 1, conversions: Dict[type, Callable] = { }) -> None :
 		self.logger: Logger = getLogger()
 		self._sql_connect()
 		self._long_query = long_query_metric
@@ -21,7 +24,7 @@ class SqlInterface :
 		}
 
 
-	def _sql_connect(self) -> None :
+	def _sql_connect(self: 'SqlInterface') -> None :
 		try :
 			self._conn: Connection = dbConnect(**db)
 
@@ -32,14 +35,14 @@ class SqlInterface :
 			self.logger.info('connected to database.')
 
 
-	def _convert_item(self, item: Any) -> Any :
+	def _convert_item(self: 'SqlInterface', item: Any) -> Any :
 		item_type = type(item)
 		if item_type in self._conversions :
 			return self._conversions[item_type](item)
 		return item
 
 
-	def query(self, sql: Union[str, Query], params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[None, List[Any]] :
+	def query(self: 'SqlInterface', sql: Union[str, Query], params:Tuple[Any]=(), commit:bool=False, fetch_one:bool=False, fetch_all:bool=False, maxretry:int=2) -> Union[None, List[Any]] :
 		if self._conn.closed :
 			self._sql_connect()
 
@@ -93,11 +96,17 @@ class SqlInterface :
 			cur.close()
 
 
-	def transaction(self) :
+	@wraps(query)
+	async def query_async(self: 'SqlInterface', *args, **kwargs) :
+		with ThreadPoolExecutor() as threadpool :
+			return await get_event_loop().run_in_executor(threadpool, partial(self.query, *args, **kwargs))
+
+
+	def transaction(self: 'SqlInterface') -> 'Transaction' :
 		return Transaction(self)
 
 
-	def close(self) -> int :
+	def close(self: 'SqlInterface') -> int :
 		self._conn.close()
 		return self._conn.closed
 
@@ -162,5 +171,3 @@ class Transaction :
 				'query': sql,
 			}, exc_info=e)
 			raise
-
-
