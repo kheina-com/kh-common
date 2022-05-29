@@ -22,7 +22,13 @@ class B2UploadError(BaseError) :
 
 class B2Interface :
 
-	def __init__(self, timeout:float=300, max_backoff:float=30, max_retries:float=15, mime_types:Dict[str, str]={ }) -> None :
+	def __init__(
+		self: 'B2Interface', 
+		timeout: float = 300,
+		max_backoff: float = 30,
+		max_retries: float = 15,
+		mime_types: Dict[str, str] = { }
+	) -> None :
 		self.logger: Logger = getLogger()
 		self.b2_timeout: float = timeout
 		self.b2_max_backoff: float = max_backoff
@@ -41,7 +47,7 @@ class B2Interface :
 		self._b2_authorize()
 
 
-	def _b2_authorize(self) -> bool :
+	def _b2_authorize(self: 'B2Interface') -> bool :
 		basic_auth_string: bytes = b'Basic ' + b64encode((b2['key_id'] + ':' + b2['key']).encode())
 		b2_headers: Dict[str, bytes] = { 'authorization': basic_auth_string }
 		response: Union[Response, None] = None
@@ -73,14 +79,14 @@ class B2Interface :
 			)
 
 
-	def _get_mime_from_filename(self, filename: str) -> str :
+	def _get_mime_from_filename(self: 'B2Interface', filename: str) -> str :
 		extension: str = filename[filename.rfind('.') + 1:]
 		if extension in self.mime_types :
 			return self.mime_types[extension.lower()]
 		raise ValueError(f'file extention does not have a known mime type: {filename}')
 
 
-	def _obtain_upload_url(self) -> Dict[str, Any] :
+	def _obtain_upload_url(self: 'B2Interface') -> Dict[str, Any] :
 		backoff: float = 1
 		content: Union[str, None] = None
 		status: Union[int, None] = None
@@ -117,7 +123,7 @@ class B2Interface :
 		)
 
 
-	async def _obtain_upload_url_async(self) -> Dict[str, Any] :
+	async def _obtain_upload_url_async(self: 'B2Interface') -> Dict[str, Any] :
 		backoff: float = 1
 		content: Union[str, None] = None
 		status: Union[int, None] = None
@@ -155,7 +161,7 @@ class B2Interface :
 		)
 
 
-	def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
+	def b2_upload(self: 'B2Interface', file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
 		# obtain upload url
 		upload_url: str = self._obtain_upload_url()
 
@@ -212,7 +218,7 @@ class B2Interface :
 		)
 
 
-	async def b2_delete_file_async(self, post_id: str, filename: str) :
+	async def b2_delete_file_async(self: 'B2Interface', filename: str) -> bool :
 		files = None
 
 		for _ in range(self.b2_max_retries) :
@@ -222,7 +228,7 @@ class B2Interface :
 					self.b2_api_url + '/b2api/v2/b2_list_file_versions',
 					json={
 						'bucketId': self.b2_bucket_id,
-						'startFileName': f'{post_id}/{filename}',
+						'startFileName': filename,
 						'maxFileCount': 5,
 					},
 					headers={ 'authorization': self.b2_auth_token },
@@ -242,7 +248,7 @@ class B2Interface :
 		deletes = 0
 
 		for file in files :
-			if file['fileName'] != f'{post_id}/{filename}' :
+			if file['fileName'] != filename :
 				continue
 
 			for _ in range(self.b2_max_retries) :
@@ -266,7 +272,7 @@ class B2Interface :
 		return bool(deletes)
 
 
-	async def b2_upload_async(self, file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
+	async def b2_upload_async(self: 'B2Interface', file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
 		# obtain upload url
 		upload_url: str = await self._obtain_upload_url_async()
 
@@ -324,7 +330,7 @@ class B2Interface :
 		)
 
 
-	async def b2_get_file_info(self, post_id: str, filename: str) :
+	async def b2_get_file_info(self: 'B2Interface', filename: str) :
 		for _ in range(self.b2_max_retries) :
 			try :
 				async with async_request(
@@ -332,7 +338,7 @@ class B2Interface :
 					self.b2_api_url + '/b2api/v2/b2_list_file_versions',
 					json={
 						'bucketId': self.b2_bucket_id,
-						'startFileName': f'{post_id}/{filename}',
+						'startFileName': filename,
 						'maxFileCount': 5,
 					},
 					headers={ 'authorization': self.b2_auth_token },
@@ -342,7 +348,7 @@ class B2Interface :
 						self._b2_authorize()
 						continue
 
-					return next(filter(lambda x : x['fileName'] == f'{post_id}/{filename}', (await response.json())['files']))
+					return next(filter(lambda x : x['fileName'] == filename, (await response.json())['files']))
 
 			except StopIteration :
 				self.logger.error('file not found in b2.', exc_info=e)
