@@ -33,7 +33,7 @@ class TestAuthMiddleware :
 		client = TestClient(app)
 
 		# act
-		result = client.get('/', headers={ 'authorization': f'bearer {token}' })
+		result = client.get('/', headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 200 == result.status_code
@@ -56,7 +56,7 @@ class TestAuthMiddleware :
 		client = TestClient(app)
 
 		# act
-		result = client.get('/', headers={ 'authorization': f'bearer {token}' })
+		result = client.get('/', headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 200 == result.status_code
@@ -80,7 +80,7 @@ class TestAuthMiddleware :
 		client = TestClient(app)
 
 		# act
-		result = client.get('/', headers={ 'authorization': f'bearer {token}' })
+		result = client.get('/', headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 200 == result.status_code
@@ -128,7 +128,7 @@ class TestAuthMiddleware :
 		client = TestClient(app)
 
 		# act
-		result = client.get('/', headers={ 'authorization': f'bearer {token}' })
+		result = client.get('/', headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 401 == result.status_code
@@ -204,7 +204,7 @@ class TestAuthMiddleware :
 		client = TestClient(app)
 
 		# act
-		result = client.get('/', headers={ 'authorization': f'bearer {token}' })
+		result = client.get('/', headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 200 == result.status_code
@@ -232,7 +232,7 @@ class TestAuthMiddleware :
 
 		# act
 		with raises(Forbidden) :
-			client.get('/', headers={ 'authorization': f'bearer {token}' })
+			client.get('/', headers={ 'authorization': f'Bearer {token}' })
 
 
 class TestCorsMiddleware :
