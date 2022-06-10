@@ -1,5 +1,5 @@
+from kh_common.server.middleware import CustomHeaderMiddleware, HeadersToSet
 from starlette.middleware.trustedhost import TrustedHostMiddleware
-from kh_common.server.middleware import CustomHeaderMiddleware
 from kh_common.server.middleware.auth import KhAuthMiddleware
 from kh_common.server.middleware.cors import KhCorsMiddleware
 from kh_common.exceptions.base_error import BaseError
@@ -66,6 +66,7 @@ def ServerApp(
 		'www-authenticate',
 	],
 ) -> FastAPI :
+	allowed_headers += list(HeadersToSet.keys())
 	app = FastAPI()
 	app.add_middleware(ExceptionMiddleware, handlers={ Exception: jsonErrorHandler }, debug=False)
 	app.add_exception_handler(BaseError, jsonErrorHandler)
@@ -80,7 +81,7 @@ def ServerApp(
 			KhCorsMiddleware,
 			allowed_origins = set(allowed_origins),
 			allowed_protocols = set(allowed_protocols),
-			allowed_headers = allowed_headers,
+			allowed_headers = list(allowed_headers) + list(HeadersToSet.keys()),
 			allowed_methods = allowed_methods,
 			exposed_headers = exposed_headers,
 			max_age = max_age,
