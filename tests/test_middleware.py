@@ -1,6 +1,6 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.exceptions.http_error import BadRequest, Forbidden, Unauthorized
-from kh_common.server.middleware import CustomHeaderMiddleware
+from kh_common.server.middleware import CustomHeaderMiddleware, HeadersToSet
 from kh_common.server.middleware.auth import KhAuthMiddleware
 from kh_common.server.middleware.cors import KhCorsMiddleware
 from tests.utilities.auth import mock_pk, mock_token
@@ -455,3 +455,30 @@ class TestCustomHeadersMiddleware :
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
 		assert short_hash == result.headers['kh-hash']
+
+
+	def test_CustomHeadersMiddleware_HeadersChanged_HeadersAccurate(self) :
+
+		# arrange
+		app = FastAPI()
+		app.middleware('http')(CustomHeaderMiddleware)
+		HeadersToSet.clear()
+		HeadersToSet.update({
+			'kh-hash': short_hash,
+			'kh-custom': 'custom',
+		})
+
+		@app.get('/')
+		async def app_func(req: Request) :
+			return { 'success': True }
+
+		client = TestClient(app)
+
+		# act
+		result = client.get('/')
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+		assert short_hash == result.headers.get('kh-hash')
+		assert 'custom' == result.headers.get('kh-custom')

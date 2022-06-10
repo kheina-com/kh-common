@@ -1,4 +1,5 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
+from kh_common.server.middleware import CustomHeaderMiddleware, HeadersToSet
 from kh_common.server.middleware.cors import KhCorsMiddleware
 from tests.utilities.auth import mock_pk, mock_token
 from kh_common.server import Request, ServerApp
@@ -228,6 +229,27 @@ class TestAppServer :
 		assert { 'status': 400, 'error': 'BadRequest: The given token uses a version that is unable to be decoded.' } == response_json
 
 
+	def test_ServerApp_InvalidOrigin_BadRequest(self) :
+
+		# arrange
+		app = ServerApp(auth=False, cors=True, custom_headers=False)
+
+		@app.get(endpoint)
+		async def app_func() :
+			return { 'success': True }
+
+		client = TestClient(app, base_url=base_url)
+
+		# act
+		result = client.get(f'{schema}{base_url}{endpoint}', headers={ 'Origin': 'https://example.com' })
+
+		# assert
+		assert 400 == result.status_code
+		response_json = result.json()
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'status': 400, 'error': 'BadRequest: Origin not allowed.' } == response_json
+
+
 	def test_ServerApp_ValidOrigin_Success(self) :
 
 		# arrange
@@ -390,4 +412,31 @@ class TestAppServer :
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
-		assert short_hash == result.headers['kh-hash']
+		assert short_hash == result.headers.get('kh-hash')
+
+
+	def test_CustomHeaderMiddleware_CustomHeadersInjected_Success(self) :
+
+		# arrange
+		HeadersToSet.clear()
+		HeadersToSet.update({
+			'kh-hash': short_hash,
+			'kh-custom': 'custom',
+		})
+		app = ServerApp(auth=True, auth_required=False, cors=True, custom_headers=True)
+
+		@app.get(endpoint)
+		async def app_func() :
+			return { 'success': True }
+
+		client = TestClient(app, base_url=base_url)
+
+		# act
+		result = client.get(f'{schema}{base_url}{endpoint}', headers={ 'Origin': f'{schema}{base_url}' })
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+		assert short_hash == result.headers.get('kh-hash')
+		assert 'custom' == result.headers.get('kh-custom')
+		assert 'kh-custom' in result.headers.get('access-control-allow-headers', '')
