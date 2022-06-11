@@ -439,4 +439,5 @@ class TestAppServer :
 		assert { 'success': True } == result.json()
 		assert short_hash == result.headers.get('kh-hash')
 		assert 'custom' == result.headers.get('kh-custom')
-		assert 'kh-custom' in result.headers.get('access-control-allow-headers', '')
+		assert 'kh-custom' not in result.headers.get('access-control-allow-headers', '')
+		assert 'kh-custom' in result.headers.get('access-control-expose-headers', '')
