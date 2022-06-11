@@ -66,7 +66,6 @@ def ServerApp(
 		'www-authenticate',
 	],
 ) -> FastAPI :
-	allowed_headers += list(HeadersToSet.keys())
 	app = FastAPI()
 	app.add_middleware(ExceptionMiddleware, handlers={ Exception: jsonErrorHandler }, debug=False)
 	app.add_exception_handler(BaseError, jsonErrorHandler)
@@ -74,6 +73,7 @@ def ServerApp(
 	allowed_protocols = ['http', 'https'] if environment.is_local() else ['https']
 
 	if custom_headers :
+		exposed_headers = list(exposed_headers) + list(HeadersToSet.keys())
 		app.middleware('http')(CustomHeaderMiddleware)
 
 	if cors :
@@ -81,9 +81,9 @@ def ServerApp(
 			KhCorsMiddleware,
 			allowed_origins = set(allowed_origins),
 			allowed_protocols = set(allowed_protocols),
-			allowed_headers = list(allowed_headers) + list(HeadersToSet.keys()),
-			allowed_methods = allowed_methods,
-			exposed_headers = exposed_headers,
+			allowed_headers = list(allowed_headers),
+			allowed_methods = list(allowed_methods),
+			exposed_headers = list(exposed_headers),
 			max_age = max_age,
 		)
 
