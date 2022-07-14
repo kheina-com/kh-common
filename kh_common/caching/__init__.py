@@ -272,12 +272,7 @@ def AerospikeCache(
 		...
 	yields a key in the format: '{a}.{b}'.format(a=a, b=b)
 
-	NOTE: if you use an additional local caching method, ensure that that decorator is applied BEFORE AerospikeCache
-	ex:
-	@ArgsCache(1)
-	@AerospikeCache('{a}.{b}')
-	def example(a, b, c) :
-		...
+	NOTE: AerospikeCache contains a built in local cache system. use local_TTL to set local cache TTL. set local_TTL=0 to disable.
 	"""
 	TTL: int = int(TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400)
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
