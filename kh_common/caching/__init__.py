@@ -256,10 +256,10 @@ def AerospikeCache(
 	key_format: str,
 	namespace: str,
 	set: str,
-	TTL_seconds: float = 0,
-	TTL_minutes: float = 0,
-	TTL_hours: float = 0,
-	TTL_days: float = 0,
+	TTL_seconds: int = 0,
+	TTL_minutes: int = 0,
+	TTL_hours: int = 0,
+	TTL_days: int = 0,
 	local_TTL: float = 1,
 ) -> Callable :
 	"""
@@ -279,7 +279,7 @@ def AerospikeCache(
 	def example(a, b, c) :
 		...
 	"""
-	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
+	TTL: int = int(TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400)
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	assert key_format
@@ -309,6 +309,7 @@ def AerospikeCache(
 					return copy(decorator.cache[key[-1]][1])
 
 				try :
+					# TODO: feels like there should be an async get/put
 					_, _, data = AerospikeCache.client.get(key)
 					decorator.cache[key[-1]] = (time() + local_TTL, data['data'])
 					return data['data']
