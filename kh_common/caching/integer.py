@@ -49,5 +49,15 @@ class Integer :
 		return data['int']
 
 
-	def increment(self: 'Integer',  value: int = 1) :
-		_client.increment(self._key, 'int', value)
+	def increment(self: 'Integer',  value: int = 1, TTL: int = 0) :
+		_client.increment(
+			self._key,
+			'int',
+			value,
+			meta={
+				'ttl': TTL,
+			},
+			policy={
+				'max_retries': 3,
+			},
+		)
