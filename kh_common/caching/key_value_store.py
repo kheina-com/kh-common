@@ -35,7 +35,7 @@ class KeyValueStore :
 				'max_retries': 3,
 			},
 		)
-		self._cache[key] = (time() + self._local_TTL, data['data'])
+		self._cache[key] = (time() + self._local_TTL, data)
 
 
 	def get(self: 'KeyValueStore', key: str) :
