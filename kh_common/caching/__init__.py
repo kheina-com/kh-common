@@ -1,4 +1,4 @@
-from typing import Any, Callable, Dict, Hashable, Iterable, Tuple, Union
+from typing import Any, Callable, Dict, Hashable, Iterable, Tuple, Set
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from collections import defaultdict, OrderedDict
 from functools import wraps
