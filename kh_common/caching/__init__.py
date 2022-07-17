@@ -253,9 +253,9 @@ def Cache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:f
 
 
 def AerospikeCache(
-	key_format: str,
 	namespace: str,
 	set: str,
+	key_format: str,
 	TTL_seconds: int = 0,
 	TTL_minutes: int = 0,
 	TTL_hours: int = 0,
@@ -334,12 +334,17 @@ def AerospikeCache(
 			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 				kwargs.update(zip(arg_spec, args))
 				key: Tuple[str] = (namespace, set, key_format.format(**kwargs))
+				print(1, key_format, kwargs, key)
 
 				__clear_cache__(decorator.cache)
+
+				print(2, key, decorator.cache)
 
 				if key[-1] in decorator.cache :
 					print('local cache')
 					return copy(decorator.cache[key[-1]][1])
+
+				print(3, key, decorator.cache)
 
 				try :
 					print('aerospike cache')
@@ -365,6 +370,7 @@ def AerospikeCache(
 						},
 					)
 
+				print('no cache')
 				return data
 
 		return wrapper

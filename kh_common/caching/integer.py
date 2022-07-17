@@ -1,6 +1,6 @@
 from kh_common.caching import __clear_cache__
 from collections import OrderedDict
-from typing import Any, Tuple
+from typing import Tuple
 from copy import copy
 from time import time
 import aerospike
@@ -23,7 +23,7 @@ class Integer :
 		self._local_TTL: float = local_TTL
 
 
-	def set(self: 'Integer',  value: int, TTL: int = 0) :
+	def set(self: 'Integer', value: int, TTL: int = 0) :
 		_client.put(
 			self._key,
 			{ 'int': value },
@@ -49,7 +49,7 @@ class Integer :
 		return data['int']
 
 
-	def increment(self: 'Integer',  value: int = 1, TTL: int = 0) :
+	def increment(self: 'Integer', value: int = 1, TTL: int = 0) :
 		_client.increment(
 			self._key,
 			'int',
