@@ -1,6 +1,8 @@
 from typing import Any, Callable, Dict, Hashable, Iterable, Tuple, Set
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
+from kh_common.caching.key_value_store import KeyValueStore
 from collections import defaultdict, OrderedDict
+from kh_common.utilities import __clear_cache__
 from functools import wraps
 from asyncio import Lock
 from math import sqrt
@@ -81,19 +83,6 @@ def SimpleCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 	return decorator
 
 
-def __clear_cache__(cache: OrderedDict) :
-	now: float = time()
-
-	try :
-		while True :
-			cache_key = next(cache.__iter__())
-			if cache[cache_key][0] >= now : break
-			del cache[cache_key]
-
-	except StopIteration :
-		pass
-
-
 def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
 	"""
 	stores results for every argument used to call.
@@ -108,7 +97,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 			@wraps(func)
 			async def wrapper(*key: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
 				async with decorator.lock :
-					__clear_cache__(decorator.cache)
+					__clear_cache__(decorator.cache, time)
 
 				if key in decorator.cache :
 					return copy(decorator.cache[key][1])
@@ -121,7 +110,7 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 		else :
 			@wraps(func)
 			def wrapper(*key: Tuple[Any], **kwargs:Dict[str, Any]) -> Any :
-				__clear_cache__(decorator.cache)
+				__clear_cache__(decorator.cache, time)
 
 				if key in decorator.cache :
 					return copy(decorator.cache[key][1])
@@ -159,7 +148,7 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 				key: Tuple[Any] = _cache_stream({ **kw, **dict(zip(arg_spec, args)), **kwargs })
 
 				async with decorator.lock :
-					__clear_cache__(decorator.cache)
+					__clear_cache__(decorator.cache, time)
 
 				if key in decorator.cache :
 					return copy(decorator.cache[key][1])
@@ -174,7 +163,7 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 				key: Tuple[Any] = _cache_stream({ **kw, **dict(zip(arg_spec, args)), **kwargs })
 
-				__clear_cache__(decorator.cache)
+				__clear_cache__(decorator.cache, time)
 
 				if key in decorator.cache :
 					return copy(decorator.cache[key][1])
@@ -220,7 +209,7 @@ def Cache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:f
 				key: int = hash(key_format.format(**{ **kw, **dict(zip(arg_spec, args)), **kwargs })) % 2**61
 
 				async with decorator.lock :
-					__clear_cache__(decorator.cache)
+					__clear_cache__(decorator.cache, time)
 
 				if key in decorator.cache :
 					return copy(decorator.cache[key][1])
@@ -235,7 +224,7 @@ def Cache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:f
 			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
 				key: int = hash(key_format.format(**{ **kw, **dict(zip(arg_spec, args)), **kwargs })) % 2**61
 
-				__clear_cache__(decorator.cache)
+				__clear_cache__(decorator.cache, time)
 
 				if key in decorator.cache :
 					return copy(decorator.cache[key][1])
@@ -278,105 +267,51 @@ def AerospikeCache(
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
 	assert key_format
-	assert local_TTL > 0
+	assert local_TTL >= 0
 
 	import aerospike
 
-	if not AerospikeCache.client :
-		from kh_common.config.credentials import aerospike as config
-		config['hosts'] = list(map(tuple, config['hosts']))
-		AerospikeCache.client = aerospike.client(config).connect()
-
 	def decorator(func: Callable) -> Callable :
 
-		arg_spec: Tuple[str] = tuple(getfullargspec(func).args)
+		arg_spec: FullArgSpec = getfullargspec(func)
+		kw: Dict[str, Hashable] = dict(zip(arg_spec.args[-len(arg_spec.defaults):], arg_spec.defaults)) if arg_spec.defaults else { }
+		arg_spec: Tuple[str] = tuple(arg_spec.args)
 
 		if iscoroutinefunction(func) :
 			@wraps(func)
-			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				kwargs.update(zip(arg_spec, args))
-				key: Tuple[str] = (namespace, set, key_format.format(**kwargs))
+			async def wrapper(*args: Tuple[Hashable], **kwargs: Dict[str, Hashable]) -> Any :
+				key: str = key_format.format(**{ **kw, **dict(zip(arg_spec, args)), **kwargs })
 
-				async with decorator.lock :
-					__clear_cache__(decorator.cache)
-
-				if key[-1] in decorator.cache :
-					return copy(decorator.cache[key[-1]][1])
+				data: Any
 
 				try :
-					# TODO: feels like there should be an async get/put
-					_, _, data = AerospikeCache.client.get(key)
-					decorator.cache[key[-1]] = (time() + local_TTL, data['data'])
-					return data['data']
+					data = await decorator.kvs.get_async(key)
 
 				except aerospike.exception.RecordNotFound :
-					pass
-
-				data: Any = await func(**kwargs)
-				decorator.cache[key[-1]] = (time() + local_TTL, data)
-
-				if data is not None :
-					AerospikeCache.client.put(
-						key,
-						{ 'data': data },
-						meta={
-							'ttl': TTL,
-						},
-						policy={
-							'max_retries': 3,
-						},
-					)
+					data: Any = await func(*args, **kwargs)
+					decorator.kvs.put(key, data, TTL)
 
 				return data
 
 		else :
 			@wraps(func)
-			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				kwargs.update(zip(arg_spec, args))
-				key: Tuple[str] = (namespace, set, key_format.format(**kwargs))
-				print(1, key_format, kwargs, key)
+			def wrapper(*args: Tuple[Hashable], **kwargs: Dict[str, Hashable]) -> Any :
+				key: str = key_format.format(**{ **kw, **dict(zip(arg_spec, args)), **kwargs })
 
-				__clear_cache__(decorator.cache)
-
-				print(2, key, decorator.cache)
-
-				if key[-1] in decorator.cache :
-					print('local cache')
-					return copy(decorator.cache[key[-1]][1])
-
-				print(3, key, decorator.cache)
+				data: Any
 
 				try :
-					print('aerospike cache')
-					_, _, data = AerospikeCache.client.get(key)
-					decorator.cache[key[-1]] = (time() + local_TTL, data['data'])
-					return data['data']
+					data = decorator.kvs.get(key)
 
 				except aerospike.exception.RecordNotFound :
-					pass
+					data: Any = func(*args, **kwargs)
+					decorator.kvs.put(key, data, TTL)
 
-				data: Any = func(**kwargs)
-				decorator.cache[key[-1]] = (time() + local_TTL, data)
-
-				if data is not None :
-					AerospikeCache.client.put(
-						key,
-						{ 'data': data },
-						meta={
-							'ttl': TTL,
-						},
-						policy={
-							'max_retries': 3,
-						},
-					)
-
-				print('no cache')
 				return data
 
 		return wrapper
 
-	decorator.cache = OrderedDict()
-	decorator.lock = Lock()
+	decorator.kvs = KeyValueStore(namespace, set, local_TTL)
 	return decorator
 
 

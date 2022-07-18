@@ -1,4 +1,4 @@
-from kh_common.caching import __clear_cache__
+from kh_common.utilities import __clear_cache__
 from collections import OrderedDict
 from typing import Tuple
 from copy import copy

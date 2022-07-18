@@ -1,119 +1,120 @@
-from kh_common.caching import key_value_store
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
+from kh_common.caching import AerospikeCache, key_value_store
 from kh_common.caching.key_value_store import KeyValueStore
 from tests.utilities.aerospike import AerospikeClient
 from tests.utilities.caching import CachingTestClass
 from kh_common.caching.integer import Integer
-from kh_common.caching import AerospikeCache
 import pytest
 import time
 
 
 client = AerospikeClient()
 key_value_store._client = client
-AerospikeCache.client = client
 
 
 class TestAerospikeCache(CachingTestClass) :
 
 	it = 0
 
-	# def test_FormatCache_int(self) :
-	# 	# setup
-	# 	TestAerospikeCache.it = 0
+	def test_FormatCache_int(self) :
+		# setup
+		client.clear()
+		TestAerospikeCache.it = 0
 
-	# 	@AerospikeCache('kheina', 'test', '{t}', local_TTL=5)
-	# 	def cache_test(t) :
-	# 		TestAerospikeCache.it += 1
-	# 		return t + TestAerospikeCache.it - 1
+		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
+		def cache_test(t, a=2) :
+			print(t, TestAerospikeCache.it, a)
+			TestAerospikeCache.it += 1
+			return t + TestAerospikeCache.it - 1
 
-	# 	# assert
-	# 	# set
-	# 	assert 1 == cache_test(1)
-	# 	assert 3 == cache_test(2)
-	# 	assert 5 == cache_test(3)
+		# assert
+		# set
+		assert 1 == cache_test(1)
+		assert 3 == cache_test(2)
+		assert 5 == cache_test(3)
 
-	# 	# local cache
-	# 	assert 1 == cache_test(1)
-	# 	assert 3 == cache_test(2)
-	# 	assert 5 == cache_test(3)
+		# local cache
+		assert 1 == cache_test(1)
+		assert 3 == cache_test(2)
+		assert 5 == cache_test(3)
 
-	# 	# aerospike cache
+		# aerospike cache
+		assert 1 == cache_test(1)
+		assert 3 == cache_test(2)
+		assert 5 == cache_test(3)
 
-	# 	# purge
-	# 	assert 4 == cache_test(1)
-	# 	assert 6 == cache_test(2)
-	# 	assert 8 == cache_test(3)
+		# check cache
+		assert 3 == len(client.calls['put'])
+		assert 6 == len(client.calls['get'])  # initial set runs get + aerospike retrieval
 
+		# purge
+		client.clear()
 
-	# def test_FormatCache_string(self) :
-	# 	# setup
-	# 	TestAerospikeCache.it = 0
-	# 	kwargs = { 'a': 1, 'b': '2', 'c': 3.1 }
+		# local cache again
+		assert 1 == cache_test(1)
+		assert 3 == cache_test(2)
+		assert 5 == cache_test(3)
 
-	# 	@AerospikeCache('kheina', 'test', '{t}.{a}', local_TTL=5)
-	# 	def cache_test(t, **kv) :
-	# 		TestAerospikeCache.it += 1
-	# 		return f'{int(t) + TestAerospikeCache.it - 1}'
+		# reset
+		assert 4 == cache_test(1)
+		assert 6 == cache_test(2)
+		assert 8 == cache_test(3)
 
-	# 	# assert
-	# 	assert '1' == cache_test('1', **kwargs)
-	# 	assert '3' == cache_test('2', **kwargs)
-	# 	assert '5' == cache_test('3', **kwargs)
-
-	# 	assert '1' == cache_test('1', **kwargs)
-	# 	assert '3' == cache_test('2', **kwargs)
-	# 	assert '5' == cache_test('3', **kwargs)
-
-	# 	assert '4' == cache_test('1', **kwargs)
-	# 	assert '6' == cache_test('2', **kwargs)
-	# 	assert '8' == cache_test('3', **kwargs)
-
-
-	# def test_FormatCache_FormatStringAllArgs(self) :
-	# 	# setup
-	# 	TestAerospikeCache.it = 0
-	# 	default = 1
-
-	# 	@AerospikeCache('kheina', 'test', '{t}.{a}', local_TTL=10)
-	# 	def cache_test(t, a=default) :
-	# 		TestAerospikeCache.it += 1
-	# 		return TestAerospikeCache.it
-
-	# 	# assert
-	# 	assert 1 == cache_test(1)
-	# 	assert 1 == cache_test(1, default)
-	# 	assert 1 == cache_test(1, a=default)
-
-	# 	assert 2 == cache_test(2)
-	# 	assert 2 == cache_test(2, default)
-	# 	assert 2 == cache_test(2, a=default)
-
-
-	# def test_FormatCache_FormatStringSomeArgs(self) :
-	# 	# setup
-	# 	TestAerospikeCache.it = 0
-	# 	default = 1
-
-	# 	@AerospikeCache('kheina', 'test', '{a}', local_TTL=10)
-	# 	def cache_test(t, a=default) :
-	# 		TestAerospikeCache.it += 1
-	# 		return TestAerospikeCache.it
-
-	# 	# assert
-	# 	assert 1 == cache_test(1)
-	# 	assert 1 == cache_test(2)
-
-	# 	assert 2 == cache_test(1, a=default + 1)
-	# 	assert 2 == cache_test(2, a=default + 1)
-
-	# 	assert 3 == cache_test(1, a=default + 2)
-	# 	assert 3 == cache_test(2, a=default + 2)
+		assert 3 == len(client.calls['put'])
+		assert 3 == len(client.calls['get'])
 
 
 @pytest.mark.asyncio
-class TestAerospikeCacheAsync :
-	pass
+class TestAerospikeCacheAsync(CachingTestClass) :
+
+	it = 0
+
+	async def test_async_FormatCache_int(self) :
+		# setup
+		client.clear()
+		TestAerospikeCache.it = 0
+
+		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
+		async def cache_test(t, a=2) :
+			print(t, TestAerospikeCache.it, a)
+			TestAerospikeCache.it += 1
+			return t + TestAerospikeCache.it - 1
+
+		# assert
+		# set
+		assert 1 == await cache_test(1)
+		assert 3 == await cache_test(2)
+		assert 5 == await cache_test(3)
+
+		# local cache
+		assert 1 == await cache_test(1)
+		assert 3 == await cache_test(2)
+		assert 5 == await cache_test(3)
+
+		# aerospike cache
+		assert 1 == await cache_test(1)
+		assert 3 == await cache_test(2)
+		assert 5 == await cache_test(3)
+
+		# check cache
+		assert 3 == len(client.calls['put'])
+		assert 6 == len(client.calls['get'])  # initial set runs get + aerospike retrieval
+
+		# purge
+		client.clear()
+
+		# local cache again
+		assert 1 == await cache_test(1)
+		assert 3 == await cache_test(2)
+		assert 5 == await cache_test(3)
+
+		# reset
+		assert 4 == await cache_test(1)
+		assert 6 == await cache_test(2)
+		assert 8 == await cache_test(3)
+
+		assert 3 == len(client.calls['put'])
+		assert 3 == len(client.calls['get'])  # initial set runs get + aerospike retrieval
 
 
 class TestKeyValueStore :
@@ -264,3 +265,7 @@ class TestKeyValueStore :
 		assert len(client.calls['put']) == 2
 		assert len(client.calls['get']) == 1
 		assert client.calls['put'][-1] == (('kheina', 'test', key), { 'data': different_data }, { 'ttl': 0 }, { 'max_retries': 3 })
+
+
+class TestInteger :
+	pass

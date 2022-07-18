@@ -1,5 +1,20 @@
+from collections import OrderedDict
 from typing import Any, Iterable
 from math import ceil
+from time import time
+
+
+def __clear_cache__(cache: OrderedDict, t=time) :
+	now: float = t()
+
+	try :
+		while True :
+			cache_key = next(cache.__iter__())
+			if cache[cache_key][0] >= now : break
+			del cache[cache_key]
+
+	except StopIteration :
+		pass
 
 
 def getFullyQualifiedClassName(obj: object) -> str :

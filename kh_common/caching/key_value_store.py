@@ -1,5 +1,6 @@
-from kh_common.caching import __clear_cache__
+from kh_common.utilities import __clear_cache__
 from collections import OrderedDict
+from asyncio import Lock
 from typing import Any
 from copy import copy
 from time import time
@@ -22,6 +23,7 @@ class KeyValueStore :
 		self._local_TTL: float = local_TTL
 		self._namespace: str = namespace
 		self._set: str = set
+		self._lock: Lock = Lock()
 
 
 	def put(self: 'KeyValueStore', key: str, data: Any, TTL: int = 0) :
@@ -38,9 +40,7 @@ class KeyValueStore :
 		self._cache[key] = (time() + self._local_TTL, data)
 
 
-	def get(self: 'KeyValueStore', key: str) :
-		__clear_cache__(self._cache)
-
+	def _get(self: 'KeyValueStore', key: str) :
 		if key in self._cache :
 			return copy(self._cache[key][1])
 
@@ -48,3 +48,14 @@ class KeyValueStore :
 		self._cache[key] = (time() + self._local_TTL, data['data'])
 
 		return data['data']
+
+
+	def get(self: 'KeyValueStore', key: str) :
+		__clear_cache__(self._cache, time)
+		return self._get(key)
+
+
+	async def get_async(self: 'KeyValueStore', key: str) :
+		async with self._lock :
+			__clear_cache__(self._cache, time)
+		return self._get(key)
