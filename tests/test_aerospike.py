@@ -4,12 +4,14 @@ from kh_common.caching.key_value_store import KeyValueStore
 from tests.utilities.aerospike import AerospikeClient
 from tests.utilities.caching import CachingTestClass
 from kh_common.caching.integer import Integer
+from kh_common.caching import integer
 import pytest
 import time
 
 
 client = AerospikeClient()
 key_value_store._client = client
+integer._client = client
 
 
 class TestAerospikeCache(CachingTestClass) :
@@ -23,15 +25,14 @@ class TestAerospikeCache(CachingTestClass) :
 
 		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
 		def cache_test(t, a=2) :
-			print(t, TestAerospikeCache.it, a)
 			TestAerospikeCache.it += 1
 			return t + TestAerospikeCache.it - 1
 
 		# assert
 		# set
 		assert 1 == cache_test(1)
-		assert 3 == cache_test(2)
-		assert 5 == cache_test(3)
+		assert 3 == cache_test(2, a=2)
+		assert 5 == cache_test(3, **{ 'a': 2 })
 
 		# local cache
 		assert 1 == cache_test(1)
@@ -75,16 +76,15 @@ class TestAerospikeCacheAsync(CachingTestClass) :
 		TestAerospikeCache.it = 0
 
 		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
-		async def cache_test(t, a=2) :
-			print(t, TestAerospikeCache.it, a)
+		async def cache_test(t, a=2, b=1) :
 			TestAerospikeCache.it += 1
 			return t + TestAerospikeCache.it - 1
 
 		# assert
 		# set
 		assert 1 == await cache_test(1)
-		assert 3 == await cache_test(2)
-		assert 5 == await cache_test(3)
+		assert 3 == await cache_test(2, a=2)
+		assert 5 == await cache_test(3, **{ 'a': 2 })
 
 		# local cache
 		assert 1 == await cache_test(1)
@@ -268,4 +268,83 @@ class TestKeyValueStore :
 
 
 class TestInteger :
-	pass
+
+	def test_set_CacheEmpty_LocalCachePopulated(self) :
+
+		# arrange
+		client.clear()
+
+		data = 100
+
+		i = Integer('kheina', 'test', 'an_int')
+
+		# apply
+		i.set(data)
+		result = i.get()
+
+		# assert
+		assert result == data
+		assert len(client.calls['put']) == 1
+		assert len(client.calls['get']) == 0
+
+
+	def test_set_CacheEmpty_AerospikeCachePopulated(self) :
+
+		# arrange
+		client.clear()
+
+		data = 100
+
+		i = Integer('kheina', 'test', 'an_int', local_TTL=0)
+
+		# apply
+		i.set(data)
+		result = i.get()
+
+		# assert
+		assert result == data
+		assert len(client.calls['put']) == 1
+		assert len(client.calls['get']) == 1
+
+
+	def test_increment_CachePopulated_CacheIncrement(self) :
+
+		# arrange
+		client.clear()
+
+		data = 100
+
+		i = Integer('kheina', 'test', 'an_int', local_TTL=0)
+
+		# apply
+		i.set(data)
+		i.increment()
+		result = i.get()
+
+		# assert
+		assert result == data + 1
+		assert len(client.calls['put']) == 1
+		assert len(client.calls['increment']) == 1
+		assert len(client.calls['get']) == 1
+
+
+	def test_increment_CachePopulated_CacheIncrementMany(self) :
+
+		# arrange
+		client.clear()
+
+		data = 100
+
+		i = Integer('kheina', 'test', 'an_int', local_TTL=0)
+
+		# apply
+		i.set(data)
+		i.increment(11)
+		i.increment(-7)
+		result = i.get()
+
+		# assert
+		assert result == 104
+		assert len(client.calls['put']) == 1
+		assert len(client.calls['increment']) == 2
+		assert len(client.calls['get']) == 1

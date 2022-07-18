@@ -39,10 +39,7 @@ class AerospikeClient :
 		self.__assert_key_type__(key)
 		self.__assert_data_type__(data)
 
-		ttl: int = int(meta['ttl'] if meta and 'ttl' in meta else OneMonth)
-
-		if ttl == 0 :
-			ttl = OneMonth
+		ttl: int = int(meta['ttl'] if meta and 'ttl' in meta else OneMonth) or OneMonth
 
 		# a couple of these I'm not sure what they're supposed to be
 		# gen is set via meta or policy and the None I'm not sure of, but don't really care atm
@@ -72,7 +69,7 @@ class AerospikeClient :
 		self.__assert_key_type__(key)
 		assert type(bin) == str
 
-		ttl: int = int(meta['ttl'] if meta and 'ttl' in meta else OneMonth)
+		ttl: int = int(meta['ttl'] if meta and 'ttl' in meta else OneMonth) or OneMonth
 
 		if key not in self._data :
 			# a couple of these I'm not sure what they're supposed to be

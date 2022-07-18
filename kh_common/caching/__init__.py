@@ -315,9 +315,6 @@ def AerospikeCache(
 	return decorator
 
 
-AerospikeCache.client = None
-
-
 class SumAggregator :
 	def __init__(self) :
 		self.data = defaultdict(lambda : 0)

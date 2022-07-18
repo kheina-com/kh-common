@@ -1,5 +1,6 @@
 from kh_common.utilities import __clear_cache__
 from collections import OrderedDict
+from asyncio import Lock
 from typing import Tuple
 from copy import copy
 from time import time
@@ -21,9 +22,10 @@ class Integer :
 		self._key: Tuple[str] = (namespace, set, key)
 		self._cache: OrderedDict = OrderedDict()
 		self._local_TTL: float = local_TTL
+		self._lock: Lock = Lock()
 
 
-	def set(self: 'Integer', value: int, TTL: int = 0) :
+	def set(self: 'Integer', value: int, TTL: int = 0) -> None :
 		_client.put(
 			self._key,
 			{ 'int': value },
@@ -37,9 +39,7 @@ class Integer :
 		self._cache[self._key[-1]] = (time() + self._local_TTL, value)
 
 
-	def get(self: 'Integer') :
-		__clear_cache__(self._cache)
-
+	def _get(self: 'Integer') -> int :
 		if self._key[-1] in self._cache :
 			return copy(self._cache[self._key[-1]][1])
 
@@ -49,7 +49,18 @@ class Integer :
 		return data['int']
 
 
-	def increment(self: 'Integer', value: int = 1, TTL: int = 0) :
+	def get(self: 'Integer') -> int :
+		__clear_cache__(self._cache, time)
+		return self._get()
+
+
+	async def get_async(self: 'Integer') -> int :
+		async with self._lock :
+			__clear_cache__(self._cache, time)
+		return self._get()
+
+
+	def increment(self: 'Integer', value: int = 1, TTL: int = 0) -> None :
 		_client.increment(
 			self._key,
 			'int',
