@@ -195,17 +195,16 @@ def AerospikeCache(
 	if data doesn't exist, it is stored after running this function.
 	key is created from function arguments
 	ex:
-	@AerospikeCache('{a}.{b}')
-	def example(a, b, c) :
+	@AerospikeCache('kheina', 'test', '{a}.{b}')
+	def example(a, b=1, c=2) :
 		...
-	yields a key in the format: '{a}.{b}'.format(a=a, b=b)
+	yields a key in the format: '{a}.{b}'.format(a=a, b=b) in the namespace 'kheina' and set 'test'
 
-	NOTE: AerospikeCache contains a built in local cache system. use local_TTL to set local cache TTL. set local_TTL=0 to disable.
+	NOTE: AerospikeCache contains a built in local cache system. use local_TTL to set local cache TTL in seconds. set local_TTL=0 to disable.
 	"""
 	TTL: int = int(TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400)
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
-	assert key_format
 	assert local_TTL >= 0
 
 	import aerospike

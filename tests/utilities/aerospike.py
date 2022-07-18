@@ -74,7 +74,7 @@ class AerospikeClient :
 				del self.calls['get'][-1]
 
 			except aerospike.exception.RecordNotFound :
-				data.append(((key[0], key[1], None, hash(key).to_bytes(8, 'big', signed=True)), None, None))
+				data.append(((*key, hash(key).to_bytes(8, 'big', signed=True)), None, None))
 
 		return data
 
@@ -89,7 +89,7 @@ class AerospikeClient :
 		if key not in self._data :
 			# a couple of these I'm not sure what they're supposed to be
 			# gen is set via meta or policy and the None I'm not sure of, but don't really care atm
-			self._data[key] = ((key[0], key[1], None, hash(key).to_bytes(8, 'big')), { 'ttl': ttl, 'gen': 1 }, { bin: value })
+			self._data[key] = ((*key, hash(key).to_bytes(8, 'big')), { 'ttl': ttl, 'gen': 1 }, { bin: value })
 			self._ttl[key] = time.time()
 			return
 
