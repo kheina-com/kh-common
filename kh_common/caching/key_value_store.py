@@ -7,18 +7,16 @@ from time import time
 import aerospike
 
 
-_client = None
-
-
-if not _client :
-	from kh_common.config.credentials import aerospike as config
-	config['hosts'] = list(map(tuple, config['hosts']))
-	_client = aerospike.client(config).connect()
-
-
 class KeyValueStore :
 
+	_client = None
+
 	def __init__(self: 'KeyValueStore', namespace: str, set: str, local_TTL: float = 1) :
+		if not KeyValueStore._client :
+			from kh_common.config.credentials import aerospike as config
+			config['hosts'] = list(map(tuple, config['hosts']))
+			KeyValueStore._client = aerospike.client(config).connect()
+
 		self._cache: OrderedDict = OrderedDict()
 		self._local_TTL: float = local_TTL
 		self._namespace: str = namespace
@@ -27,7 +25,7 @@ class KeyValueStore :
 
 
 	def put(self: 'KeyValueStore', key: str, data: Any, TTL: int = 0) :
-		_client.put(
+		KeyValueStore._client.put(
 			(self._namespace, self._set, key),
 			{ 'data': data },
 			meta={
@@ -44,7 +42,7 @@ class KeyValueStore :
 		if key in self._cache :
 			return copy(self._cache[key][1])
 
-		_, _, data = _client.get((self._namespace, self._set, key))
+		_, _, data = KeyValueStore._client.get((self._namespace, self._set, key))
 		self._cache[key] = (time() + self._local_TTL, data['data'])
 
 		return data['data']
