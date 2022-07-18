@@ -180,67 +180,6 @@ def KwargsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL
 	return decorator
 
 
-def Cache(key_format: str, TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_days:float=0) -> Callable :
-	"""
-	checks if data exists in a local cache before running the function.
-	if data doesn't exist, it is stored after running this function.
-	key is created from function arguments
-	ex:
-	@Cache('{a}.{b}')
-	def example(a, b, c) :
-		...
-	yields a key in the format: '{a}.{b}'.format(a=a, b=b)
-	"""
-	TTL: float = TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400
-	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
-
-	assert key_format
-	assert TTL > 0
-
-	def decorator(func: Callable) -> Callable :
-
-		arg_spec: FullArgSpec = getfullargspec(func)
-		kw = dict(zip(arg_spec.args[-len(arg_spec.defaults):], arg_spec.defaults)) if arg_spec.defaults else { }
-		arg_spec: Tuple[str] = tuple(arg_spec.args)
-
-		if iscoroutinefunction(func) :
-			@wraps(func)
-			async def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				key: int = hash(key_format.format(**{ **kw, **dict(zip(arg_spec, args)), **kwargs })) % 2**61
-
-				async with decorator.lock :
-					__clear_cache__(decorator.cache, time)
-
-				if key in decorator.cache :
-					return copy(decorator.cache[key][1])
-
-				data: Any = await func(*args, **kwargs)
-				decorator.cache[key] = (time() + TTL, data)
-
-				return copy(data)
-
-		else :
-			@wraps(func)
-			def wrapper(*args: Tuple[Hashable], **kwargs:Dict[str, Hashable]) -> Any :
-				key: int = hash(key_format.format(**{ **kw, **dict(zip(arg_spec, args)), **kwargs })) % 2**61
-
-				__clear_cache__(decorator.cache, time)
-
-				if key in decorator.cache :
-					return copy(decorator.cache[key][1])
-
-				data: Any = func(*args, **kwargs)
-				decorator.cache[key] = (time() + TTL, data)
-
-				return copy(data)
-
-		return wrapper
-
-	decorator.cache = OrderedDict()
-	decorator.lock = Lock()
-	return decorator
-
-
 def AerospikeCache(
 	namespace: str,
 	set: str,
@@ -250,23 +189,24 @@ def AerospikeCache(
 	TTL_hours: int = 0,
 	TTL_days: int = 0,
 	local_TTL: float = 1,
+	_kvs: KeyValueStore = None,
 ) -> Callable :
 	"""
 	checks if data exists in aerospike before running the function.
 	if data doesn't exist, it is stored after running this function.
 	key is created from function arguments
 	ex:
-	@AerospikeCache('{a}.{b}')
-	def example(a, b, c) :
+	@AerospikeCache('kheina', 'test', '{a}.{b}')
+	def example(a, b=1, c=2) :
 		...
-	yields a key in the format: '{a}.{b}'.format(a=a, b=b)
+	yields a key in the format: '{a}.{b}'.format(a=a, b=b) in the namespace 'kheina' and set 'test'
 
-	NOTE: AerospikeCache contains a built in local cache system. use local_TTL to set local cache TTL. set local_TTL=0 to disable.
+	NOTE: AerospikeCache contains a built in local cache system. use local_TTL to set local cache TTL in seconds. set local_TTL=0 to disable.
+	the internal KeyValueStore to use for caching can be passed in via the _kvs argument. only for advanced usage.
 	"""
 	TTL: int = int(TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400)
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
-	assert key_format
 	assert local_TTL >= 0
 
 	import aerospike
@@ -311,7 +251,7 @@ def AerospikeCache(
 
 		return wrapper
 
-	decorator.kvs = KeyValueStore(namespace, set, local_TTL)
+	decorator.kvs = _kvs or KeyValueStore(namespace, set, local_TTL)
 	return decorator
 
 
