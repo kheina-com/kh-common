@@ -189,6 +189,7 @@ def AerospikeCache(
 	TTL_hours: int = 0,
 	TTL_days: int = 0,
 	local_TTL: float = 1,
+	_kvs: KeyValueStore = None,
 ) -> Callable :
 	"""
 	checks if data exists in aerospike before running the function.
@@ -201,6 +202,7 @@ def AerospikeCache(
 	yields a key in the format: '{a}.{b}'.format(a=a, b=b) in the namespace 'kheina' and set 'test'
 
 	NOTE: AerospikeCache contains a built in local cache system. use local_TTL to set local cache TTL in seconds. set local_TTL=0 to disable.
+	the internal KeyValueStore to use for caching can be passed in via the _kvs argument. only for advanced usage.
 	"""
 	TTL: int = int(TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400)
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
@@ -249,7 +251,7 @@ def AerospikeCache(
 
 		return wrapper
 
-	decorator.kvs = KeyValueStore(namespace, set, local_TTL)
+	decorator.kvs = _kvs or KeyValueStore(namespace, set, local_TTL)
 	return decorator
 
 
