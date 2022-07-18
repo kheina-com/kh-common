@@ -266,6 +266,86 @@ class TestKeyValueStore :
 		assert client.calls['put'][-1] == (('kheina', 'test', key), { 'data': different_data }, { 'ttl': 0 }, { 'max_retries': 3 })
 
 
+	def test_GetMany_HalfLocalHalfRemotePopulated_AllValuesReturned(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		keys = [f'key.{i}' for i in range(10)]
+		values = [(key, i) for i, key in enumerate(keys)]
+
+		for key, i in values[:5] :
+			kvs.put(key, i)
+
+		kvs = KeyValueStore('kheina', 'test')
+
+		for key, i in values[5:] :
+			kvs.put(key, i)
+
+		# apply
+		results = kvs.get_many(keys)
+
+		# assert
+		assert results == {
+			key: i
+			for i, key in enumerate(keys)
+		}
+		assert len(client.calls['get']) == 0
+		assert len(client.calls['get_many']) == 1
+		# only the keys not held in local cache were called
+		assert set(client.calls['get_many'][0]) == set(('kheina', 'test', key) for key in keys[:5])
+
+
+	def test_GetMany_RemotePopulated_AllValuesReturned(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		keys = [f'key.{i}' for i in range(10)]
+		values = [(key, i) for i, key in enumerate(keys)]
+
+		for key, i in values :
+			kvs.put(key, i)
+
+		kvs = KeyValueStore('kheina', 'test')
+
+		# apply
+		results = kvs.get_many(keys)
+
+		# assert
+		assert results == {
+			key: i
+			for i, key in enumerate(keys)
+		}
+		assert len(client.calls['get']) == 0
+		assert len(client.calls['get_many']) == 1
+		# only the keys not held in local cache were called
+		assert set(client.calls['get_many'][0]) == set(('kheina', 'test', key) for key in keys)
+
+
+	def test_GetMany_LocalPopulated_AllValuesReturned(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		keys = [f'key.{i}' for i in range(10)]
+		values = [(key, i) for i, key in enumerate(keys)]
+
+		for key, i in values :
+			kvs.put(key, i)
+
+		# apply
+		results = kvs.get_many(keys)
+
+		# assert
+		assert results == {
+			key: i
+			for i, key in enumerate(keys)
+		}
+		assert len(client.calls['get']) == 0
+		assert len(client.calls['get_many']) == 0
+
+
 class TestInteger :
 
 	def test_set_CacheEmpty_LocalCachePopulated(self) :

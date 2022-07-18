@@ -1,4 +1,4 @@
-from typing import Any, Dict, Tuple, Type
+from typing import Any, Dict, List, Tuple, Type
 from collections import defaultdict
 from copy import deepcopy
 import aerospike
@@ -43,7 +43,7 @@ class AerospikeClient :
 
 		# a couple of these I'm not sure what they're supposed to be
 		# gen is set via meta or policy and the None I'm not sure of, but don't really care atm
-		self._data[key] = ((key[0], key[1], None, hash(key).to_bytes(8, 'big', signed=True)), { 'ttl': ttl, 'gen': 1 }, data)
+		self._data[key] = ((*key, hash(key).to_bytes(8, 'big', signed=True)), { 'ttl': ttl, 'gen': 1 }, data)
 		self._ttl[key] = time.time()
 
 
@@ -60,6 +60,21 @@ class AerospikeClient :
 
 		if data[1]['ttl'] <= 0 and data[1]['ttl'] != -1 :
 			raise ex
+
+		return data
+
+
+	def get_many(self: 'AerospikeClient', keys: List[AerospikeKey]) :
+		self.calls['get_many'].append((keys))
+		data = []
+		for key in keys :
+			try :
+				data.append(self.get(key))
+				# this is a total hack but I don't care
+				del self.calls['get'][-1]
+
+			except aerospike.exception.RecordNotFound :
+				data.append(((key[0], key[1], None, hash(key).to_bytes(8, 'big', signed=True)), None, None))
 
 		return data
 

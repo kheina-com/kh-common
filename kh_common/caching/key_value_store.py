@@ -1,7 +1,7 @@
+from typing import Any, Dict, Iterable, List, Set, Tuple
 from kh_common.utilities import __clear_cache__
 from collections import OrderedDict
 from asyncio import Lock
-from typing import Any
 from copy import copy
 from time import time
 import aerospike
@@ -21,7 +21,8 @@ class KeyValueStore :
 		self._local_TTL: float = local_TTL
 		self._namespace: str = namespace
 		self._set: str = set
-		self._lock: Lock = Lock()
+		self._get_lock: Lock = Lock()
+		self._get_many_lock: Lock = Lock()
 
 
 	def put(self: 'KeyValueStore', key: str, data: Any, TTL: int = 0) :
@@ -48,12 +49,49 @@ class KeyValueStore :
 		return data['data']
 
 
-	def get(self: 'KeyValueStore', key: str) :
+	def get(self: 'KeyValueStore', key: str) -> Any :
 		__clear_cache__(self._cache, time)
 		return self._get(key)
 
 
-	async def get_async(self: 'KeyValueStore', key: str) :
-		async with self._lock :
+	async def get_async(self: 'KeyValueStore', key: str) -> Any :
+		async with self._get_lock :
 			__clear_cache__(self._cache, time)
-		return self._get(key)
+			return self._get(key)
+
+
+	def _get_many(self: 'KeyValueStore', keys: Iterable[str]) :
+		keys: Set[str] = set(keys)
+		remote_keys: Set[str] = keys - self._cache.keys()
+
+		if remote_keys :
+			data: List[Tuple[Any]] = KeyValueStore._client.get_many(list(map(lambda k : (self._namespace, self._set, k), remote_keys)))
+
+			return {
+				**{
+					datum[0][2]: datum[2]['data']
+					# filter on the metadata, since it will always be populated
+					for datum in filter(lambda x : x[1], data)
+				},
+				**{
+					key: self._cache[key][1]
+					for key in keys - remote_keys
+				},
+			}
+
+		# only local cache is required
+		return {
+			key: self._cache[key][1]
+			for key in keys
+		}
+
+
+	def get_many(self: 'KeyValueStore', keys: Iterable[str]) -> Dict[str, Any] :
+		__clear_cache__(self._cache, time)
+		return self._get_many(keys)
+
+
+	async def get_many_async(self: 'KeyValueStore', keys: Iterable[str]) -> Dict[str, Any] :
+		async with self._get_many_lock :
+			__clear_cache__(self._cache, time)
+			return self._get_many(keys)
