@@ -58,6 +58,19 @@ class TestGateway :
 			assert result == { 'success': True }
 
 
+	async def test_Gateway_GetNoDecoder_GatewayReturnsNone(self) :
+		async with await create_test_server() as server :
+			# arrange
+			url = server.make_url('/')
+			gateway: Gateway = Gateway(str(url), decoder=None)
+
+			# act
+			result = await gateway()
+
+			# assert
+			assert result == None
+
+
 	@pytest.mark.parametrize(
 		"status",
 		[500, 404, 403, 502, 429],

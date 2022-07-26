@@ -103,6 +103,9 @@ class Gateway(Hashable) :
 					self._endpoint.format(**kwargs),
 					**req,
 				) as response :
+					if not self._decoder :
+						return
+
 					data = await self._decoder(response)
 
 					if not self._model :
