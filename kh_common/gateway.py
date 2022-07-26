@@ -103,10 +103,11 @@ class Gateway(Hashable) :
 					self._endpoint.format(**kwargs),
 					**req,
 				) as response :
-					if not self._model :
-						return
-
 					data = await self._decoder(response)
+
+					if not self._model :
+						return data
+
 					return parse_obj_as(self._model, data)
 
 			except ClientResponseError as e :
