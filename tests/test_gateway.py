@@ -45,11 +45,24 @@ class TestGateway :
 			assert result.success == True
 
 
-	async def test_Gateway_GetNoModel_GatewayReturnsNone(self) :
+	async def test_Gateway_GetNoModel_GatewayReturnsDecodedDate(self) :
 		async with await create_test_server() as server :
 			# arrange
 			url = server.make_url('/')
 			gateway: Gateway = Gateway(str(url))
+
+			# act
+			result = await gateway()
+
+			# assert
+			assert result == { 'success': True }
+
+
+	async def test_Gateway_GetNoDecoder_GatewayReturnsNone(self) :
+		async with await create_test_server() as server :
+			# arrange
+			url = server.make_url('/')
+			gateway: Gateway = Gateway(str(url), decoder=None)
 
 			# act
 			result = await gateway()
@@ -238,7 +251,7 @@ class TestGateway :
 			result = await gateway()
 
 			# assert
-			assert result == None
+			assert result == { 'success': True }
 			assert self.attempts == 1
 
 
