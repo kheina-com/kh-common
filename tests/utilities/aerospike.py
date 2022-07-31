@@ -64,8 +64,8 @@ class AerospikeClient :
 		return data
 
 
-	def get_many(self: 'AerospikeClient', keys: List[AerospikeKey]) :
-		self.calls['get_many'].append((keys))
+	def get_many(self: 'AerospikeClient', keys: List[AerospikeKey], meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) :
+		self.calls['get_many'].append((keys, meta, policy))
 		data = []
 		for key in keys :
 			try :
@@ -102,3 +102,13 @@ class AerospikeClient :
 		self._data[key][2][bin] += value
 		self._data[key][1]['ttl'] = ttl
 		self._ttl[key] = time.time()
+
+
+	def remove(self: 'AerospikeClient', key: AerospikeKey, meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) :
+		self.calls['remove'].append((key, meta, policy))
+
+		if key not in self._data :
+			raise aerospike.exception.RecordNotFound(2, 'AEROSPIKE_ERR_RECORD_NOT_FOUND', 'src/main/client/remove.c', 124, False)
+
+		del self._data[key]
+		del self._ttl[key]

@@ -66,13 +66,18 @@ class KeyValueStore :
 
 		if remote_keys :
 			data: List[Tuple[Any]] = KeyValueStore._client.get_many(list(map(lambda k : (self._namespace, self._set, k), remote_keys)))
+			data_map: Dict[str, Any] = { }
+
+			exp: float = time() + self._local_TTL
+			for datum in filter(lambda x : x[1], data) :
+				# filter on the metadata, since it will always be populated
+				key: str = datum[0][2]
+				value: Any = datum[2]['data']
+				data_map[key] = copy(value)
+				self._cache[key] = (exp, value)
 
 			return {
-				**{
-					datum[0][2]: datum[2]['data']
-					# filter on the metadata, since it will always be populated
-					for datum in filter(lambda x : x[1], data)
-				},
+				**data_map,
 				**{
 					key: self._cache[key][1]
 					for key in keys - remote_keys
@@ -95,3 +100,15 @@ class KeyValueStore :
 		async with self._get_many_lock :
 			__clear_cache__(self._cache, time)
 			return self._get_many(keys)
+
+
+	def remove(self: 'KeyValueStore', key: str) :
+		if key in self._cache :
+			del self._cache[key]
+
+		self._client.remove(
+			(self._namespace, self._set, key),
+			policy={
+				'max_retries': 3,
+			},
+		)
