@@ -293,7 +293,7 @@ class TestKeyValueStore :
 		assert len(client.calls['get']) == 0
 		assert len(client.calls['get_many']) == 1
 		# only the keys not held in local cache were called
-		assert set(client.calls['get_many'][0]) == set(('kheina', 'test', key) for key in keys[:5])
+		assert set(client.calls['get_many'][0][0]) == set(('kheina', 'test', key) for key in keys[:5])
 
 
 	def test_GetMany_RemotePopulated_AllValuesReturned(self) :
@@ -320,7 +320,7 @@ class TestKeyValueStore :
 		assert len(client.calls['get']) == 0
 		assert len(client.calls['get_many']) == 1
 		# only the keys not held in local cache were called
-		assert set(client.calls['get_many'][0]) == set(('kheina', 'test', key) for key in keys)
+		assert set(client.calls['get_many'][0][0]) == set(('kheina', 'test', key) for key in keys)
 
 
 	def test_GetMany_LocalPopulated_AllValuesReturned(self) :
@@ -344,6 +344,58 @@ class TestKeyValueStore :
 		}
 		assert len(client.calls['get']) == 0
 		assert len(client.calls['get_many']) == 0
+
+
+	def test_Remove_LocalPopulated_RecordRemoved(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+		data = 1
+
+		# apply
+		kvs.put(key, data)
+		kvs.remove(key)
+
+		# assert
+		assert len(client.calls['remove']) == 1
+		assert client.calls['remove'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+		assert key not in kvs._cache
+
+
+	def test_Exists_LocalPopulated_KeyExistsReturnsTrue(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+		data = 0
+
+		# apply
+		kvs.put(key, data)
+		result = kvs.exists(key)
+
+		# assert
+		assert result == True
+		assert len(client.calls['exists']) == 1
+		assert client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+
+
+	def test_Exists_LocalNotPopulated_KeyExistsReturnsFalse(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+
+		# apply
+		result = kvs.exists(key)
+
+		# assert
+		assert result == False
+		assert len(client.calls['exists']) == 1
+		assert client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
 
 
 class TestInteger :
