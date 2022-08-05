@@ -102,7 +102,7 @@ class KeyValueStore :
 			return self._get_many(keys)
 
 
-	def remove(self: 'KeyValueStore', key: str) :
+	def remove(self: 'KeyValueStore', key: str) -> None :
 		if key in self._cache :
 			del self._cache[key]
 
@@ -112,3 +112,18 @@ class KeyValueStore :
 				'max_retries': 3,
 			},
 		)
+
+
+	def exists(self: 'KeyValueStore', key: str) -> bool :
+		try :
+			_, meta = self._client.exists(
+				(self._namespace, self._set, key),
+				policy={
+					'max_retries': 3,
+				},
+			)
+			# check the metadata, since it will always be populated
+			return meta != None
+
+		except aerospike.exceptions.RecordNotFound :
+			return False

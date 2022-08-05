@@ -1,4 +1,4 @@
-from typing import Any, Dict, List, Tuple, Type
+from typing import Any, Dict, List, Optional, Tuple, Type
 from collections import defaultdict
 from copy import deepcopy
 import aerospike
@@ -18,28 +18,32 @@ class AerospikeClient :
 		self.calls = defaultdict(lambda : [])
 
 
-	def clear(self: 'AerospikeClient') :
+	def clear(self: 'AerospikeClient') -> None :
 		self._data.clear()
 		self._ttl.clear()
 		self.calls.clear()
 
 
-	def __assert_key_type__(self: 'AerospikeClient', key: AerospikeKey) :
+	def __assert_key_type__(self: 'AerospikeClient', key: AerospikeKey) -> None :
 		assert type(key) == tuple
 		assert len(key) == 3
 		assert tuple(map(type, key)) == (str, str, str)
 
 
-	def __assert_data_type__(self: 'AerospikeClient', data: Dict[str, Any]) :
+	def __assert_data_type__(self: 'AerospikeClient', data: Dict[str, Any]) -> None :
 		assert set(map(type, data.keys())) == { str }
 
 
-	def put(self: 'AerospikeClient', key: AerospikeKey, data: Dict[str, Any], meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) :
+	def __get_ttl__(self: 'AerospikeClient', meta: Dict[str, Any] = None) -> int :
+		return int(meta['ttl'] if meta and 'ttl' in meta else OneMonth) or OneMonth
+
+
+	def put(self: 'AerospikeClient', key: AerospikeKey, data: Dict[str, Any], meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) -> None :
 		self.calls['put'].append((key, data, meta, policy))
 		self.__assert_key_type__(key)
 		self.__assert_data_type__(data)
 
-		ttl: int = int(meta['ttl'] if meta and 'ttl' in meta else OneMonth) or OneMonth
+		ttl: int = self.__get_ttl__(meta)
 
 		# a couple of these I'm not sure what they're supposed to be
 		# gen is set via meta or policy and the None I'm not sure of, but don't really care atm
@@ -47,7 +51,7 @@ class AerospikeClient :
 		self._ttl[key] = time.time()
 
 
-	def get(self: 'AerospikeClient', key: AerospikeKey) :
+	def get(self: 'AerospikeClient', key: AerospikeKey) -> Any :
 		self.calls['get'].append((key))
 		self.__assert_key_type__(key)
 		ex = aerospike.exception.RecordNotFound(2, '127.0.0.1:3000 AEROSPIKE_ERR_RECORD_NOT_FOUND', 'src/main/client/get.c', 118, False)
@@ -64,7 +68,7 @@ class AerospikeClient :
 		return data
 
 
-	def get_many(self: 'AerospikeClient', keys: List[AerospikeKey], meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) :
+	def get_many(self: 'AerospikeClient', keys: List[AerospikeKey], meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) -> List[Any] :
 		self.calls['get_many'].append((keys, meta, policy))
 		data = []
 		for key in keys :
@@ -79,17 +83,17 @@ class AerospikeClient :
 		return data
 
 
-	def increment(self: 'AerospikeClient', key: AerospikeKey, bin: str, value: int, meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) :
+	def increment(self: 'AerospikeClient', key: AerospikeKey, bin: str, value: int, meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) -> None :
 		self.calls['increment'].append((key, bin, value, meta, policy))
 		self.__assert_key_type__(key)
 		assert type(bin) == str
 
-		ttl: int = int(meta['ttl'] if meta and 'ttl' in meta else OneMonth) or OneMonth
+		ttl: int = self.__get_ttl__(meta)
 
 		if key not in self._data :
 			# a couple of these I'm not sure what they're supposed to be
 			# gen is set via meta or policy and the None I'm not sure of, but don't really care atm
-			self._data[key] = ((*key, hash(key).to_bytes(8, 'big')), { 'ttl': ttl, 'gen': 1 }, { bin: value })
+			self._data[key] = ((*key, hash(key).to_bytes(8, 'big', signed=True)), { 'ttl': ttl, 'gen': 1 }, { bin: value })
 			self._ttl[key] = time.time()
 			return
 
@@ -104,7 +108,7 @@ class AerospikeClient :
 		self._ttl[key] = time.time()
 
 
-	def remove(self: 'AerospikeClient', key: AerospikeKey, meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) :
+	def remove(self: 'AerospikeClient', key: AerospikeKey, meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) -> None :
 		self.calls['remove'].append((key, meta, policy))
 
 		if key not in self._data :
@@ -112,3 +116,20 @@ class AerospikeClient :
 
 		del self._data[key]
 		del self._ttl[key]
+
+
+	def exists(self: 'AerospikeClient', key: AerospikeKey, meta: Dict[str, Any] = None, policy: Dict[str, Any] = None) -> Tuple[Tuple[str, str, str, bytes], Optional[Dict[str, Any]]] :
+		self.calls['exists'].append((key, meta, policy))
+
+		"""
+		this class is supposed to mock the implemented functionality of the python aerospike client library and not the ideal functionality of the library.
+		in this case, we have a difference between what the documentation of the library says it's supposed to do and what it actually does.
+
+		at the time of writing, the behavior of the library is such that the RecordNotFound error is never thrown, rather, a None meta is returned.
+		in the future, when this bug is potentially fixed, this function should be changed to throw an error instead of returning empty data.
+		"""
+
+		if key in self._data :
+			return self._data[key][:2]
+
+		return (*key, hash(key).to_bytes(8, 'big', signed=True)), None

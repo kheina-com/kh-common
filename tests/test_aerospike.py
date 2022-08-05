@@ -364,6 +364,40 @@ class TestKeyValueStore :
 		assert key not in kvs._cache
 
 
+	def test_Exists_LocalPopulated_KeyExistsReturnsTrue(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+		data = 0
+
+		# apply
+		kvs.put(key, data)
+		result = kvs.exists(key)
+
+		# assert
+		assert result == True
+		assert len(client.calls['exists']) == 1
+		assert client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+
+
+	def test_Exists_LocalNotPopulated_KeyExistsReturnsFalse(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+
+		# apply
+		result = kvs.exists(key)
+
+		# assert
+		assert result == False
+		assert len(client.calls['exists']) == 1
+		assert client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+
+
 class TestInteger :
 
 	def test_set_CacheEmpty_LocalCachePopulated(self) :
