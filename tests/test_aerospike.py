@@ -290,6 +290,7 @@ class TestKeyValueStore :
 			key: i
 			for i, key in enumerate(keys)
 		}
+		assert len(kvs._cache) == len(keys)
 		assert len(client.calls['get']) == 0
 		assert len(client.calls['get_many']) == 1
 		# only the keys not held in local cache were called
