@@ -290,6 +290,7 @@ class TestKeyValueStore :
 			key: i
 			for i, key in enumerate(keys)
 		}
+		assert len(kvs._cache) == len(keys)
 		assert len(client.calls['get']) == 0
 		assert len(client.calls['get_many']) == 1
 		# only the keys not held in local cache were called
@@ -396,6 +397,40 @@ class TestKeyValueStore :
 		assert result == False
 		assert len(client.calls['exists']) == 1
 		assert client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+
+
+	def test_Get_EnsureCacheNotModified_CacheUnchanged(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+		data = { 'a': 1, 'b': '2', 'c': 3.1 }
+
+		kvs.put(key, data)
+		# wipe local cache
+		kvs._cache.clear()
+
+		# apply
+		kvs.get(key).pop('a')
+
+		# assert
+		assert kvs.get(key) == data
+
+
+	def test_GetMany_NotAllKeysExist_EmptyKeysReturnNone(self) :
+
+		# arrange
+		client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		keys = ['key1', 'key2', 'key3']
+
+		# apply
+		results = kvs.get_many(keys)
+
+		# assert
+		assert len(results) == len(keys)
+		assert results == { k: None for k in keys }
 
 
 class TestInteger :

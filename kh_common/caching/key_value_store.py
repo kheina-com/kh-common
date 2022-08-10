@@ -46,7 +46,7 @@ class KeyValueStore :
 		_, _, data = KeyValueStore._client.get((self._namespace, self._set, key))
 		self._cache[key] = (time() + self._local_TTL, data['data'])
 
-		return data['data']
+		return copy(data['data'])
 
 
 	def get(self: 'KeyValueStore', key: str) -> Any :
@@ -69,17 +69,22 @@ class KeyValueStore :
 			data_map: Dict[str, Any] = { }
 
 			exp: float = time() + self._local_TTL
-			for datum in filter(lambda x : x[1], data) :
-				# filter on the metadata, since it will always be populated
+			for datum in data :
 				key: str = datum[0][2]
-				value: Any = datum[2]['data']
-				data_map[key] = copy(value)
-				self._cache[key] = (exp, value)
+
+				# filter on the metadata, since it will always be populated
+				if datum[1] :
+					value: Any = datum[2]['data']
+					data_map[key] = copy(value)
+					self._cache[key] = (exp, value)
+
+				else :
+					data_map[key] = None
 
 			return {
 				**data_map,
 				**{
-					key: self._cache[key][1]
+					key: copy(self._cache[key][1])
 					for key in keys - remote_keys
 				},
 			}
