@@ -1,7 +1,7 @@
-from typing import Any, Dict, NamedTuple, Set
+from typing import Any, Dict, NamedTuple, Set, Optional
+from enum import Enum, IntEnum, unique
 from pydantic import BaseModel
 from datetime import datetime
-from enum import Enum, unique
 from uuid import UUID
 
 
@@ -41,3 +41,16 @@ class PublicKeyResponse(BaseModel) :
 	signature: str
 	issued: int
 	expires: int
+
+
+@unique
+class AuthState(IntEnum) :
+	active: int = 0
+	inactive: int = 1
+
+
+class TokenInfo(BaseModel) :
+	state: AuthState
+	expires: datetime
+	issued: datetime
+	fingerprint: bytes
