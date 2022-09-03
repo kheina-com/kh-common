@@ -11,6 +11,9 @@ from uuid import uuid4
 import pytest
 
 
+KeyValueStore._client = AerospikeClient()
+
+
 @pytest.mark.asyncio
 class TestAuthToken :
 
