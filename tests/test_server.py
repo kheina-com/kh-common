@@ -1,10 +1,14 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.server.middleware import CustomHeaderMiddleware, HeadersToSet
 from kh_common.server.middleware.cors import KhCorsMiddleware
-from tests.utilities.auth import mock_pk, mock_token
+from tests.utilities.auth import expires, mock_pk, mock_token
+from kh_common.caching.key_value_store import KeyValueStore
+from kh_common.models.auth import AuthState, TokenMetadata
+from tests.utilities.aerospike import AerospikeClient
 from kh_common.server import Request, ServerApp
 from kh_common.config.repo import short_hash
 from fastapi.testclient import TestClient
+from datetime import datetime, timezone
 from kh_common.auth import Scope
 from fastapi import FastAPI
 from aiohttp import request
@@ -19,6 +23,28 @@ schema = 'https://'
 
 @pytest.mark.asyncio
 class TestAppServer :
+
+	client = None
+	key_id = 54321
+	user_id = 9876543210
+	guid = uuid4()
+
+
+	def setup(self) :
+		TestAppServer.client = AerospikeClient()
+		KeyValueStore._client = TestAppServer.client
+
+		TestAppServer.client.put(('kheina', 'token', TestAppServer.guid.bytes), { 'data': TokenMetadata(
+			state=AuthState.active,
+			key_id=TestAppServer.key_id,
+			user_id=TestAppServer.user_id,
+			version=b'1',
+			algorithm='ed25519',
+			expires=datetime.fromtimestamp(expires, timezone.utc),
+			issued=datetime.now(timezone.utc),
+			fingerprint=b'',
+		)})
+
 
 	def test_ServerApp_GetNoAuth_Success(self) :
 
@@ -162,7 +188,7 @@ class TestAppServer :
 	def test_ServerApp_GetRequiresAuth_Authorized(self, mocker) :
 
 		# arrange
-		mock_pk(mocker)
+		mock_pk(mocker, key_id=TestAppServer.key_id)
 
 		app = ServerApp(auth=True, auth_required=True)
 
@@ -172,20 +198,20 @@ class TestAppServer :
 
 		client = TestClient(app, base_url=base_url)
 
-		token = mock_token(1)
+		token = mock_token(TestAppServer.user_id, key_id=TestAppServer.key_id, guid=TestAppServer.guid)
 
 		# act
 		response = client.get(schema + base_url + endpoint, headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 200 == response.status_code
-		assert { 'user_id': 1 } == response.json()
+		assert { 'user_id': TestAppServer.user_id } == response.json()
 
 
 	def test_ServerApp_GetRequiresScope_Authorized(self, mocker) :
 
 		# arrange
-		mock_pk(mocker)
+		mock_pk(mocker, key_id=TestAppServer.key_id)
 
 		app = ServerApp(auth=True, auth_required=True)
 
@@ -196,14 +222,14 @@ class TestAppServer :
 
 		client = TestClient(app, base_url=base_url)
 
-		token = mock_token(1000000, { 'scope': [Scope.mod] })
+		token = mock_token(TestAppServer.user_id, key_id=TestAppServer.key_id, guid=TestAppServer.guid, token_data={ 'scope': [Scope.mod] })
 
 		# act
 		response = client.get(schema + base_url + endpoint, cookies={ 'kh-auth': token })
 
 		# assert
 		assert 200 == response.status_code
-		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response.json()
+		assert { 'user_id': TestAppServer.user_id, 'data': { 'scope': ['mod'] } } == response.json()
 
 
 	def test_ServerApp_GetInvalidAuth_NullAuthCookie(self) :
