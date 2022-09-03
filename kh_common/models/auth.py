@@ -1,4 +1,4 @@
-from typing import Any, Dict, NamedTuple, Set, Optional
+from typing import Any, Dict, NamedTuple, Set
 from enum import Enum, IntEnum, unique
 from pydantic import BaseModel
 from datetime import datetime
@@ -49,8 +49,11 @@ class AuthState(IntEnum) :
 	inactive: int = 1
 
 
-class TokenInfo(BaseModel) :
+class TokenMetadata(BaseModel) :
 	state: AuthState
+	key_id: int
+	version: bytes
+	algorithm: str
 	expires: datetime
 	issued: datetime
 	fingerprint: bytes

@@ -1,7 +1,9 @@
+from asyncio import Task
+from kh_common.models.auth import AuthState, AuthToken, KhUser, PublicKeyResponse, Scope, TokenMetadata
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
-from kh_common.models.auth import AuthToken, KhUser, PublicKeyResponse, Scope
 from cryptography.hazmat.primitives.serialization import load_der_public_key
 from kh_common.exceptions.http_error import Forbidden, Unauthorized
+from kh_common.caching.key_value_store import KeyValueStore
 from cryptography.hazmat.backends import default_backend
 from kh_common.base64 import b64decode, b64encode
 from kh_common.config.constants import auth_host
@@ -10,14 +12,16 @@ from aiohttp import request as async_request
 from typing import Callable, Dict, Union
 from kh_common.datetime import datetime
 from kh_common.caching import ArgsCache
+from re import compile as re_compile
+from asyncio import ensure_future
 from fastapi import Request
 from hashlib import sha1
 from uuid import UUID
 import ujson as json
-from re import compile as re_compile
 
 
 ua_strip = re_compile(r'\/\d+(?:\.\d+)*')
+KVS: KeyValueStore = KeyValueStore('kheina', 'token')
 
 
 class InvalidToken(ValueError) :
@@ -87,9 +91,17 @@ async def v1token(token: str) -> AuthToken :
 	user_id: int = int_from_bytes(b64decode(user_id))
 	guid: UUID = UUID(bytes=b64decode(guid))
 
+	if key_id <= 0 :
+		raise Unauthorized('Key is invalid.')
+
+	if user_id <= 0 :
+		raise Unauthorized('User is invalid.')
+
 	if datetime.now() > expires :
 		raise Unauthorized('Key has expired.')
 
+
+	token_info: Task[TokenMetadata] = ensure_future(KVS.get_async(guid.bytes))
 	public_key: Dict[str, Union[str, int, Ed25519PublicKey]] = await _fetchPublicKey(key_id, algorithm)
 
 	try :
@@ -97,6 +109,17 @@ async def v1token(token: str) -> AuthToken :
 
 	except :
 		raise Unauthorized('Key validation failed.')
+
+	token_info: TokenMetadata = await token_info
+
+	try :
+		assert token_info.state == AuthState.active, 'This token is no longer active.'
+		assert token_info.algorithm == algorithm, 'Token algorithm mismatch.'
+		assert token_info.expires == expires, 'Token expiration mismatch.'
+		assert token_info.key_id == key_id, 'Token encryption key mismatch.'
+
+	except AssertionError as e :
+		raise Unauthorized(str(e))
 
 	return AuthToken(
 		guid=guid,
