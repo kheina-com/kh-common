@@ -1,4 +1,3 @@
-from asyncio import Task
 from kh_common.models.auth import AuthState, AuthToken, KhUser, PublicKeyResponse, Scope, TokenMetadata
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
@@ -12,8 +11,8 @@ from aiohttp import request as async_request
 from typing import Callable, Dict, Union
 from kh_common.datetime import datetime
 from kh_common.caching import ArgsCache
+from asyncio import ensure_future, Task
 from re import compile as re_compile
-from asyncio import ensure_future
 from fastapi import Request
 from hashlib import sha1
 from uuid import UUID

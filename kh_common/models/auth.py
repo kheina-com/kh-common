@@ -52,6 +52,7 @@ class AuthState(IntEnum) :
 class TokenMetadata(BaseModel) :
 	state: AuthState
 	key_id: int
+	user_id: int
 	version: bytes
 	algorithm: str
 	expires: datetime
