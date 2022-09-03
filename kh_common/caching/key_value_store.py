@@ -1,4 +1,5 @@
 from typing import Any, Dict, Iterable, List, Set, Tuple
+from kh_common.config.constants import environment
 from kh_common.utilities import __clear_cache__
 from collections import OrderedDict
 from asyncio import Lock
@@ -12,7 +13,7 @@ class KeyValueStore :
 	_client = None
 
 	def __init__(self: 'KeyValueStore', namespace: str, set: str, local_TTL: float = 1) :
-		if not KeyValueStore._client :
+		if not KeyValueStore._client and not environment.is_test() :
 			from kh_common.config.credentials import aerospike as config
 			config['hosts'] = list(map(tuple, config['hosts']))
 			KeyValueStore._client = aerospike.client(config).connect()

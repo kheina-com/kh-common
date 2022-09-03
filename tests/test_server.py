@@ -19,7 +19,6 @@ import pytest
 endpoint = '/'
 base_url = 'dev.kheina.com'
 schema = 'https://'
-KeyValueStore._client = AerospikeClient()
 
 
 @pytest.mark.asyncio
