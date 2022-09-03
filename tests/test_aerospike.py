@@ -8,18 +8,20 @@ import pytest
 import time
 
 
-client = AerospikeClient()
-KeyValueStore._client = client
-Integer._client = client
-
-
 class TestAerospikeCache(CachingTestClass) :
 
 	it = 0
+	client = None
+
+	def setup(self) :
+		TestAerospikeCache.client = AerospikeClient()
+		KeyValueStore._client = TestAerospikeCache.client
+		Integer._client = TestAerospikeCache.client
+
 
 	def test_FormatCache_int(self) :
 		# setup
-		client.clear()
+		TestAerospikeCache.client.clear()
 		TestAerospikeCache.it = 0
 
 		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
@@ -44,11 +46,11 @@ class TestAerospikeCache(CachingTestClass) :
 		assert 5 == cache_test(3)
 
 		# check cache
-		assert 3 == len(client.calls['put'])
-		assert 6 == len(client.calls['get'])  # initial set runs get + aerospike retrieval
+		assert 3 == len(TestAerospikeCache.client.calls['put'])
+		assert 6 == len(TestAerospikeCache.client.calls['get'])  # initial set runs get + aerospike retrieval
 
 		# purge
-		client.clear()
+		TestAerospikeCache.client.clear()
 
 		# local cache again
 		assert 1 == cache_test(1)
@@ -60,8 +62,8 @@ class TestAerospikeCache(CachingTestClass) :
 		assert 6 == cache_test(2)
 		assert 8 == cache_test(3)
 
-		assert 3 == len(client.calls['put'])
-		assert 3 == len(client.calls['get'])
+		assert 3 == len(TestAerospikeCache.client.calls['put'])
+		assert 3 == len(TestAerospikeCache.client.calls['get'])
 
 
 @pytest.mark.asyncio
@@ -71,7 +73,7 @@ class TestAerospikeCacheAsync(CachingTestClass) :
 
 	async def test_async_FormatCache_int(self) :
 		# setup
-		client.clear()
+		TestAerospikeCache.client.clear()
 		TestAerospikeCache.it = 0
 
 		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
@@ -96,11 +98,11 @@ class TestAerospikeCacheAsync(CachingTestClass) :
 		assert 5 == await cache_test(3)
 
 		# check cache
-		assert 3 == len(client.calls['put'])
-		assert 6 == len(client.calls['get'])  # initial set runs get + aerospike retrieval
+		assert 3 == len(TestAerospikeCache.client.calls['put'])
+		assert 6 == len(TestAerospikeCache.client.calls['get'])  # initial set runs get + aerospike retrieval
 
 		# purge
-		client.clear()
+		TestAerospikeCache.client.clear()
 
 		# local cache again
 		assert 1 == await cache_test(1)
@@ -112,8 +114,8 @@ class TestAerospikeCacheAsync(CachingTestClass) :
 		assert 6 == await cache_test(2)
 		assert 8 == await cache_test(3)
 
-		assert 3 == len(client.calls['put'])
-		assert 3 == len(client.calls['get'])  # initial set runs get + aerospike retrieval
+		assert 3 == len(TestAerospikeCache.client.calls['put'])
+		assert 3 == len(TestAerospikeCache.client.calls['get'])  # initial set runs get + aerospike retrieval
 
 
 class TestKeyValueStore :
@@ -124,9 +126,9 @@ class TestKeyValueStore :
 		key = 'key'
 		data = 1
 
-		client.clear()
-		client.put(('kheina', 'test', key), { 'data': data })
-		client.calls.clear()
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.client.put(('kheina', 'test', key), { 'data': data })
+		TestAerospikeCache.client.calls.clear()
 
 		kvs = KeyValueStore('kheina', 'test')
 
@@ -135,7 +137,7 @@ class TestKeyValueStore :
 
 		# assert
 		assert result == data
-		assert len(client.calls['get']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 1
 
 
 	def test_Get_LocalCachePopulated_ClientNotCalled(self) :
@@ -144,9 +146,9 @@ class TestKeyValueStore :
 		key = 'key'
 		data = 1
 
-		client.clear()
-		client.put(('kheina', 'test', key), { 'data': data })
-		client.calls.clear()
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.client.put(('kheina', 'test', key), { 'data': data })
+		TestAerospikeCache.client.calls.clear()
 
 		kvs = KeyValueStore('kheina', 'test')
 
@@ -156,7 +158,7 @@ class TestKeyValueStore :
 
 		# assert
 		assert result == data
-		assert len(client.calls['get']) == 0
+		assert len(TestAerospikeCache.client.calls['get']) == 0
 
 
 	def test_Get_LocalCacheCleaned_ClientReturnsValue(self) :
@@ -165,9 +167,9 @@ class TestKeyValueStore :
 		key = 'key'
 		data = 1
 
-		client.clear()
-		client.put(('kheina', 'test', key), { 'data': data })
-		client.calls.clear()
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.client.put(('kheina', 'test', key), { 'data': data })
+		TestAerospikeCache.client.calls.clear()
 
 		kvs = KeyValueStore('kheina', 'test')
 		kvs._cache[key] = (time.time(), data)
@@ -177,7 +179,7 @@ class TestKeyValueStore :
 
 		# assert
 		assert result == data
-		assert len(client.calls['get']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 1
 
 
 	def test_Get_LocalTTLZero_LocalCacheNotUsed(self) :
@@ -186,9 +188,9 @@ class TestKeyValueStore :
 		key = 'key'
 		data = 1
 
-		client.clear()
-		client.put(('kheina', 'test', key), { 'data': data })
-		client.calls.clear()
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.client.put(('kheina', 'test', key), { 'data': data })
+		TestAerospikeCache.client.calls.clear()
 
 		kvs = KeyValueStore('kheina', 'test', local_TTL=0)
 
@@ -198,7 +200,7 @@ class TestKeyValueStore :
 
 		# assert
 		assert result == data
-		assert len(client.calls['get']) == 2
+		assert len(TestAerospikeCache.client.calls['get']) == 2
 
 
 	def test_Put_CacheEmpty_CacheCalledCorrectly(self) :
@@ -207,7 +209,7 @@ class TestKeyValueStore :
 		key = 'key'
 		data = 1
 
-		client.clear()
+		TestAerospikeCache.client.clear()
 
 		kvs = KeyValueStore('kheina', 'test', local_TTL=0)
 
@@ -217,9 +219,9 @@ class TestKeyValueStore :
 
 		# assert
 		assert result == data
-		assert len(client.calls['put']) == 1
-		assert len(client.calls['get']) == 1
-		assert client.calls['put'][0] == (('kheina', 'test', key), { 'data': data }, { 'ttl': 0 }, { 'max_retries': 3 })
+		assert len(TestAerospikeCache.client.calls['put']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 1
+		assert TestAerospikeCache.client.calls['put'][0] == (('kheina', 'test', key), { 'data': data }, { 'ttl': 0 }, { 'max_retries': 3 })
 
 
 	def test_Put_TTLSet_CacheCalledCorrectly(self) :
@@ -228,7 +230,7 @@ class TestKeyValueStore :
 		key = 'key'
 		data = 1
 
-		client.clear()
+		TestAerospikeCache.client.clear()
 
 		kvs = KeyValueStore('kheina', 'test', local_TTL=0)
 
@@ -238,9 +240,9 @@ class TestKeyValueStore :
 
 		# assert
 		assert result == data
-		assert len(client.calls['put']) == 1
-		assert len(client.calls['get']) == 1
-		assert client.calls['put'][0] == (('kheina', 'test', key), { 'data': data }, { 'ttl': 1000 }, { 'max_retries': 3 })
+		assert len(TestAerospikeCache.client.calls['put']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 1
+		assert TestAerospikeCache.client.calls['put'][0] == (('kheina', 'test', key), { 'data': data }, { 'ttl': 1000 }, { 'max_retries': 3 })
 
 
 	def test_Put_CachePopulated_CacheOverWritten(self) :
@@ -250,7 +252,7 @@ class TestKeyValueStore :
 		different_data = 10
 		data = 1
 
-		client.clear()
+		TestAerospikeCache.client.clear()
 
 		kvs = KeyValueStore('kheina', 'test', local_TTL=0)
 
@@ -261,15 +263,15 @@ class TestKeyValueStore :
 
 		# assert
 		assert result == different_data
-		assert len(client.calls['put']) == 2
-		assert len(client.calls['get']) == 1
-		assert client.calls['put'][-1] == (('kheina', 'test', key), { 'data': different_data }, { 'ttl': 0 }, { 'max_retries': 3 })
+		assert len(TestAerospikeCache.client.calls['put']) == 2
+		assert len(TestAerospikeCache.client.calls['get']) == 1
+		assert TestAerospikeCache.client.calls['put'][-1] == (('kheina', 'test', key), { 'data': different_data }, { 'ttl': 0 }, { 'max_retries': 3 })
 
 
 	def test_GetMany_HalfLocalHalfRemotePopulated_AllValuesReturned(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 		kvs = KeyValueStore('kheina', 'test')
 		keys = [f'key.{i}' for i in range(10)]
 		values = [(key, i) for i, key in enumerate(keys)]
@@ -291,16 +293,16 @@ class TestKeyValueStore :
 			for i, key in enumerate(keys)
 		}
 		assert len(kvs._cache) == len(keys)
-		assert len(client.calls['get']) == 0
-		assert len(client.calls['get_many']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 0
+		assert len(TestAerospikeCache.client.calls['get_many']) == 1
 		# only the keys not held in local cache were called
-		assert set(client.calls['get_many'][0][0]) == set(('kheina', 'test', key) for key in keys[:5])
+		assert set(TestAerospikeCache.client.calls['get_many'][0][0]) == set(('kheina', 'test', key) for key in keys[:5])
 
 
 	def test_GetMany_RemotePopulated_AllValuesReturned(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 		kvs = KeyValueStore('kheina', 'test')
 		keys = [f'key.{i}' for i in range(10)]
 		values = [(key, i) for i, key in enumerate(keys)]
@@ -318,16 +320,16 @@ class TestKeyValueStore :
 			key: i
 			for i, key in enumerate(keys)
 		}
-		assert len(client.calls['get']) == 0
-		assert len(client.calls['get_many']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 0
+		assert len(TestAerospikeCache.client.calls['get_many']) == 1
 		# only the keys not held in local cache were called
-		assert set(client.calls['get_many'][0][0]) == set(('kheina', 'test', key) for key in keys)
+		assert set(TestAerospikeCache.client.calls['get_many'][0][0]) == set(('kheina', 'test', key) for key in keys)
 
 
 	def test_GetMany_LocalPopulated_AllValuesReturned(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 		kvs = KeyValueStore('kheina', 'test')
 		keys = [f'key.{i}' for i in range(10)]
 		values = [(key, i) for i, key in enumerate(keys)]
@@ -343,14 +345,14 @@ class TestKeyValueStore :
 			key: i
 			for i, key in enumerate(keys)
 		}
-		assert len(client.calls['get']) == 0
-		assert len(client.calls['get_many']) == 0
+		assert len(TestAerospikeCache.client.calls['get']) == 0
+		assert len(TestAerospikeCache.client.calls['get_many']) == 0
 
 
 	def test_Remove_LocalPopulated_RecordRemoved(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 		kvs = KeyValueStore('kheina', 'test')
 		key = 'key'
 		data = 1
@@ -360,15 +362,15 @@ class TestKeyValueStore :
 		kvs.remove(key)
 
 		# assert
-		assert len(client.calls['remove']) == 1
-		assert client.calls['remove'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+		assert len(TestAerospikeCache.client.calls['remove']) == 1
+		assert TestAerospikeCache.client.calls['remove'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
 		assert key not in kvs._cache
 
 
 	def test_Exists_LocalPopulated_KeyExistsReturnsTrue(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 		kvs = KeyValueStore('kheina', 'test')
 		key = 'key'
 		data = 0
@@ -379,14 +381,14 @@ class TestKeyValueStore :
 
 		# assert
 		assert result == True
-		assert len(client.calls['exists']) == 1
-		assert client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+		assert len(TestAerospikeCache.client.calls['exists']) == 1
+		assert TestAerospikeCache.client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
 
 
 	def test_Exists_LocalNotPopulated_KeyExistsReturnsFalse(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 		kvs = KeyValueStore('kheina', 'test')
 		key = 'key'
 
@@ -395,14 +397,14 @@ class TestKeyValueStore :
 
 		# assert
 		assert result == False
-		assert len(client.calls['exists']) == 1
-		assert client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+		assert len(TestAerospikeCache.client.calls['exists']) == 1
+		assert TestAerospikeCache.client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
 
 
 	def test_Get_EnsureCacheNotModified_CacheUnchanged(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 		kvs = KeyValueStore('kheina', 'test')
 		key = 'key'
 		data = { 'a': 1, 'b': '2', 'c': 3.1 }
@@ -421,7 +423,7 @@ class TestKeyValueStore :
 	def test_GetMany_NotAllKeysExist_EmptyKeysReturnNone(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 		kvs = KeyValueStore('kheina', 'test')
 		keys = ['key1', 'key2', 'key3']
 
@@ -438,7 +440,7 @@ class TestInteger :
 	def test_set_CacheEmpty_LocalCachePopulated(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 
 		data = 100
 
@@ -450,14 +452,14 @@ class TestInteger :
 
 		# assert
 		assert result == data
-		assert len(client.calls['put']) == 1
-		assert len(client.calls['get']) == 0
+		assert len(TestAerospikeCache.client.calls['put']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 0
 
 
 	def test_set_CacheEmpty_AerospikeCachePopulated(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 
 		data = 100
 
@@ -469,14 +471,14 @@ class TestInteger :
 
 		# assert
 		assert result == data
-		assert len(client.calls['put']) == 1
-		assert len(client.calls['get']) == 1
+		assert len(TestAerospikeCache.client.calls['put']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 1
 
 
 	def test_increment_CachePopulated_CacheIncrement(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 
 		data = 100
 
@@ -489,15 +491,15 @@ class TestInteger :
 
 		# assert
 		assert result == data + 1
-		assert len(client.calls['put']) == 1
-		assert len(client.calls['increment']) == 1
-		assert len(client.calls['get']) == 1
+		assert len(TestAerospikeCache.client.calls['put']) == 1
+		assert len(TestAerospikeCache.client.calls['increment']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 1
 
 
 	def test_increment_CachePopulated_CacheIncrementMany(self) :
 
 		# arrange
-		client.clear()
+		TestAerospikeCache.client.clear()
 
 		data = 100
 
@@ -511,6 +513,6 @@ class TestInteger :
 
 		# assert
 		assert result == 104
-		assert len(client.calls['put']) == 1
-		assert len(client.calls['increment']) == 2
-		assert len(client.calls['get']) == 1
+		assert len(TestAerospikeCache.client.calls['put']) == 1
+		assert len(TestAerospikeCache.client.calls['increment']) == 2
+		assert len(TestAerospikeCache.client.calls['get']) == 1

@@ -27,7 +27,9 @@ class AerospikeClient :
 	def __assert_key_type__(self: 'AerospikeClient', key: AerospikeKey) -> None :
 		assert type(key) == tuple
 		assert len(key) == 3
-		assert tuple(map(type, key)) == (str, str, str)
+
+		for t in map(type, key) :
+			assert t in { str, bytes }
 
 
 	def __assert_data_type__(self: 'AerospikeClient', data: Dict[str, Any]) -> None :
