@@ -1,6 +1,5 @@
 from typing import Any, Callable, Dict, Hashable, Iterable, Tuple, Set
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
-from kh_common.caching.key_value_store import KeyValueStore
 from collections import defaultdict, OrderedDict
 from kh_common.utilities import __clear_cache__
 from functools import wraps
@@ -189,7 +188,7 @@ def AerospikeCache(
 	TTL_hours: int = 0,
 	TTL_days: int = 0,
 	local_TTL: float = 1,
-	_kvs: KeyValueStore = None,
+	_kvs: 'KeyValueStore' = None,
 ) -> Callable :
 	"""
 	checks if data exists in aerospike before running the function.
@@ -204,6 +203,7 @@ def AerospikeCache(
 	NOTE: AerospikeCache contains a built in local cache system. use local_TTL to set local cache TTL in seconds. set local_TTL=0 to disable.
 	the internal KeyValueStore to use for caching can be passed in via the _kvs argument. only for advanced usage.
 	"""
+	from kh_common.caching.key_value_store import KeyValueStore
 	TTL: int = int(TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400)
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
 
