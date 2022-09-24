@@ -1,4 +1,8 @@
-from re import compile as re_compile, _pattern_type as Pattern
+try :
+	from re import compile as re_compile, _pattern_type as Pattern
+except ImportError :
+	from re import Pattern, compile as re_compile
+
 from typing import Callable, Dict, Iterable, Iterator, List
 from collections import defaultdict
 
