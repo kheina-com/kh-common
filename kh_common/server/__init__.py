@@ -1,7 +1,3 @@
-from kh_common.server.middleware import CustomHeaderMiddleware, HeadersToSet
-from starlette.middleware.trustedhost import TrustedHostMiddleware
-from kh_common.server.middleware.auth import KhAuthMiddleware
-from kh_common.server.middleware.cors import KhCorsMiddleware
 from kh_common.exceptions.base_error import BaseError
 from starlette.exceptions import ExceptionMiddleware
 from kh_common.config.constants import environment
@@ -73,10 +69,12 @@ def ServerApp(
 	allowed_protocols = ['http', 'https'] if environment.is_local() else ['https']
 
 	if custom_headers :
+		from kh_common.server.middleware import CustomHeaderMiddleware, HeadersToSet
 		exposed_headers = list(exposed_headers) + list(HeadersToSet.keys())
 		app.middleware('http')(CustomHeaderMiddleware)
 
 	if cors :
+		from kh_common.server.middleware.cors import KhCorsMiddleware
 		app.add_middleware(
 			KhCorsMiddleware,
 			allowed_origins = set(allowed_origins),
@@ -88,9 +86,11 @@ def ServerApp(
 		)
 
 	if allowed_hosts :
+		from starlette.middleware.trustedhost import TrustedHostMiddleware
 		app.add_middleware(TrustedHostMiddleware, allowed_hosts=set(allowed_hosts))
 
 	if auth :
+		from kh_common.server.middleware.auth import KhAuthMiddleware
 		app.add_middleware(KhAuthMiddleware, required=auth_required)
 
 	return app
