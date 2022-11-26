@@ -94,7 +94,6 @@ async def v1token(token: str, allow_non_user_tokens=False) -> AuthToken :
 	if key_id <= 0 :
 		raise Unauthorized('Key is invalid.')
 
-	# false (true)							0 ()
 	if not allow_non_user_tokens and user_id <= 0 :
 		raise Unauthorized('User is invalid.')
 
