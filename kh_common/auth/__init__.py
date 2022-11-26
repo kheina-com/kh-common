@@ -17,6 +17,7 @@ from fastapi import Request
 from hashlib import sha1
 from uuid import UUID
 import ujson as json
+import aerospike
 
 
 ua_strip = re_compile(r'\/\d+(?:\.\d+)*')
@@ -67,7 +68,7 @@ async def _fetchPublicKey(key_id: int, algorithm: str) -> Ed25519PublicKey :
 	return public_key
 
 
-async def v1token(token: str) -> AuthToken :
+async def v1token(token: str, allow_non_user_tokens=False) -> AuthToken :
 	content: str
 	signature: str
 	load: str
@@ -93,7 +94,7 @@ async def v1token(token: str) -> AuthToken :
 	if key_id <= 0 :
 		raise Unauthorized('Key is invalid.')
 
-	if user_id <= 0 :
+	if not allow_non_user_tokens and user_id <= 0 :
 		raise Unauthorized('User is invalid.')
 
 	if datetime.now() > expires :
@@ -109,13 +110,18 @@ async def v1token(token: str) -> AuthToken :
 	except :
 		raise Unauthorized('Key validation failed.')
 
-	token_info: TokenMetadata = await token_info
 
 	try :
+		token_info: TokenMetadata = await token_info
+
 		assert token_info.state == AuthState.active, 'This token is no longer active.'
 		assert token_info.algorithm == algorithm, 'Token algorithm mismatch.'
 		assert token_info.expires == expires, 'Token expiration mismatch.'
 		assert token_info.key_id == key_id, 'Token encryption key mismatch.'
+
+	except aerospike.exception.RecordNotFound :
+		if not allow_non_user_tokens :
+			raise
 
 	except AssertionError as e :
 		raise Unauthorized(str(e))
@@ -134,11 +140,11 @@ tokenVersionSwitch: Dict[bytes, Callable] = {
 }
 
 
-async def verifyToken(token: str) -> AuthToken :
+async def verifyToken(token: str, allow_non_user_tokens=False) -> AuthToken :
 	version: bytes = b64decode(token[:token.find('.')])
 
 	if version in tokenVersionSwitch :
-		return await tokenVersionSwitch[version](token)
+		return await tokenVersionSwitch[version](token, allow_non_user_tokens)
 
 	raise InvalidToken('The given token uses a version that is unable to be decoded.')
 
