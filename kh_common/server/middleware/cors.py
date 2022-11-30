@@ -24,7 +24,7 @@ class KhCorsMiddleware:
 		self.app = app
 		self.allowed_origins = set(allowed_origins)
 		self.allowed_protocols = set(allowed_protocols)
-		self.allowed_headers = ', '.join(allowed_headers + ['access-control-request-method', 'origin'])
+		self.allowed_headers = ', '.join(list(allowed_headers) + ['access-control-request-method', 'origin'])
 		self.allowed_methods = ', '.join(map(str.upper, allowed_methods))
 		self.allow_credentials = str(allow_credentials).lower()
 		self.exposed_headers = ', '.join(exposed_headers)

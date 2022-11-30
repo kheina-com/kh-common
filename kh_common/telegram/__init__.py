@@ -137,7 +137,7 @@ class Listener :
 		ensure_future(self._sendSingleMessage(chat, "Sorry, I didn't understand that command. to see a list of my commands, try /help"))
 
 
-	async def parseMessage(self, message) :
+	async def parseMessage(self, message) -> bool :
 		user = message['from']['id']
 		chat = message['chat']['id']
 		is_chat = False
@@ -156,13 +156,13 @@ class Listener :
 		}
 
 		try :
- 			entity = next(filter(lambda x : x['type'] == 'bot_command', message.get('entities', [])))
+			entity = next(filter(lambda x : x['type'] == 'bot_command', message.get('entities', [])))
 
 		except StopIteration :
 			arg_spec = getfullargspec(self.handleNonCommand)
 
 			if arg_spec.varkw :
-				return await func(**args)
+				return await self.handleNonCommand(**args)
 
 			return await self.handleNonCommand(**{ k: args[k] for k in arg_spec.args[1:] + arg_spec.kwonlyargs })
 

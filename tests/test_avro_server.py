@@ -1,8 +1,6 @@
-from typing import Union
-from urllib import request
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 from kh_common.avro.handshake import AvroMessage, AvroProtocol, CallRequest, CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
-from kh_common.avro import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
+from kh_common.avro.serialization import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
 from kh_common.avro.routing import client_protocol_cache, server_protocol_cache
 from kh_common.models import Error, ValidationError
 from kh_common.avro.schema import convert_schema
@@ -10,6 +8,7 @@ from kh_common.avro.routing import AvroRoute
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, conint
 from fastapi import FastAPI
+from typing import Union
 from hashlib import md5
 import pytest
 import json
@@ -81,7 +80,7 @@ class TestAvroServer :
 				result=True,
 			)
 
-		client = TestClient(app, base_url=base_url)
+		client = TestClient(app, base_url=f'{schema}{base_url}')
 
 
 		# act
@@ -114,14 +113,14 @@ class TestAvroServer :
 				result=True,
 			)
 
-		client = TestClient(app, base_url=base_url)
+		client = TestClient(app, base_url=f'{schema}{base_url}')
 
 
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=payload,
+			content=payload,
 		)
 
 
@@ -183,14 +182,14 @@ class TestAvroServer :
 				result=True,
 			)
 
-		client = TestClient(app, base_url=base_url)
+		client = TestClient(app, base_url=f'{schema}{base_url}')
 
 
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=format_request(handshake=handshake),
+			content=format_request(handshake=handshake),
 		)
 
 
@@ -252,11 +251,11 @@ class TestAvroServer :
 				result=True,
 			)
 
-		client = TestClient(app, base_url=base_url)
+		client = TestClient(app, base_url=f'{schema}{base_url}')
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=format_request(handshake=handshake),
+			content=format_request(handshake=handshake),
 		)
 
 		handshake = handshake_deserializer(next(read_avro_frames(response._content)))
@@ -271,7 +270,7 @@ class TestAvroServer :
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=format_request(handshake=handshake),
+			content=format_request(handshake=handshake),
 		)
 
 
@@ -311,14 +310,14 @@ class TestAvroServer :
 			assert True
 			return
 
-		client = TestClient(app, base_url=base_url)
+		client = TestClient(app, base_url=f'{schema}{base_url}')
 
 
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=format_request(handshake=handshake),
+			content=format_request(handshake=handshake),
 		)
 
 
@@ -375,11 +374,11 @@ class TestAvroServer :
 			assert True
 			return
 
-		client = TestClient(app, base_url=base_url)
+		client = TestClient(app, base_url=f'{schema}{base_url}')
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=format_request(handshake=handshake),
+			content=format_request(handshake=handshake),
 		)
 
 		handshake = handshake_deserializer(next(read_avro_frames(response._content)))
@@ -395,7 +394,7 @@ class TestAvroServer :
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=format_request(handshake=handshake),
+			content=format_request(handshake=handshake),
 		)
 
 
@@ -441,14 +440,14 @@ class TestAvroServer :
 		async def test_func(body: TestModel) :
 			return
 
-		client = TestClient(app, base_url=base_url)
+		client = TestClient(app, base_url=f'{schema}{base_url}')
 
 
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
-			data=format_request(handshake=handshake, request=RequestModel(A='1', B=-2, C=3.1), message='test_func__post'),
+			content=format_request(handshake=handshake, request=RequestModel(A='1', B=-2, C=3.1), message='test_func__post'),
 		)
 
 

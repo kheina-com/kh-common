@@ -1,13 +1,9 @@
-from fastapi.responses import JSONResponse, Response, UJSONResponse
-from starlette.middleware.trustedhost import TrustedHostMiddleware
-from kh_common.server.middleware import CustomHeaderMiddleware
-from kh_common.server.middleware.auth import KhAuthMiddleware
-from kh_common.server.middleware.cors import KhCorsMiddleware
+from starlette.middleware.exceptions import ExceptionMiddleware
 from kh_common.exceptions.base_error import BaseError
-from starlette.exceptions import ExceptionMiddleware
 from kh_common.config.constants import environment
 from kh_common.exceptions import jsonErrorHandler
 from kh_common.avro.routing import AvroRoute
+from fastapi.responses import Response
 from fastapi import FastAPI, Request
 from starlette.types import ASGIApp
 from typing import Iterable
@@ -69,30 +65,35 @@ def ServerApp(
 	],
 ) -> ASGIApp :
 	app = FastAPI()
-	app.router.route_class = AvroRoute
+	# app.router.route_class = AvroRoute
 	app.add_middleware(ExceptionMiddleware, handlers={ Exception: jsonErrorHandler }, debug=False)
 	app.add_exception_handler(BaseError, jsonErrorHandler)
 
 	allowed_protocols = ['http', 'https'] if environment.is_local() else ['https']
 
 	if custom_headers :
+		from kh_common.server.middleware import CustomHeaderMiddleware, HeadersToSet
+		exposed_headers = list(exposed_headers) + list(HeadersToSet.keys())
 		app.middleware('http')(CustomHeaderMiddleware)
 
 	if cors :
+		from kh_common.server.middleware.cors import KhCorsMiddleware
 		app.add_middleware(
 			KhCorsMiddleware,
 			allowed_origins = set(allowed_origins),
 			allowed_protocols = set(allowed_protocols),
-			allowed_headers = allowed_headers,
-			allowed_methods = allowed_methods,
-			exposed_headers = exposed_headers,
+			allowed_headers = list(allowed_headers),
+			allowed_methods = list(allowed_methods),
+			exposed_headers = list(exposed_headers),
 			max_age = max_age,
 		)
 
 	if allowed_hosts :
+		from starlette.middleware.trustedhost import TrustedHostMiddleware
 		app.add_middleware(TrustedHostMiddleware, allowed_hosts=set(allowed_hosts))
 
 	if auth :
+		from kh_common.server.middleware.auth import KhAuthMiddleware
 		app.add_middleware(KhAuthMiddleware, required=auth_required)
 
 	return app

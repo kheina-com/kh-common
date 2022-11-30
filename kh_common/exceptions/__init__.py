@@ -1,10 +1,13 @@
+from kh_common.avro.serialization import AvroSerializer
+from kh_common.exceptions.http_error import BadGateway
 from kh_common.exceptions.base_error import BaseError
 from kh_common.avro.routing import AvroJsonResponse
 from kh_common.models import Error, ValidationError
 from kh_common.logging import getLogger, Logger
-from kh_common.avro import AvroSerializer
 from fastapi.requests import Request
+from aiohttp import ClientError
 from uuid import UUID, uuid4
+from fastapi import Request
 from typing import Union
 
 
@@ -12,7 +15,7 @@ logger: Logger = getLogger()
 serializer: AvroSerializer = AvroSerializer(Union[Error, ValidationError])
 
 
-def jsonErrorHandler(request: Request, e: Exception) -> AvroJsonResponse :
+def jsonErrorHandler(_: Request, e: Exception) -> AvroJsonResponse :
 	status: int = getattr(e, 'status', 500)
 	refid: UUID = getattr(e, 'refid', uuid4())
 	error: str
@@ -20,12 +23,22 @@ def jsonErrorHandler(request: Request, e: Exception) -> AvroJsonResponse :
 	if isinstance(e, BaseError) :
 		error = f'{e.__class__.__name__}: {e}'
 
-	else :
+	elif isinstance(e, ClientError) :
+		error = f'{BadGateway.__name__}: received an invalid response from an upstream server.'
+		status = BadGateway.status
 		logger.error({
+			'error': error,
 			'status': status,
 			'refid': refid.hex,
 		}, exc_info=e)
+
+	else :
 		error = 'Internal Server Error'
+		logger.error({
+			'error': error,
+			'status': status,
+			'refid': refid.hex,
+		}, exc_info=e)
 
 	return AvroJsonResponse(
 		model=Error(

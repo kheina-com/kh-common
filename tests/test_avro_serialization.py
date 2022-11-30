@@ -1,5 +1,5 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
-from kh_common.avro import AvroSerializer, AvroDeserializer
+from kh_common.avro.serialization import AvroSerializer, AvroDeserializer
 from avro.errors import AvroException, AvroTypeException
 from pydantic import BaseModel, conbytes, condecimal
 from typing import Dict, List, Optional, Type, Union

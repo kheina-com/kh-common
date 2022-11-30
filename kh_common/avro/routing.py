@@ -1,7 +1,7 @@
 from kh_common.avro.handshake import HandshakeRequest, HandshakeResponse, HandshakeMatch, AvroMessage, AvroProtocol, CallRequest, CallResponse
-from kh_common.avro import AvroSerializer, AvroDeserializer, avro_frame, read_avro_frames
+from kh_common.avro.serialization import AvroSerializer, AvroDeserializer, avro_frame, read_avro_frames
 from kh_common.avro.schema import convert_schema
-from fastapi.routing import APIRoute, run_endpoint_function, serialize_response
+from fastapi.routing import APIRouter, APIRoute, run_endpoint_function, serialize_response
 from avro.compatibility import ReaderWriterCompatibilityChecker, SchemaCompatibilityResult, SchemaCompatibilityType
 from fastapi.responses import Response
 from pydantic import BaseModel
@@ -553,3 +553,7 @@ class AvroRoute(APIRoute) :
 				return response
 
 		return app
+
+
+class AvroRouter(APIRouter) :
+	pass

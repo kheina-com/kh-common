@@ -1,93 +1,104 @@
-from avro.io import BinaryDecoder, BinaryEncoder, DatumReader
-from kh_common.avro.serialization import ABetterDatumWriter
-from avro.schema import Schema, parse as parse_avro_schema
-from kh_common.avro.schema import convert_schema
-from pydantic import BaseModel, parse_obj_as
-from typing import Callable, Type, Union
-from json import dumps
-from io import BytesIO
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Sequence, Type, Union
+from starlette.responses import JSONResponse, Response
+from fastapi.routing import APIRouter, APIRoute
+from kh_common.avro.routing import AvroRouter
+from fastapi.utils import generate_unique_id
+from starlette.middleware import Middleware
+from fastapi.datastructures import Default
+from starlette.routing import BaseRoute
+from starlette.requests import Request
+from fastapi.params import Depends
+from fastapi import FastAPI
 
 
-def avro_frame(bytes_to_frame: bytes = None) -> bytes :
-	if bytes_to_frame :
-		return len(bytes_to_frame).to_bytes(4, 'big') + bytes_to_frame
+class AvroFastAPI(FastAPI) :
 
-	return b'\x00\x00\x00\x00'
-
-
-def read_avro_frames(avro_bytes: bytes) -> bytes :
-	while avro_bytes :
-		frame_len = int.from_bytes(avro_bytes[:4], 'big') + 4
-		yield avro_bytes[4:frame_len]
-		avro_bytes = avro_bytes[frame_len:]
-
-
-_data_converter_map = {
-	dict: lambda d : d,
-	list: lambda d : list(map(BaseModel.dict, d)),
-	tuple: lambda d : list(map(BaseModel.dict, d)),
-	BaseModel: BaseModel.dict,
-}
-
-
-class AvroSerializer :
-
-	def __init__(self, model: Union[Schema, Type[BaseModel]]) :
-		schema: Schema = model if isinstance(model, Schema) else parse_avro_schema(dumps(convert_schema(model)))
-		self._writer: ABetterDatumWriter = ABetterDatumWriter(schema)
-
-
-	def __call__(self, data: BaseModel) :
-		io_object: BytesIO = BytesIO()
-		encoder: BinaryEncoder = BinaryEncoder(io_object)
-
-		for cls in type(data).__mro__ :
-			if cls in _data_converter_map :
-				self._writer.write_data(self._writer.writers_schema, _data_converter_map[cls](data), encoder)
-				return io_object.getvalue()
-
-		raise NotImplementedError(f'unable to convert "{type(data)}" for encoding')
-
-
-class AvroDeserializer :
-
-	def __init__(self, read_model: Type[BaseModel] = None, read_schema: Union[Schema, str] = None, write_model: Union[Schema, Type[BaseModel], str] = None, parse: bool = True) :
-		assert read_model or (read_schema and parse == False), 'either read_model or read_schema must be provided. if only read schema is provided, parse must be false'
-		write_schema: Schema
-
-		if not read_schema :
-			read_schema = parse_avro_schema(dumps(convert_schema(read_model)))
-
-		elif isinstance(read_schema, str) :
-			read_schema = parse_avro_schema(read_schema)
-
-		elif not isinstance(read_schema, Schema) :
-			raise NotImplementedError(f'the type for read_schema "{type(read_schema)}" is not supported.')
-
-
-		if not write_model :
-			write_schema = read_schema
-
-		elif isinstance(write_model, Schema) :
-			write_schema = write_model
-
-		elif isinstance(write_model, str) :
-			write_schema = parse_avro_schema(write_model)
-
-		elif issubclass(write_model, BaseModel) :
-			write_schema = parse_avro_schema(dumps(convert_schema(write_model)))
-
-		else :
-			raise NotImplementedError(f'the type for write_model "{type(write_model)}" is not supported.')
-
-		reader: DatumReader = DatumReader(write_schema, read_schema)
-
-		if parse :
-			self._parser: Callable[[bytes], read_model] = lambda x : parse_obj_as(read_model, reader.read(x))
-
-		else :
-			self._parser: Callable[[bytes], dict] = reader.read
-
-
-	def __call__(self, data: bytes) :
-		return self._parser(BinaryDecoder(BytesIO(data)))
+	def __init__(
+		self: 'AvroFastAPI',
+		*,
+		debug: bool = False,
+		routes: Optional[List[BaseRoute]] = None,
+		title: str = 'Avro FastAPI',
+		description: str = '',
+		version: str = '0.1.0',
+		openapi_url: Optional[str] = '/openapi.json',
+		openapi_tags: Optional[List[Dict[str, Any]]] = None,
+		servers: Optional[List[Dict[str, Union[str, Any]]]] = None,
+		dependencies: Optional[Sequence[Depends]] = None,
+		default_response_class: Type[Response] = Default(JSONResponse),
+		docs_url: Optional[str] = '/docs',
+		redoc_url: Optional[str] = '/redoc',
+		swagger_ui_oauth2_redirect_url: Optional[str] = '/docs/oauth2-redirect',
+		swagger_ui_init_oauth: Optional[Dict[str, Any]] = None,
+		middleware: Optional[Sequence[Middleware]] = None,
+		exception_handlers: Optional[
+			Dict[
+				Union[int, Type[Exception]],
+				Callable[[Request, Any], Coroutine[Any, Any, Response]],
+			]
+		] = None,
+		on_startup: Optional[Sequence[Callable[[], Any]]] = None,
+		on_shutdown: Optional[Sequence[Callable[[], Any]]] = None,
+		terms_of_service: Optional[str] = None,
+		contact: Optional[Dict[str, Union[str, Any]]] = None,
+		license_info: Optional[Dict[str, Union[str, Any]]] = None,
+		openapi_prefix: str = '',
+		root_path: str = '',
+		root_path_in_servers: bool = True,
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		deprecated: Optional[bool] = None,
+		include_in_schema: bool = True,
+		swagger_ui_parameters: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+		router_class: Type[APIRouter] = AvroRouter,
+		**extra: Any,
+	) -> None :
+		super().__init__(
+			debug=debug,
+			routes=routes,
+			title=title,
+			description=description,
+			version=version,
+			openapi_url=openapi_url,
+			openapi_tags=openapi_tags,
+			servers=servers,
+			dependencies=dependencies,
+			default_response_class=default_response_class,
+			docs_url=docs_url,
+			redoc_url=redoc_url,
+			swagger_ui_oauth2_redirect_url=swagger_ui_oauth2_redirect_url,
+			swagger_ui_init_oauth=swagger_ui_init_oauth,
+			middleware=middleware,
+			exception_handlers=exception_handlers,
+			on_startup=on_startup,
+			on_shutdown=on_shutdown,
+			terms_of_service=terms_of_service,
+			contact=contact,
+			license_info=license_info,
+			openapi_prefix=openapi_prefix,
+			root_path=root_path,
+			root_path_in_servers=root_path_in_servers,
+			responses=responses,
+			callbacks=callbacks,
+			deprecated=deprecated,
+			include_in_schema=include_in_schema,
+			swagger_ui_parameters=swagger_ui_parameters,
+			generate_unique_id_function=generate_unique_id_function,
+			**extra,
+		)	
+		self.router: APIRouter = router_class(
+			routes=routes,
+			dependency_overrides_provider=self,
+			on_startup=on_startup,
+			on_shutdown=on_shutdown,
+			default_response_class=default_response_class,
+			dependencies=dependencies,
+			callbacks=callbacks,
+			deprecated=deprecated,
+			include_in_schema=include_in_schema,
+			responses=responses,
+			generate_unique_id_function=generate_unique_id_function,
+		)
