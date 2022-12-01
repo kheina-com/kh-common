@@ -1,7 +1,7 @@
-from kh_common.utilities import stringSlice
 from subprocess import PIPE, Popen
 from typing import Union
 
+from kh_common.utilities import stringSlice
 
 name: Union[str, None] = None
 

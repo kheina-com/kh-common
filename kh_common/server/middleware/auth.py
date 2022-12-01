@@ -1,8 +1,11 @@
-from kh_common.auth import AuthToken, InvalidToken, KhUser, retrieveAuthToken, Scope
-from kh_common.exceptions.http_error import BadRequest, HttpError, Unauthorized
-from starlette.types import ASGIApp, Receive, Send, Scope as request_scope
-from kh_common.exceptions import jsonErrorHandler
 from starlette.requests import Request
+from starlette.types import ASGIApp, Receive
+from starlette.types import Scope as request_scope
+from starlette.types import Send
+
+from kh_common.auth import AuthToken, InvalidToken, KhUser, Scope, retrieveAuthToken
+from kh_common.exceptions import jsonErrorHandler
+from kh_common.exceptions.http_error import BadRequest, HttpError, Unauthorized
 
 
 class KhAuthMiddleware:

@@ -1,11 +1,11 @@
 try :
-	from re import compile as re_compile, _pattern_type as Pattern
+	from re import _pattern_type as Pattern
+	from re import compile as re_compile
 except ImportError :
 	from re import Pattern, compile as re_compile
 
-from typing import Callable, Dict, Iterable, Iterator, List
 from collections import defaultdict
-
+from typing import Callable, Dict, Iterable, Iterator, List
 
 _tagOperators: Dict[str, Callable] = defaultdict(lambda : normalizeTag, {
 	'/a': str.lower,

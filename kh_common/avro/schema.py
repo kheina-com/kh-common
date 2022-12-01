@@ -1,16 +1,17 @@
 try :
-	from re import compile as re_compile, _pattern_type as Pattern
+	from re import _pattern_type as Pattern
+	from re import compile as re_compile
 except ImportError :
 	from re import Pattern, compile as re_compile
 
-from pydantic import BaseModel, conint, ConstrainedBytes, ConstrainedDecimal, ConstrainedInt
-from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Type, Union
 from datetime import date, datetime, time
-from avro.errors import AvroException
 from decimal import Decimal
 from enum import Enum
+from typing import Any, Callable, Dict, Iterable, List, Optional, Set, Type, Union
 from uuid import UUID
 
+from avro.errors import AvroException
+from pydantic import BaseModel, ConstrainedBytes, ConstrainedDecimal, ConstrainedInt, conint
 
 AvroInt: ConstrainedInt = conint(ge=-2147483648, le=2147483647)
 _avro_name_format: Pattern = re_compile(r'^[A-Za-z_][A-Za-z0-9_]*$')

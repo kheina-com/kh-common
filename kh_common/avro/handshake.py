@@ -1,6 +1,7 @@
-from pydantic import BaseModel, conbytes, validator
-from typing import Dict, List, Optional, Union
 from enum import Enum
+from typing import Dict, List, Optional, Union
+
+from pydantic import BaseModel, conbytes, validator
 
 
 class MD5(conbytes(min_length=16, max_length=16)) :

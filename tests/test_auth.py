@@ -1,14 +1,16 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
-from kh_common.exceptions.http_error import Forbidden, Unauthorized
-from kh_common.auth import AuthToken, KhUser, verifyToken, Scope
-from tests.utilities.auth import mock_pk, mock_token, expires
+from datetime import datetime, timezone
+from uuid import uuid4
+
+import pytest
+from pytest import raises
+
+from kh_common.auth import AuthToken, KhUser, Scope, verifyToken
 from kh_common.caching.key_value_store import KeyValueStore
+from kh_common.exceptions.http_error import Forbidden, Unauthorized
 from kh_common.models.auth import AuthState, TokenMetadata
 from tests.utilities.aerospike import AerospikeClient
-from datetime import datetime, timezone
-from pytest import raises
-from uuid import uuid4
-import pytest
+from tests.utilities.auth import expires, mock_pk, mock_token
 
 
 @pytest.mark.asyncio

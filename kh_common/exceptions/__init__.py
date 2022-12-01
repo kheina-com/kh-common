@@ -1,15 +1,16 @@
-from kh_common.avro.serialization import AvroSerializer
-from kh_common.exceptions.http_error import BadGateway
-from kh_common.exceptions.base_error import BaseError
-from kh_common.avro.routing import AvroJsonResponse
-from kh_common.models import Error, ValidationError
-from kh_common.logging import getLogger, Logger
-from fastapi.requests import Request
-from aiohttp import ClientError
-from uuid import UUID, uuid4
-from fastapi import Request
 from typing import Union
+from uuid import UUID, uuid4
 
+from aiohttp import ClientError
+from fastapi import Request
+from fastapi.requests import Request
+
+from kh_common.avro.routing import AvroJsonResponse
+from kh_common.avro.serialization import AvroSerializer
+from kh_common.exceptions.base_error import BaseError
+from kh_common.exceptions.http_error import BadGateway
+from kh_common.logging import Logger, getLogger
+from kh_common.models import Error, ValidationError
 
 logger: Logger = getLogger()
 serializer: AvroSerializer = AvroSerializer(Union[Error, ValidationError])

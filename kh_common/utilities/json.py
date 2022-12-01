@@ -1,11 +1,12 @@
-from kh_common.models.auth import KhUser
-from typing import Any, Callable, Dict
-from pydantic import BaseModel
 from datetime import datetime
 from decimal import Decimal
 from enum import Enum
+from typing import Any, Callable, Dict
 from uuid import UUID
 
+from pydantic import BaseModel
+
+from kh_common.models.auth import KhUser
 
 _conversions: Dict[type, Callable] = {
 	datetime: str,

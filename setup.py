@@ -1,12 +1,14 @@
 try :
-	from re import compile as re_compile, _pattern_type as Pattern
+	from re import _pattern_type as Pattern
+	from re import compile as re_compile
 except ImportError :
 	from re import Pattern, compile as re_compile
 
-from kh_common import __version__ as kh_version
-from setuptools import setup, find_packages
 from os import listdir
 
+from setuptools import find_packages, setup
+
+from kh_common import __version__ as kh_version
 
 req_regex: Pattern = re_compile(r'^requirements-(\w+).txt$')
 

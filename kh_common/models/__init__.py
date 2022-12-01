@@ -1,6 +1,7 @@
-from pydantic import BaseModel, conbytes, validator
 from typing import List, Optional
 from uuid import UUID
+
+from pydantic import BaseModel, conbytes, validator
 
 
 class RefId(conbytes(max_length=16, min_length=16)) :
