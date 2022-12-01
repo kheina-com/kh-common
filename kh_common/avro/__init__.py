@@ -7,10 +7,10 @@ from fastapi.routing import APIRoute, APIRouter
 from fastapi.utils import generate_unique_id
 from starlette.middleware import Middleware
 from starlette.requests import Request
-from starlette.responses import JSONResponse, Response
+from starlette.responses import Response
 from starlette.routing import BaseRoute
 
-from kh_common.avro.routing import AvroRouter
+from kh_common.avro.routing import AvroJsonResponse, AvroRouter
 
 
 class AvroFastAPI(FastAPI) :
@@ -27,7 +27,7 @@ class AvroFastAPI(FastAPI) :
 		openapi_tags: Optional[List[Dict[str, Any]]] = None,
 		servers: Optional[List[Dict[str, Union[str, Any]]]] = None,
 		dependencies: Optional[Sequence[Depends]] = None,
-		default_response_class: Type[Response] = Default(JSONResponse),
+		default_response_class: Type[Response] = Default(AvroJsonResponse),
 		docs_url: Optional[str] = '/docs',
 		redoc_url: Optional[str] = '/redoc',
 		swagger_ui_oauth2_redirect_url: Optional[str] = '/docs/oauth2-redirect',
@@ -52,9 +52,7 @@ class AvroFastAPI(FastAPI) :
 		deprecated: Optional[bool] = None,
 		include_in_schema: bool = True,
 		swagger_ui_parameters: Optional[Dict[str, Any]] = None,
-		generate_unique_id_function: Callable[[APIRoute], str] = Default(
-			generate_unique_id
-		),
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(generate_unique_id),
 		router_class: Type[APIRouter] = AvroRouter,
 		**extra: Any,
 	) -> None :

@@ -506,6 +506,7 @@ class AvroRoute(APIRoute) :
 				dependency_overrides_provider=dependency_overrides_provider,
 			)
 			values, errors, background_tasks, sub_response, _ = solved_result
+			print(values, errors, background_tasks, sub_response)
 
 			if errors :
 				serializer: AvroSerializer
