@@ -7,3 +7,4 @@ isort~=5.8.0
 pytest-aiohttp~=0.3.0
 pytest-cov~=3.0.0
 pytest-env~=0.6.2
+httpx~=0.23.1
