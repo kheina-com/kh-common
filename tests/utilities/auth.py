@@ -12,6 +12,7 @@ from kh_common.utilities import int_to_bytes
 from kh_common.utilities.json import json_stream
 from tests.utilities.requests import MockResponse
 
+
 private_key = Ed25519PrivateKey.generate()
 
 public_key = private_key.public_key().public_bytes(

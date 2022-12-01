@@ -8,6 +8,7 @@ from pydantic import BaseModel
 
 from kh_common.models.auth import KhUser
 
+
 _conversions: Dict[type, Callable] = {
 	datetime: str,
 	Decimal: float,

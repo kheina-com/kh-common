@@ -8,6 +8,7 @@ from aiohttp import ClientError
 from kh_common.exceptions.base_error import BaseError
 from kh_common.logging import Logger, getLogger
 
+
 logger: Logger = getLogger()
 
 

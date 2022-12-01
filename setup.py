@@ -10,6 +10,7 @@ from setuptools import find_packages, setup
 
 from kh_common import __version__ as kh_version
 
+
 req_regex: Pattern = re_compile(r'^requirements-(\w+).txt$')
 
 

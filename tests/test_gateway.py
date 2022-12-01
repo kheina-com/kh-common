@@ -10,6 +10,7 @@ from pydantic import BaseModel
 
 from kh_common.gateway import Gateway
 
+
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
 
 

@@ -3,6 +3,7 @@ from typing import Any, Dict
 
 from ujson import load as json_load
 
+
 environment: str = environ.get('ENVIRONMENT', 'LOCAL').lower()
 
 env_vars: Dict[str, Any] = { }

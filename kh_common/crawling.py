@@ -7,6 +7,7 @@ except ImportError :
 from collections import defaultdict
 from typing import Callable, Dict, Iterable, Iterator, List
 
+
 _tagOperators: Dict[str, Callable] = defaultdict(lambda : normalizeTag, {
 	'/a': str.lower,
 	'/r': str.lower,

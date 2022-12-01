@@ -12,6 +12,7 @@ from kh_common.config.credentials import telegram
 from kh_common.logging import getLogger
 from kh_common.utilities.signal import Terminated
 
+
 logger = getLogger()
 
 

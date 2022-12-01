@@ -1,5 +1,4 @@
 from asyncio import sleep
-from hashlib import md5
 from typing import Any, Callable, Dict, Iterable, Set, Type
 
 from aiohttp import ClientResponse, ClientResponseError, ClientTimeout

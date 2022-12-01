@@ -10,6 +10,7 @@ from kh_common.config.constants import environment
 from kh_common.exceptions import jsonErrorHandler
 from kh_common.exceptions.base_error import BaseError
 
+
 NoContentResponse = Response(None, status_code=204)
 
 

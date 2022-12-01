@@ -12,6 +12,7 @@ from kh_common.exceptions.http_error import BadGateway
 from kh_common.logging import Logger, getLogger
 from kh_common.models import Error, ValidationError
 
+
 logger: Logger = getLogger()
 serializer: AvroSerializer = AvroSerializer(Union[Error, ValidationError])
 

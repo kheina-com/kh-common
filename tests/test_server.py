@@ -19,6 +19,7 @@ from kh_common.server.middleware.cors import KhCorsMiddleware
 from tests.utilities.aerospike import AerospikeClient
 from tests.utilities.auth import expires, mock_pk, mock_token
 
+
 endpoint = '/'
 base_url = 'dev.kheina.com'
 schema = 'https://'

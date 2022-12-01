@@ -3,6 +3,7 @@ from typing import Union
 
 from kh_common.utilities import stringSlice
 
+
 name: Union[str, None] = None
 
 output: Union[bytes, None] = b''.join(Popen(['git', 'config', '--get', 'remote.origin.url'], stdout=PIPE, stderr=PIPE).communicate())

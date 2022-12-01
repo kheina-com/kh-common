@@ -5,6 +5,7 @@ from typing import Any, Dict, List, Optional, Tuple, Type
 
 import aerospike
 
+
 AerospikeKey: Type = Tuple[str, str, str]
 OneMonth: int = 2629800  # one month in seconds since that's the default for our installation
 

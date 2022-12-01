@@ -3,8 +3,9 @@ import json
 from asyncio import Lock
 from collections import OrderedDict, defaultdict
 from email.message import Message as EmailMessage
+from enum import Enum
 from hashlib import md5
-from typing import Any, Dict, Iterator, List, Optional, Tuple, Type, Union
+from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, Union
 from warnings import warn
 
 from avro.compatibility import ReaderWriterCompatibilityChecker, SchemaCompatibilityResult, SchemaCompatibilityType
@@ -18,9 +19,14 @@ from fastapi.exceptions import RequestValidationError
 from fastapi.requests import Request
 from fastapi.responses import Response
 from fastapi.routing import APIRoute, APIRouter, run_endpoint_function, serialize_response
+from fastapi.types import DecoratedCallable
+from fastapi.utils import generate_unique_id
 from pydantic import BaseModel
 from pydantic.error_wrappers import ErrorWrapper
 from pydantic.fields import ModelField, Undefined
+from starlette.requests import Request
+from starlette.responses import Response
+from starlette.routing import BaseRoute
 from starlette.types import ASGIApp, Receive, Scope, Send
 
 from kh_common.avro.handshake import AvroMessage, AvroProtocol, CallRequest, CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
@@ -28,11 +34,13 @@ from kh_common.avro.schema import convert_schema
 from kh_common.avro.serialization import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
 from kh_common.caching import CalcDict
 from kh_common.config.repo import name
+from kh_common.gateway import Gateway
 from kh_common.models import Error, ValidationError, ValidationErrorDetail
+
 
 # number of client protocols to cache per endpoint
 # this should be set to something reasonable based on the number of expected consumers per endpoint
-# optimize: potentially dynamically set this based on number of clients in a given timeframe?
+# TODO: potentially dynamically set this based on number of clients in a given timeframe?
 client_protocol_max_size = 10
 
 # format: { route_uniqueid: { hash: request_deserializer } }
@@ -59,7 +67,7 @@ class AvroJsonResponse(Response) :
 	# this only occurs with response models, error models are cached elsewhere
 	__writer_cache__ = CalcDict(AvroSerializer)
 
-	def __init__(self, serializable_body: dict = None, model: BaseModel = None, *args: Tuple[Any], serializer: AvroSerializer = None, handshake: HandshakeResponse = None, error: bool = False, **kwargs: Dict[str, Any]) :
+	def __init__(self: 'AvroJsonResponse', serializable_body: dict = None, model: BaseModel = None, *args: Tuple[Any], serializer: AvroSerializer = None, handshake: HandshakeResponse = None, error: bool = False, **kwargs: Dict[str, Any]) :
 		super().__init__(None, *args, **kwargs)
 		self._serializable_body: Optional[dict] = serializable_body
 		self._model: Optional[BaseModel] = model
@@ -68,7 +76,7 @@ class AvroJsonResponse(Response) :
 		self._error: bool = error
 
 
-	async def __call__(self, scope: Scope, receive: Receive, send: Send) :
+	async def __call__(self: 'AvroJsonResponse', scope: Scope, receive: Receive, send: Send) :
 		request: Request = Request(scope, receive, send)
 
 		if 'avro/binary' in request.headers.get('accept') :
@@ -118,16 +126,15 @@ class AvroJsonResponse(Response) :
 				ValueError('at least a handshake or model is required to return an avro response')
 
 			self.status_code = 200
-			self.headers.update({
-				'content-length': str(len(self.body)),
-				'content-type': 'avro/binary',
-			})
+			self.headers['content-type'] = 'avro/binary'
 
 		elif self._serializable_body :
 			self.body = json.dumps(self._serializable_body).encode()
 
 		else :
 			self.body = self._model.json().encode()
+
+		self.headers['content-length'] = str(len(self.body))
 
 		await super().__call__(scope, receive, send)
 
@@ -141,7 +148,7 @@ async def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> T
 			raise AvroDecodeError('client request protocol and hash did not match. hash must be an md5 hash of the encoded json string protocol.')
 
 		request_schema, response_schema = get_request_schemas(handshake, route)
-		# optimize: check if request_schema should be none here, and raise error appropriately
+		# TODO: check if request_schema should be none here, and raise error appropriately
 		request_deserializer: Optional[AvroDeserializer] = None
 
 		if route.body_field and request_schema :
@@ -155,12 +162,12 @@ async def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> T
 
 		if response_schema :
 			if route.response_model :
-				# optimize: should this check error responses or only the successful response?
-				# optimize: this also needs to check all message types in the protocol
+				# TODO: should this check error responses or only the successful response?
+				# TODO: this also needs to check all message types in the protocol
 				# print('response_schema', response_schema, route.response_schema)
 				response_compatibility: SchemaCompatibilityResult = AvroChecker.get_compatibility(
 					reader=response_schema,
-					# optimize: this should *definitely* be cached
+					# TODO: this should *definitely* be cached
 					writer=parse(json.dumps(route.response_schema)),
 				)
 				client_compatible = response_compatibility.compatibility == SchemaCompatibilityType.compatible
@@ -177,7 +184,7 @@ async def get_client_protocol(handshake: HandshakeRequest, route: APIRoute) -> T
 			async with cache_locks[route.unique_id] :
 				# fetches all the keys that should be deleted
 				for key in list(reversed(client_protocol_cache[route.unique_id].keys()))[len(client_protocol_cache[route.unique_id]) - client_protocol_max_size:] :
-					# optimize: potentially track the frequency with which protocols are removed from the cache
+					# TODO: potentially track the frequency with which protocols are removed from the cache
 					# this should happen infrequently (or never) for greatest efficiency
 					del client_protocol_cache[route.unique_id][key]
 
@@ -304,7 +311,7 @@ async def settleAvroHandshake(body: bytes, request: Request, route: APIRoute) ->
 		if not call_request :
 			raise ValueError('There was an error parsing the avro request.')
 
-		# optimize: this may not be right. all methods will need to be coalesced under the POST method, call_request.message should be used to determine which route's handler to use
+		# TODO: this may not be right. all methods will need to be coalesced under the POST method, call_request.message should be used to determine which route's handler to use
 		assert call_request.message == route.unique_id, f'{call_request.message} not found in valid messages ({route.unique_id})'
 
 		return request_deserializer(call_request.request)
@@ -315,7 +322,7 @@ def get_server_protocol(route: APIRoute, request: Request) -> Tuple[str, bytes, 
 		return server_protocol_cache[route.path]
 
 	# NOTE: these two errors are used automatically by this library and FastAPI, respectively
-	# optimize: this handshake should be generated for all routes that share a url format
+	# TODO: this handshake should be generated for all routes that share a url format
 	types: List[dict] = [convert_schema(Error, error=True), convert_schema(ValidationError, error=True)]
 
 	# there needs to be a separte refs objects vs enames being a set is due to ordering and
@@ -359,14 +366,74 @@ def get_server_protocol(route: APIRoute, request: Request) -> Tuple[str, bytes, 
 
 class AvroRoute(APIRoute) :
 
-	def __init__(self, *args, **kwargs) :
+	def __init__(
+		self: 'AvroRoute',
+        path: str,
+        endpoint: Callable[..., Any],
+        *,
+        response_model: Any = None,
+        status_code: Optional[int] = None,
+        tags: Optional[List[Union[str, Enum]]] = None,
+        dependencies: Optional[Sequence[params.Depends]] = None,
+        summary: Optional[str] = None,
+        description: Optional[str] = None,
+        response_description: str = 'Successful Response',
+        responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+        deprecated: Optional[bool] = None,
+        name: Optional[str] = None,
+        methods: Optional[Union[Set[str], List[str]]] = None,
+        operation_id: Optional[str] = None,
+        response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+        response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+        response_model_by_alias: bool = True,
+        response_model_exclude_unset: bool = False,
+        response_model_exclude_defaults: bool = False,
+        response_model_exclude_none: bool = False,
+        include_in_schema: bool = True,
+        response_class: Union[Type[Response], DefaultPlaceholder] = Default(AvroJsonResponse),
+        dependency_overrides_provider: Optional[Any] = None,
+        callbacks: Optional[List[BaseRoute]] = None,
+        openapi_extra: Optional[Dict[str, Any]] = None,
+        generate_unique_id_function: Union[
+            Callable[['APIRoute'], str], DefaultPlaceholder
+        ] = Default(generate_unique_id),
+	) :
 		"""
 		in an effort to make this as user-friendly as possible and keep setup to a one-line
 		change, we're going to override the `default_response_class` argument, but default
 		it in case an endpoint uses a custom response we can't handle
 		"""
-		kwargs['response_class'] = Default(AvroJsonResponse)
-		super().__init__(*args, **kwargs)
+		# TODO: router will always pass JSONResponse, but we want to override that (for now)
+		response_class = Default(AvroJsonResponse)
+		status_code = status_code or 200
+		super().__init__(
+			path,
+			endpoint,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			name=name,
+			methods=methods,
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			dependency_overrides_provider=dependency_overrides_provider,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)
 
 		if self.body_field :
 			body_schema = convert_schema(self.body_field.type_)
@@ -382,7 +449,7 @@ class AvroRoute(APIRoute) :
 
 
 	def get_route_handler(self) -> ASGIApp :
-		# optimize: these don't need to be re-assigned
+		# TODO: these don't need to be re-assigned
 		dependant: Dependant = self.dependant
 		body_field: Optional[ModelField] = self.body_field
 		status_code: Optional[int] = self.status_code
@@ -453,7 +520,7 @@ class AvroRoute(APIRoute) :
 								body = body_bytes
 
 			except json.JSONDecodeError as e :
-				# optimize: this will need to be replaced as well
+				# TODO: this will need to be replaced as well
 				# print([ErrorWrapper(e, ('body', e.pos))])
 				raise RequestValidationError([ErrorWrapper(e, ('body', e.pos))], body=e.doc)
 
@@ -506,7 +573,7 @@ class AvroRoute(APIRoute) :
 				dependency_overrides_provider=dependency_overrides_provider,
 			)
 			values, errors, background_tasks, sub_response, _ = solved_result
-			print(values, errors, background_tasks, sub_response)
+			print(values, errors, background_tasks, sub_response, actual_response_class, self.response_class)
 
 			if errors :
 				serializer: AvroSerializer
@@ -558,4 +625,557 @@ class AvroRoute(APIRoute) :
 
 
 class AvroRouter(APIRouter) :
-	pass
+
+	def __init__(
+		self: 'AvroRouter',
+		*,
+		prefix: str = '',
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		default_response_class: Type[Response] = Default(AvroJsonResponse),
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		routes: Optional[List[BaseRoute]] = None,
+		redirect_slashes: bool = True,
+		default: Optional[ASGIApp] = None,
+		dependency_overrides_provider: Optional[Any] = None,
+		route_class: Type[APIRoute] = AvroRoute,
+		on_startup: Optional[Sequence[Callable[[], Any]]] = None,
+		on_shutdown: Optional[Sequence[Callable[[], Any]]] = None,
+		deprecated: Optional[bool] = None,
+		include_in_schema: bool = True,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+	) -> None:
+		super().__init__(
+			prefix=prefix,
+			tags=tags,
+			dependencies=dependencies,
+			default_response_class=default_response_class,
+			responses=responses,
+			callbacks=callbacks,
+			routes=routes,
+			redirect_slashes=redirect_slashes,
+			default=default,
+			dependency_overrides_provider=dependency_overrides_provider,
+			route_class=route_class,
+			on_startup=on_startup,
+			on_shutdown=on_shutdown,
+			deprecated=deprecated,
+			include_in_schema=include_in_schema,
+			generate_unique_id_function=generate_unique_id_function,
+		)
+		self._avro_route_map = { route.unique_id: route for route in self.routes }
+
+	def add_api_route(
+		self: 'AvroRouter',
+		path: str,
+		endpoint: Callable[..., Any],
+		*,
+		response_model: Any = None,
+		status_code: Optional[int] = None,
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		summary: Optional[str] = None,
+		description: Optional[str] = None,
+		response_description: str = "Successful Response",
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		deprecated: Optional[bool] = None,
+		methods: Optional[Union[Set[str], List[str]]] = None,
+		operation_id: Optional[str] = None,
+		response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_by_alias: bool = True,
+		response_model_exclude_unset: bool = False,
+		response_model_exclude_defaults: bool = False,
+		response_model_exclude_none: bool = False,
+		include_in_schema: bool = True,
+		response_class: Union[Type[Response], DefaultPlaceholder] = Default(AvroJsonResponse),
+		name: Optional[str] = None,
+		route_class_override: Optional[Type[APIRoute]] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		openapi_extra: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Union[
+			Callable[[APIRoute], str], DefaultPlaceholder
+		] = Default(generate_unique_id),
+	) -> None:
+		super().add_api_route(
+			path,
+			endpoint,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			methods=methods,
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			name=name,
+			route_class_override=route_class_override,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)
+		route = self.routes[-1]
+		self._avro_route_map[route.unique_id] = route
+
+	def get(
+		self: 'AvroRouter',
+		path: str,
+		*,
+		response_model: Any = None,
+		status_code: Optional[int] = None,
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		summary: Optional[str] = None,
+		description: Optional[str] = None,
+		response_description: str = 'Successful Response',
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		deprecated: Optional[bool] = None,
+		operation_id: Optional[str] = None,
+		response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_by_alias: bool = True,
+		response_model_exclude_unset: bool = False,
+		response_model_exclude_defaults: bool = False,
+		response_model_exclude_none: bool = False,
+		include_in_schema: bool = True,
+		response_class: Type[Response] = Default(AvroJsonResponse),
+		name: Optional[str] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		openapi_extra: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+	) -> Callable[[DecoratedCallable], DecoratedCallable]:
+		return self.api_route(
+			path=path,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			methods=['GET'],
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			name=name,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)
+
+	def put(
+		self: 'AvroRouter',
+		path: str,
+		*,
+		response_model: Any = None,
+		status_code: Optional[int] = None,
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		summary: Optional[str] = None,
+		description: Optional[str] = None,
+		response_description: str = 'Successful Response',
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		deprecated: Optional[bool] = None,
+		operation_id: Optional[str] = None,
+		response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_by_alias: bool = True,
+		response_model_exclude_unset: bool = False,
+		response_model_exclude_defaults: bool = False,
+		response_model_exclude_none: bool = False,
+		include_in_schema: bool = True,
+		response_class: Type[Response] = Default(AvroJsonResponse),
+		name: Optional[str] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		openapi_extra: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+	) -> Callable[[DecoratedCallable], DecoratedCallable]:
+		return self.api_route(
+			path=path,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			methods=['PUT'],
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			name=name,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)
+
+	def post(
+		self: 'AvroRouter',
+		path: str,
+		*,
+		response_model: Any = None,
+		status_code: Optional[int] = None,
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		summary: Optional[str] = None,
+		description: Optional[str] = None,
+		response_description: str = 'Successful Response',
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		deprecated: Optional[bool] = None,
+		operation_id: Optional[str] = None,
+		response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_by_alias: bool = True,
+		response_model_exclude_unset: bool = False,
+		response_model_exclude_defaults: bool = False,
+		response_model_exclude_none: bool = False,
+		include_in_schema: bool = True,
+		response_class: Type[Response] = Default(AvroJsonResponse),
+		name: Optional[str] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		openapi_extra: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+	) -> Callable[[DecoratedCallable], DecoratedCallable]:
+		return self.api_route(
+			path=path,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			methods=['POST'],
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			name=name,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)
+
+	def delete(
+		self: 'AvroRouter',
+		path: str,
+		*,
+		response_model: Any = None,
+		status_code: Optional[int] = None,
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		summary: Optional[str] = None,
+		description: Optional[str] = None,
+		response_description: str = 'Successful Response',
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		deprecated: Optional[bool] = None,
+		operation_id: Optional[str] = None,
+		response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_by_alias: bool = True,
+		response_model_exclude_unset: bool = False,
+		response_model_exclude_defaults: bool = False,
+		response_model_exclude_none: bool = False,
+		include_in_schema: bool = True,
+		response_class: Type[Response] = Default(AvroJsonResponse),
+		name: Optional[str] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		openapi_extra: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+	) -> Callable[[DecoratedCallable], DecoratedCallable]:
+		return self.api_route(
+			path=path,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			methods=['DELETE'],
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			name=name,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)
+
+	def options(
+		self: 'AvroRouter',
+		path: str,
+		*,
+		response_model: Any = None,
+		status_code: Optional[int] = None,
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		summary: Optional[str] = None,
+		description: Optional[str] = None,
+		response_description: str = 'Successful Response',
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		deprecated: Optional[bool] = None,
+		operation_id: Optional[str] = None,
+		response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_by_alias: bool = True,
+		response_model_exclude_unset: bool = False,
+		response_model_exclude_defaults: bool = False,
+		response_model_exclude_none: bool = False,
+		include_in_schema: bool = True,
+		response_class: Type[Response] = Default(AvroJsonResponse),
+		name: Optional[str] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		openapi_extra: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+	) -> Callable[[DecoratedCallable], DecoratedCallable]:
+		return self.api_route(
+			path=path,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			methods=['OPTIONS'],
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			name=name,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)
+
+	def head(
+		self: 'AvroRouter',
+		path: str,
+		*,
+		response_model: Any = None,
+		status_code: Optional[int] = None,
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		summary: Optional[str] = None,
+		description: Optional[str] = None,
+		response_description: str = 'Successful Response',
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		deprecated: Optional[bool] = None,
+		operation_id: Optional[str] = None,
+		response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_by_alias: bool = True,
+		response_model_exclude_unset: bool = False,
+		response_model_exclude_defaults: bool = False,
+		response_model_exclude_none: bool = False,
+		include_in_schema: bool = True,
+		response_class: Type[Response] = Default(AvroJsonResponse),
+		name: Optional[str] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		openapi_extra: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+	) -> Callable[[DecoratedCallable], DecoratedCallable]:
+		return self.api_route(
+			path=path,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			methods=['HEAD'],
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			name=name,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)
+
+	def patch(
+		self: 'AvroRouter',
+		path: str,
+		*,
+		response_model: Any = None,
+		status_code: Optional[int] = None,
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		summary: Optional[str] = None,
+		description: Optional[str] = None,
+		response_description: str = 'Successful Response',
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		deprecated: Optional[bool] = None,
+		operation_id: Optional[str] = None,
+		response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_by_alias: bool = True,
+		response_model_exclude_unset: bool = False,
+		response_model_exclude_defaults: bool = False,
+		response_model_exclude_none: bool = False,
+		include_in_schema: bool = True,
+		response_class: Type[Response] = Default(AvroJsonResponse),
+		name: Optional[str] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		openapi_extra: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+	) -> Callable[[DecoratedCallable], DecoratedCallable]:
+		return self.api_route(
+			path=path,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			methods=['PATCH'],
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			name=name,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)
+
+	def trace(
+		self: 'AvroRouter',
+		path: str,
+		*,
+		response_model: Any = None,
+		status_code: Optional[int] = None,
+		tags: Optional[List[Union[str, Enum]]] = None,
+		dependencies: Optional[Sequence[params.Depends]] = None,
+		summary: Optional[str] = None,
+		description: Optional[str] = None,
+		response_description: str = 'Successful Response',
+		responses: Optional[Dict[Union[int, str], Dict[str, Any]]] = None,
+		deprecated: Optional[bool] = None,
+		operation_id: Optional[str] = None,
+		response_model_include: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_exclude: Optional[Union[SetIntStr, DictIntStrAny]] = None,
+		response_model_by_alias: bool = True,
+		response_model_exclude_unset: bool = False,
+		response_model_exclude_defaults: bool = False,
+		response_model_exclude_none: bool = False,
+		include_in_schema: bool = True,
+		response_class: Type[Response] = Default(AvroJsonResponse),
+		name: Optional[str] = None,
+		callbacks: Optional[List[BaseRoute]] = None,
+		openapi_extra: Optional[Dict[str, Any]] = None,
+		generate_unique_id_function: Callable[[APIRoute], str] = Default(
+			generate_unique_id
+		),
+	) -> Callable[[DecoratedCallable], DecoratedCallable]:
+
+		return self.api_route(
+			path=path,
+			response_model=response_model,
+			status_code=status_code,
+			tags=tags,
+			dependencies=dependencies,
+			summary=summary,
+			description=description,
+			response_description=response_description,
+			responses=responses,
+			deprecated=deprecated,
+			methods=['TRACE'],
+			operation_id=operation_id,
+			response_model_include=response_model_include,
+			response_model_exclude=response_model_exclude,
+			response_model_by_alias=response_model_by_alias,
+			response_model_exclude_unset=response_model_exclude_unset,
+			response_model_exclude_defaults=response_model_exclude_defaults,
+			response_model_exclude_none=response_model_exclude_none,
+			include_in_schema=include_in_schema,
+			response_class=response_class,
+			name=name,
+			callbacks=callbacks,
+			openapi_extra=openapi_extra,
+			generate_unique_id_function=generate_unique_id_function,
+		)

@@ -21,6 +21,7 @@ from kh_common.exceptions.http_error import Forbidden, Unauthorized
 from kh_common.models.auth import AuthState, AuthToken, KhUser, PublicKeyResponse, Scope, TokenMetadata
 from kh_common.utilities import int_from_bytes
 
+
 ua_strip = re_compile(r'\/\d+(?:\.\d+)*')
 KVS: KeyValueStore = KeyValueStore('kheina', 'token')
 

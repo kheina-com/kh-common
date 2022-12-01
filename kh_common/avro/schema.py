@@ -13,6 +13,7 @@ from uuid import UUID
 from avro.errors import AvroException
 from pydantic import BaseModel, ConstrainedBytes, ConstrainedDecimal, ConstrainedInt, conint
 
+
 AvroInt: ConstrainedInt = conint(ge=-2147483648, le=2147483647)
 _avro_name_format: Pattern = re_compile(r'^[A-Za-z_][A-Za-z0-9_]*$')
 
@@ -100,7 +101,7 @@ class AvroSchemaGenerator :
 	def _convert_array(self: 'AvroSchemaGenerator', model: Type[Iterable[Any]]) -> Dict[str, AvroSchema] :
 		object_type: AvroSchema = self._get_type(model.__args__[0])
 
-		# optimize: does this do anything?
+		# TODO: does this do anything?
 		if (
 			isinstance(object_type, dict)
 			and isinstance(object_type.get('type'), dict)
@@ -138,7 +139,7 @@ class AvroSchemaGenerator :
 				f['type'] = self._get_type(submodel)
 
 				if not field.required :
-					# optimize: does this value need to be avro-encoded?
+					# TODO: does this value need to be avro-encoded?
 					f['default'] = field.default
 
 			fields.append(f)

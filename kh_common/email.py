@@ -9,6 +9,7 @@ from kh_common.config.credentials import mailgun
 from kh_common.exceptions.base_error import BaseError
 from kh_common.logging import getLogger
 
+
 _html_template_1 = "<!DOCTYPE html><html lang='en'><head><style>body{height:100%;width:100%;position:absolute;background:#C3C4CE;background-size:cover;background-position:center;}body,html{background:#C3C4CE;position:relative;z-index:-5;margin:0;padding:0;font-family:Bitstream Vera Sans,DejaVu Sans,Arial,Helvetica,sans-serif;}a,form input,form label,.footer span{cursor:pointer;pointer-events:all;text-decoration:none;color:#222222;transition: ease 0.15s;}a:link{color:#222222;}a:visited{color:inherit;}a:hover{color:#F28817!important;opacity:1!important;transition: ease 0.15s;}h1{margin:0 0 25px;}p{margin:0;}#content{display:block;margin:100px auto;width:100%;padding:25px 0;text-align:center;background:#E0E4E8;}#feature{display:block;margin:0 auto;max-width:900px;padding:0;background:#E0E4E8;}.button{display:inline-block;padding:0.5em 1em;margin:25px 25px 0;border:var(--border-size) solid #2D333A;background:#D8D9E0; box-shadow:0 2px 3px 1px #6D718680;border-radius:3px;white-space:nowrap;}.button:hover{box-shadow:0 0 10px 3px #6D7186B3;border-color:#F28817;}.subtext{color:#00000080;margin:25px 0 0;font-size:0.7em;}</style></head>"
 _html_template_2 = "<!-- ♀ --><body><div id='content'><main id='feature'>{title}<p>{text}</p>{button}{subtext}</main></div></body></html>"
 logger = getLogger()

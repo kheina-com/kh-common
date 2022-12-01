@@ -1,5 +1,6 @@
 from tests.utilities.credentials import injectCredentials
 
+
 injectCredentials(telegram={ 'telegram_access_token': 'test_token', 'telegram_bot_id': 1234567890 })
 
 import pytest

@@ -52,7 +52,7 @@ class AvroMessage(BaseModel) :
 		if value is None :
 			return value
 
-		types = { v['name'] for v in values['types'] } | __built_in_types__
+		types = { v['name'] for v in values.get('types', []) } | __built_in_types__
 		missing_types = []
 
 		for model in value :
@@ -66,7 +66,7 @@ class AvroMessage(BaseModel) :
 	@validator('response')
 	def validate_response_exists(cls, value, values) :
 		if isinstance(value, str) and value not in __built_in_types__ :
-			assert value in { v['name'] for v in values['types'] }, f'string types must exist in types, {value} missing from types'
+			assert value in { v['name'] for v in values.get('types', []) }, f'string types must exist in types, {value} missing from types'
 		return value
 
 	@validator('oneWay', pre=True, always=True)

@@ -6,6 +6,7 @@ from scipy.stats import norm
 from kh_common.caching import CalcDict
 from kh_common.config.constants import epoch
 
+
 """
 resources:
 	https://github.com/reddit-archive/reddit/blob/master/r2/r2/lib/db/_sorts.pyx

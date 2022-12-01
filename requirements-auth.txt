@@ -1,2 +1,2 @@
 cryptography~=3.0
-aerospike~=7.0.2
+aerospike~=8.0.0

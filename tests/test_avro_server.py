@@ -14,6 +14,7 @@ from kh_common.avro.schema import convert_schema
 from kh_common.avro.serialization import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
 from kh_common.models import Error, ValidationError
 
+
 endpoint = '/'
 base_url = 'dev.kheina.com'
 schema = 'https://'
