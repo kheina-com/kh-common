@@ -452,4 +452,3 @@ class TestAvroServer :
 		assert call.error
 		error = AvroDeserializer(Union[Error, ValidationError, str])(call.response)
 		assert ValidationError == type(error)
-

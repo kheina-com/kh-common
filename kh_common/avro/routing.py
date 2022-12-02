@@ -927,7 +927,7 @@ class AvroRouter(APIRouter) :
 
 
 	async def __call__(self: 'AvroRouter', scope: Scope, receive: Receive, send: Send) -> None :
-		if 'avro/binary' in Headers(scope=scope).get('accept') :
+		if 'avro/binary' == Headers(scope=scope).get('content-type') :
 			assert scope['type'] in {'http', 'websocket', 'lifespan'}
 
 			if 'router' not in scope :
