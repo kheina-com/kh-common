@@ -1,11 +1,11 @@
 import json
 from asyncio import sleep
 from hashlib import md5
-from typing import Any, Callable, Dict, Iterable, List, Set, Type, Union
+from typing import Callable, Dict, Iterable, List, Optional, Type, Union
 
 from aiohttp import ClientResponseError, ClientTimeout
 from aiohttp import request as async_request
-from pydantic import BaseModel, parse_obj_as
+from pydantic import BaseModel
 
 from kh_common.avro.handshake import AvroMessage, AvroProtocol, CallRequest, CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
 from kh_common.avro.schema import convert_schema, get_name
@@ -21,14 +21,18 @@ call_deserializer: AvroDeserializer = AvroDeserializer(CallResponse)
 call_serializer: AvroSerializer = AvroSerializer(CallRequest)
 
 
+class Null(BaseModel) :
+	pass
+
+
 class Gateway(Hashable) :
 
 	def __init__(
 		self: 'Gateway',
 		endpoint: str,
 		protocol: str,
-		request_model: Type[BaseModel],
-		response_model: Type[BaseModel],
+		request_model: Type[BaseModel] = None,
+		response_model: Type[BaseModel] = None,
 		error_models: Iterable[Type[BaseModel]] = [Error, ValidationError],
 		attempts: int = 3,
 		timeout: float = 30,
@@ -37,44 +41,51 @@ class Gateway(Hashable) :
 		error_models: List[Type[BaseModel]] = list(error_models)
 		error_model: Type
 
-		if len(error_models) > 1 :
-			error_model = Union[error_models[0], error_models[1]]
-
-		elif len(error_models) == 1 :
+		if error_models :
 			error_model = error_models[0]
 
-		else :
-			raise ValueError('must have at least one expected error type (did you forget ValidationError?)')
+			for emodel in error_models[1:] + [str]:
+				error_model = Union[error_model, emodel]
 
-		for emodel in error_models[2:] + [str]:
-			error_model = Union[error_model, emodel]
+		else :
+			error_model = str
 
 		self._endpoint: str = endpoint
-		self._serializer: AvroSerializer = AvroSerializer(request_model)
-		self._response_model: Type[BaseModel] = response_model
+		self._response_model: Optional[Type[BaseModel]] = response_model
 		self._timeout: float = timeout
 		# these need to be set during the handshake protocol
 		self._message_name: str = protocol
-		self._deserializer: AvroDeserializer
+		self._deserializer: Optional[AvroDeserializer] = None
+		self._serializer: Optional[AvroSerializer] = None
+
+		protocol_types: List[Type[BaseModel]] = []
+
+		if response_model :
+			protocol_types.append(response_model)
+
+		protocol_types += error_models
+
 		self._client_protocol: AvroProtocol = AvroProtocol(
 			namespace=name,
 			protocol=self._message_name,
 			messages={
 				self._message_name: AvroMessage(
-					request=convert_schema(request_model)['fields'],
-					response=get_name(response_model),
-					types=list(map(convert_schema, [response_model] + error_models)),
+					request=convert_schema(request_model)['fields'] if request_model else [],
+					response=get_name(response_model) if response_model else 'null',
+					types=list(map(convert_schema, protocol_types)),
 					errors=list(map(get_name, error_models)),
-					oneWay=False,
 				),
 			},
 		)
 		self._client_hash: bytes = md5(self._client_protocol.json().encode()).digest()
-		self._server_hash: bytes = b'deadbeefdeadbeef'
+		self._server_hash: bytes = b'0' * 16
 		self._error_deserializer: AvroDeserializer = AvroDeserializer(error_model)
 		self._attempts: int = attempts
 		self._backoff: Callable = backoff
-		self._handshake_status: HandshakeMatch = HandshakeMatch.none
+		self._handshake_status: HandshakeMatch = None
+
+		if request_model :
+			self._serializer: AvroSerializer = AvroSerializer(request_model)
 
 
 	async def __call__(
@@ -83,7 +94,7 @@ class Gateway(Hashable) :
 		auth: str = None,
 		headers: Dict[str, str] = None,
 		**kwargs,
-	) -> Any :
+	) -> BaseModel :
 
 		req = {
 			'timeout': ClientTimeout(self._timeout),
@@ -106,11 +117,11 @@ class Gateway(Hashable) :
 			clientProtocol=self._client_protocol.json() if self._handshake_status is not HandshakeMatch.both else None,
 			serverHash=self._server_hash,
 		)
-		print(handshake)
+		print('HandshakeRequest:', handshake)
 
 		request: CallRequest = CallRequest(
 			message=self._message_name,
-			request=self._serializer(body),
+			request=self._serializer(body) if self._serializer else 'null',
 		)
 
 		req['data'] = (
@@ -118,6 +129,8 @@ class Gateway(Hashable) :
 			avro_frame(call_serializer(request)) + 
 			avro_frame()
 		)
+
+		# TODO: delete a bunch of vars that aren't needed anymore
 
 		for attempt in range(1, self._attempts + 1) :
 			async with async_request(
@@ -143,9 +156,10 @@ class Gateway(Hashable) :
 
 					assert handshake, 'handshake missing!!'
 					self._handshake_status = handshake.match
-					print('handshake:', handshake.match)
+					print('HandshakeResponse:', handshake)
 
 					if handshake.match == HandshakeMatch.none :
+						# TODO: update req['body'] to contain full handshake
 						raise ValueError('protocols are incompatible!')
 
 					elif handshake.match == HandshakeMatch.client :
@@ -153,35 +167,39 @@ class Gateway(Hashable) :
 						server_types = { i['name']: i for i in server_protocol['messages'][self._message_name]['types'] }
 						server_response = server_protocol['messages'][self._message_name]['response']
 
-						# TODO: need to handle possibly null responses
-						self._deserializer = AvroDeserializer(self._response_model, json.dumps(server_types[server_response] if server_response in server_types else server_response))
+						if self._response_model :
+							self._deserializer = AvroDeserializer(self._response_model, json.dumps(server_types[server_response] if server_response in server_types else server_response))
+
 						self._server_hash = handshake.serverHash
 
 						# TODO: client protocol and hash need to be updated here too
 						self._client_protocol.messages[self._message_name].response = server_response
 						self._client_hash: bytes = md5(self._client_protocol.json().encode()).digest()
 
+					if self._response_model :
+						call_response: CallResponse
+						response_body: bytes = b''
+						for frame in frames :
+							response_body += frame
 
-					call_response: CallResponse
-					response_body: bytes = b''
-					for frame in frames :
-						response_body += frame
+							try :
+								call_response = call_deserializer(response_body)
+								del response_body
+								break
 
-						try :
-							call_response = call_deserializer(response_body)
-							del response_body
-							break
+							except TypeError :
+								pass
 
-						except TypeError :
-							pass
+						assert call_response, 'response missing!!'
 
-					assert call_response, 'response missing!!'
+						# TODO: error deserializer needs to be managed as well using the handshake
+						if call_response.error :
+							raise ValueError(f'error: {self._error_deserializer(call_response.response)}')
 
-					# TODO: error deserializer needs to be managed as well using the handshake
-					if call_response.error :
-						raise ValueError(f'error: {self._error_deserializer(call_response.response)}')
+						return self._deserializer(call_response.response)
 
-					return self._deserializer(call_response.response)
+					else :
+						return Null()
 
 				except ClientResponseError :
 					await sleep(self._backoff(attempt))
