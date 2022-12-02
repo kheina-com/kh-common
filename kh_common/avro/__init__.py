@@ -1,23 +1,20 @@
-from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional, Sequence, Type, Union
+from typing import Any, Callable, Coroutine, Dict, List, Optional, Sequence, Type, Union
 
 from fastapi import FastAPI
-from fastapi.applications import routing
 from fastapi.datastructures import Default
-from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
-from fastapi.exceptions import RequestValidationError
-from fastapi.logger import logger
 from fastapi.params import Depends
 from fastapi.routing import APIRoute, APIRouter
 from fastapi.utils import generate_unique_id
-from starlette.datastructures import State
-from starlette.exceptions import HTTPException
 from starlette.middleware import Middleware
 from starlette.requests import Request
 from starlette.responses import Response
-from starlette.routing import BaseRoute
-from starlette.types import ASGIApp
+from starlette.routing import BaseRoute, Router
 
 from kh_common.avro.routing import AvroJsonResponse, AvroRouter
+
+
+# this needs to be imported last
+from fastapi.applications import routing  # isort:skip
 
 
 class AvroFastAPI(FastAPI) :
@@ -60,7 +57,7 @@ class AvroFastAPI(FastAPI) :
 		include_in_schema: bool = True,
 		swagger_ui_parameters: Optional[Dict[str, Any]] = None,
 		generate_unique_id_function: Callable[[APIRoute], str] = Default(generate_unique_id),
-		router_class: Type[APIRouter] = AvroRouter,
+		router_class: Type[Router] = AvroRouter,
 		**extra: Any,
 	) -> None :
 		# do some python trickery to inject our custom router class into fastapi's init func
