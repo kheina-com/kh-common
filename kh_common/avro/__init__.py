@@ -1,6 +1,7 @@
 from typing import Any, Awaitable, Callable, Coroutine, Dict, List, Optional, Sequence, Type, Union
 
 from fastapi import FastAPI
+from fastapi.applications import routing
 from fastapi.datastructures import Default
 from fastapi.exception_handlers import http_exception_handler, request_validation_exception_handler
 from fastapi.exceptions import RequestValidationError
@@ -18,7 +19,6 @@ from starlette.types import ASGIApp
 
 from kh_common.avro.routing import AvroJsonResponse, AvroRouter
 
-from fastapi.applications import routing
 
 class AvroFastAPI(FastAPI) :
 

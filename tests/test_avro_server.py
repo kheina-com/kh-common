@@ -4,12 +4,11 @@ from hashlib import md5
 from typing import Union
 
 import pytest
-from fastapi import FastAPI
 from fastapi.testclient import TestClient
 from pydantic import BaseModel, conint
 
+from kh_common.avro import AvroFastAPI
 from kh_common.avro.handshake import AvroMessage, AvroProtocol, CallRequest, CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
-from kh_common.avro.routing import AvroRoute, client_protocol_cache, server_protocol_cache
 from kh_common.avro.schema import convert_schema
 from kh_common.avro.serialization import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
 from kh_common.models import Error, ValidationError
@@ -62,8 +61,7 @@ def format_request(handshake: HandshakeRequest = None, request: RequestModel = N
 
 
 def wipe_caches() :
-	client_protocol_cache.clear()
-	server_protocol_cache.clear()
+	pass
 
 
 @pytest.mark.asyncio
@@ -72,8 +70,7 @@ class TestAvroServer :
 	def test_AvroRoute_GetNoHeaders_ReturnsJson(self) :
 
 		# arrange
-		app = FastAPI()
-		app.router.route_class = AvroRoute
+		app = AvroFastAPI()
 
 		@app.post(endpoint, response_model=ResponseModel)
 		async def test_func() :
@@ -105,8 +102,7 @@ class TestAvroServer :
 		wipe_caches()
 
 		# arrange
-		app = FastAPI()
-		app.router.route_class = AvroRoute
+		app = AvroFastAPI()
 
 		@app.post(endpoint, response_model=ResponseModel)
 		async def test_func() :
@@ -174,8 +170,7 @@ class TestAvroServer :
 			clientProtocol=protocol,
 		)
 
-		app = FastAPI()
-		app.router.route_class = AvroRoute
+		app = AvroFastAPI()
 
 		@app.post(endpoint, response_model=ResponseModel)
 		async def test_func() :
@@ -243,8 +238,7 @@ class TestAvroServer :
 			clientProtocol=protocol,
 		)
 
-		app = FastAPI()
-		app.router.route_class = AvroRoute
+		app = AvroFastAPI()
 
 		@app.post(endpoint, response_model=ResponseModel)
 		async def test_func() :
@@ -303,8 +297,7 @@ class TestAvroServer :
 			clientProtocol=protocol,
 		)
 
-		app = FastAPI()
-		app.router.route_class = AvroRoute
+		app = AvroFastAPI()
 
 		@app.post(endpoint, status_code=204)
 		async def test_func() :
@@ -367,8 +360,7 @@ class TestAvroServer :
 			clientProtocol=protocol,
 		)
 
-		app = FastAPI()
-		app.router.route_class = AvroRoute
+		app = AvroFastAPI()
 
 		@app.post(endpoint, status_code=204)
 		async def test_func() :
@@ -429,8 +421,7 @@ class TestAvroServer :
 			clientProtocol=protocol,
 		)
 
-		app = FastAPI()
-		app.router.route_class = AvroRoute
+		app = AvroFastAPI()
 
 		class TestModel(BaseModel) :
 			A: str

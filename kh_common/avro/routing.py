@@ -36,7 +36,6 @@ from kh_common.avro.serialization import AvroDeserializer, AvroSerializer, avro_
 from kh_common.caching import CalcDict
 from kh_common.config.repo import name
 from kh_common.models import Error, ValidationError, ValidationErrorDetail
-from kh_common.timing import Timer
 
 
 # number of client protocols to cache per endpoint
@@ -55,7 +54,6 @@ handshake_serializer: AvroSerializer = AvroSerializer(HandshakeResponse)
 call_serializer: AvroSerializer = AvroSerializer(CallResponse)
 
 logger: Logger = getLogger('avro.routing')
-timer: Timer = Timer()
 
 
 class AvroDecodeError(Exception) :
@@ -78,7 +76,6 @@ class AvroJsonResponse(Response) :
 
 
 	async def __call__(self: 'AvroJsonResponse', scope: Scope, receive: Receive, send: Send) :
-		print(f'AvroJsonResponse.__call__({timer.elapsed()})')
 		request: Request = Request(scope, receive, send)
 
 		if 'avro/binary' in request.headers.get('accept') :
@@ -451,7 +448,6 @@ class AvroRoute(APIRoute) :
 
 
 	async def handle_avro(self: 'AvroRoute', scope: Scope, receive: Receive, send: Send) -> None :
-		print(f'AvroRoute.handle_avro({timer.elapsed()})')
 		return await self.app(scope, receive, send)
 
 
@@ -483,7 +479,6 @@ class AvroRoute(APIRoute) :
 
 
 		async def app(request: Request) -> Response :
-			print(f'AvroRoute.app({timer.elapsed()})')
 			# optimize
 			try :
 				body: Any = None
@@ -587,7 +582,7 @@ class AvroRoute(APIRoute) :
 				dependency_overrides_provider=dependency_overrides_provider,
 			)
 			values, errors, background_tasks, sub_response, _ = solved_result
-			print(values, errors, background_tasks, sub_response, actual_response_class, self.response_class, f'AvroRoute.solve_dependencies({timer.elapsed()})')
+			print(values, errors, background_tasks, sub_response, actual_response_class, self.response_class)
 
 			if errors :
 				serializer: AvroSerializer
@@ -932,8 +927,6 @@ class AvroRouter(APIRouter) :
 
 
 	async def __call__(self: 'AvroRouter', scope: Scope, receive: Receive, send: Send) -> None :
-		timer.start()
-		print(f'AvroRouter.__call__({timer.elapsed()})')
 		if 'avro/binary' in Headers(scope=scope).get('accept') :
 			assert scope['type'] in {'http', 'websocket', 'lifespan'}
 
@@ -945,7 +938,6 @@ class AvroRouter(APIRouter) :
 				return
 
 			route: AvroRoute = await self.settle_avro_handshake(Request(scope, receive, send))
-			print(route, f'({timer.elapsed()})')
 			await route.handle_avro(scope, receive, send)
 			return
 
