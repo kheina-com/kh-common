@@ -18,6 +18,7 @@ from starlette.types import ASGIApp
 
 from kh_common.avro.routing import AvroJsonResponse, AvroRouter
 
+from fastapi.applications import routing
 
 class AvroFastAPI(FastAPI) :
 
@@ -62,62 +63,40 @@ class AvroFastAPI(FastAPI) :
 		router_class: Type[APIRouter] = AvroRouter,
 		**extra: Any,
 	) -> None :
-		self._debug: bool = debug
-		self.title = title
-		self.description = description
-		self.version = version
-		self.terms_of_service = terms_of_service
-		self.contact = contact
-		self.license_info = license_info
-		self.openapi_url = openapi_url
-		self.openapi_tags = openapi_tags
-		self.root_path_in_servers = root_path_in_servers
-		self.docs_url = docs_url
-		self.redoc_url = redoc_url
-		self.swagger_ui_oauth2_redirect_url = swagger_ui_oauth2_redirect_url
-		self.swagger_ui_init_oauth = swagger_ui_init_oauth
-		self.swagger_ui_parameters = swagger_ui_parameters
-		self.servers = servers or []
-		self.extra = extra
-		self.openapi_version = "3.0.2"
-		self.openapi_schema: Optional[Dict[str, Any]] = None
-		if self.openapi_url:
-			assert self.title, "A title must be provided for OpenAPI, e.g.: 'My API'"
-			assert self.version, "A version must be provided for OpenAPI, e.g.: '2.1.0'"
-		# TODO: remove when discarding the openapi_prefix parameter
-		if openapi_prefix:
-			logger.warning(
-				'"openapi_prefix" has been deprecated in favor of "root_path", which '
-				"follows more closely the ASGI standard, is simpler, and more "
-				"automatic. Check the docs at "
-				"https://fastapi.tiangolo.com/advanced/sub-applications/"
-			)
-		self.root_path = root_path or openapi_prefix
-		self.state: State = State()
-		self.dependency_overrides: Dict[Callable[..., Any], Callable[..., Any]] = {}
-		self.router: APIRouter = router_class(
+		# do some python trickery to inject our custom router class into fastapi's init func
+		routing.APIRouter = router_class
+		super().__init__(
+			debug=debug,
 			routes=routes,
-			dependency_overrides_provider=self,
+			title=title,
+			description=description,
+			version=version,
+			openapi_url=openapi_url,
+			openapi_tags=openapi_tags,
+			servers=servers,
+			dependencies=dependencies,
+			default_response_class=default_response_class,
+			docs_url=docs_url,
+			redoc_url=redoc_url,
+			swagger_ui_oauth2_redirect_url=swagger_ui_oauth2_redirect_url,
+			swagger_ui_init_oauth=swagger_ui_init_oauth,
+			middleware=middleware,
+			exception_handlers=exception_handlers,
 			on_startup=on_startup,
 			on_shutdown=on_shutdown,
-			default_response_class=default_response_class,
-			dependencies=dependencies,
+			terms_of_service=terms_of_service,
+			contact=contact,
+			license_info=license_info,
+			openapi_prefix=openapi_prefix,
+			root_path=root_path,
+			root_path_in_servers=root_path_in_servers,
+			responses=responses,
 			callbacks=callbacks,
 			deprecated=deprecated,
 			include_in_schema=include_in_schema,
-			responses=responses,
+			swagger_ui_parameters=swagger_ui_parameters,
 			generate_unique_id_function=generate_unique_id_function,
+			**extra,
 		)
-		self.exception_handlers: Dict[
-			Any, Callable[[Request, Any], Union[Response, Awaitable[Response]]]
-		] = ({} if exception_handlers is None else dict(exception_handlers))
-		self.exception_handlers.setdefault(HTTPException, http_exception_handler)
-		self.exception_handlers.setdefault(
-			RequestValidationError, request_validation_exception_handler
-		)
-
-		self.user_middleware: List[Middleware] = (
-			[] if middleware is None else list(middleware)
-		)
-		self.middleware_stack: ASGIApp = self.build_middleware_stack()
-		self.setup()
+		# now undo our trickery just in case this is needed elsewhere
+		routing.APIRouter = APIRouter

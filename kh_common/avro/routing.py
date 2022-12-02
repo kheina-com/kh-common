@@ -833,8 +833,8 @@ class AvroRouter(APIRouter) :
 		client compatibility = false: HandshakeMatch.client
 		raises AvroDecodeError: HandshakeMatch.none
 		"""
-		if handshake.clientHash in client_protocol_cache :
-			return client_protocol_cache[handshake.clientHash]
+		if handshake.clientHash in self._client_protocol_cache :
+			return self._client_protocol_cache[handshake.clientHash]
 
 		if not handshake.clientProtocol :
 			raise AvroDecodeError('client request protocol was not included and client request hash was not cached.')
