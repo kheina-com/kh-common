@@ -826,57 +826,6 @@ class AvroRouter(APIRouter) :
 		return route
 
 
-	async def get_client_protocol(self: 'AvroRouter', handshake: HandshakeRequest) -> Tuple[AvroDeserializer, bool] :
-		if handshake.clientHash in client_protocol_cache :
-			return client_protocol_cache[handshake.clientHash]
-
-		if handshake.clientProtocol :
-			request_schema, response_schema = await self.check_schema_compatibility(handshake)
-			# TODO: check if request_schema should be none here, and raise error appropriately
-			request_deserializer: Optional[AvroDeserializer] = None
-
-			if route.body_field and request_schema :
-				request_deserializer = AvroDeserializer(route.body_field.type_, route.body_schema, request_schema, parse=False)
-
-			elif route.body_field or request_schema :
-				raise AvroDecodeError('client request protocol is incompatible.')
-
-			client_compatible: bool = False
-			# print('response_model', response_schema, route.response_model)
-
-			if response_schema :
-				if route.response_model :
-					# TODO: should this check error responses or only the successful response?
-					# TODO: this also needs to check all message types in the CLIENT protocol
-					# print('response_schema', response_schema, route.response_schema)
-					response_compatibility: SchemaCompatibilityResult = AvroChecker.get_compatibility(
-						reader=response_schema,
-						# TODO: this should *definitely* be cached
-						writer=parse(json.dumps(route.response_schema)),
-					)
-					client_compatible = response_compatibility.compatibility == SchemaCompatibilityType.compatible
-
-			elif not route.response_model :
-				client_compatible = True
-
-			# print('client_compatible', client_compatible)
-
-			data = client_protocol_cache[route.unique_id][handshake.clientHash] = request_deserializer, client_compatible
-
-			if len(client_protocol_cache[route.unique_id]) > client_protocol_max_size :
-				# lock required in case two threads try to purge the cache at once
-				async with cache_locks[route.unique_id] :
-					# fetches all the keys that should be deleted
-					for key in list(reversed(client_protocol_cache[route.unique_id].keys()))[len(client_protocol_cache[route.unique_id]) - client_protocol_max_size:] :
-						# TODO: potentially track the frequency with which protocols are removed from the cache
-						# this should happen infrequently (or never) for greatest efficiency
-						del client_protocol_cache[route.unique_id][key]
-
-			return data
-
-		raise AvroDecodeError('client request protocol was not included and client request hash was not cached.')
-
-
 	async def check_schema_compatibility(self: 'AvroRouter', handshake: HandshakeRequest) -> Tuple[Dict[str, AvroDeserializer], bool] :
 		"""
 		returns EMPTY map of route_id -> AvroDeserializer and client compatibility bool

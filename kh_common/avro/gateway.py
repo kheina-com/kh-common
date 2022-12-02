@@ -155,12 +155,20 @@ class Gateway(Hashable) :
 							pass
 
 					assert handshake, 'handshake missing!!'
-					self._handshake_status = handshake.match
 					print('HandshakeResponse:', handshake)
 
 					if handshake.match == HandshakeMatch.none :
-						# TODO: update req['body'] to contain full handshake
-						raise ValueError('protocols are incompatible!')
+						if self._handshake_status :
+							self._handshake_status = None
+							handshake.clientProtocol=self._client_protocol.json()
+							req['data'] = (
+								avro_frame(handshake_serializer(handshake)) + 
+								avro_frame(call_serializer(request)) + 
+								avro_frame()
+							)
+
+						else :
+							raise ValueError('protocols are incompatible!')
 
 					elif handshake.match == HandshakeMatch.client :
 						server_protocol = json.loads(handshake.serverProtocol)
@@ -175,6 +183,8 @@ class Gateway(Hashable) :
 						# TODO: client protocol and hash need to be updated here too
 						self._client_protocol.messages[self._message_name].response = server_response
 						self._client_hash: bytes = md5(self._client_protocol.json().encode()).digest()
+
+					self._handshake_status = handshake.match
 
 					if self._response_model :
 						call_response: CallResponse
