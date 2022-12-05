@@ -60,10 +60,6 @@ def format_request(handshake: HandshakeRequest = None, request: RequestModel = N
 	return req
 
 
-def wipe_caches() :
-	pass
-
-
 @pytest.mark.asyncio
 class TestAvroServer :
 
@@ -80,10 +76,8 @@ class TestAvroServer :
 
 		client = TestClient(app, base_url=f'{schema}{base_url}')
 
-
 		# act
 		response = client.post(schema + base_url + endpoint)
-
 
 		# assert
 		assert 200 == response.status_code
@@ -99,8 +93,6 @@ class TestAvroServer :
 		],
 	)
 	def test_AvroRoute_AllAvroHeadersInvalidHandshake_ReturnsAvroHandshake(self, payload: bytes) :
-		wipe_caches()
-
 		# arrange
 		app = AvroFastAPI()
 
@@ -112,14 +104,12 @@ class TestAvroServer :
 
 		client = TestClient(app, base_url=f'{schema}{base_url}')
 
-
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
 			content=payload,
 		)
-
 
 		# assert
 		frame = read_avro_frames(response._content)
@@ -146,12 +136,10 @@ class TestAvroServer :
 				},
 			},
 		}
-		assert not next(frame)
+		assert call_deserializer(next(frame)).error
 
 
 	def test_AvroRoute_AllAvroHeadersValidHandshakeNoBody_ReturnsHandshakeAndResponse(self) :
-		wipe_caches()
-
 		# arrange
 		protocol = AvroProtocol(
 			namespace='idk',
@@ -180,14 +168,12 @@ class TestAvroServer :
 
 		client = TestClient(app, base_url=f'{schema}{base_url}')
 
-
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
 			content=format_request(handshake=handshake),
 		)
-
 
 		# assert
 		frame = read_avro_frames(response._content)
@@ -218,8 +204,6 @@ class TestAvroServer :
 
 
 	def test_AvroRoute_AllAvroHeadersValidHandshakeHandshakeCached_ReturnsHandshakeAndResponse(self) :
-		wipe_caches()
-
 		# arrange
 		protocol = AvroProtocol(
 			namespace='idk',
@@ -268,7 +252,6 @@ class TestAvroServer :
 			content=format_request(handshake=handshake),
 		)
 
-
 		# assert
 		frame = read_avro_frames(response._content)
 		assert 200 == response.status_code
@@ -280,8 +263,6 @@ class TestAvroServer :
 
 
 	def test_AvroRoute_AllAvroHeadersNullResponse_ReturnsHandshakeAndResponse(self) :
-		wipe_caches()
-
 		# arrange
 		protocol = AvroProtocol(
 			namespace='idk',
@@ -306,14 +287,12 @@ class TestAvroServer :
 
 		client = TestClient(app, base_url=f'{schema}{base_url}')
 
-
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
 			content=format_request(handshake=handshake),
 		)
-
 
 		# assert
 		frame = read_avro_frames(response._content)
@@ -343,8 +322,6 @@ class TestAvroServer :
 
 
 	def test_AvroRoute_AllAvroHeadersCachedNullResponse_ReturnsHandshakeAndResponse(self) :
-		wipe_caches()
-
 		# arrange
 		protocol = AvroProtocol(
 			namespace='idk',
@@ -382,14 +359,12 @@ class TestAvroServer :
 			serverHash=handshake.serverHash, 
 		)
 
-
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
 			content=format_request(handshake=handshake),
 		)
-
 
 		# assert
 		frame = read_avro_frames(response._content)
@@ -402,8 +377,6 @@ class TestAvroServer :
 
 
 	def test_AvroRoute_AllAvroHeadersInvalidRequest_ReturnsHandshakeAndError(self) :
-		wipe_caches()
-
 		# arrange
 		protocol = AvroProtocol(
 			namespace='idk',
@@ -434,14 +407,12 @@ class TestAvroServer :
 
 		client = TestClient(app, base_url=f'{schema}{base_url}')
 
-
 		# act
 		response = client.post(
 			schema + base_url + endpoint,
 			headers={ 'accept': 'avro/binary', 'content-type': 'avro/binary' },
 			content=format_request(handshake=handshake, request=RequestModel(A='1', B=-2, C=3.1), message='test_func__post'),
 		)
-
 
 		# assert
 		frame = read_avro_frames(response._content)

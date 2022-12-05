@@ -10,10 +10,10 @@ from pydantic import BaseModel
 from kh_common.avro.handshake import AvroMessage, AvroProtocol, CallRequest, CallResponse, HandshakeMatch, HandshakeRequest, HandshakeResponse
 from kh_common.avro.schema import convert_schema, get_name
 from kh_common.avro.serialization import AvroDeserializer, AvroSerializer, avro_frame, read_avro_frames
+from kh_common.base64 import b64encode
 from kh_common.config.repo import name
 from kh_common.hashing import Hashable
 from kh_common.models import Error, ValidationError
-from kh_common.base64 import b64encode
 
 
 handshake_deserializer: AvroDeserializer = AvroDeserializer(HandshakeResponse)
@@ -23,6 +23,10 @@ call_serializer: AvroSerializer = AvroSerializer(CallRequest)
 
 
 class Null(BaseModel) :
+	pass
+
+
+class Retry(Exception) :
 	pass
 
 
@@ -54,6 +58,7 @@ class Gateway(Hashable) :
 		self._endpoint: str = endpoint
 		self._response_model: Optional[Type[BaseModel]] = response_model
 		self._timeout: float = timeout
+
 		# these need to be set during the handshake protocol
 		self._message_name: str = protocol
 		self._deserializer: Optional[AvroDeserializer] = None
@@ -83,8 +88,8 @@ class Gateway(Hashable) :
 		self._error_deserializer: AvroDeserializer = AvroDeserializer(error_model)
 		self._attempts: int = attempts
 		self._backoff: Callable = backoff
-		self._handshake_status: HandshakeMatch = None
-		self._skip_body_handshake = False
+		self._handshake_status: Optional[HandshakeMatch] = None
+		self._perform_handshake: bool = True
 
 		if request_model :
 			self._serializer: AvroSerializer = AvroSerializer(request_model)
@@ -92,18 +97,18 @@ class Gateway(Hashable) :
 
 	async def __call__(
 		self,
-		body: BaseModel,
+		body: BaseModel = None,
 		auth: str = None,
 		headers: Dict[str, str] = None,
 		**kwargs,
 	) -> BaseModel :
+		if self._serializer :
+			raise TypeError("__call__() missing 1 required argument: 'body'")
 
 		req = {
 			'timeout': ClientTimeout(self._timeout),
 			'raise_for_status': True,
 			'headers': {
-				'avro-client-hash': b64encode(self._client_hash).decode(),
-				'avro-server-hash': b64encode(self._server_hash).decode(),
 				'content-type': 'avro/binary',
 				'accept': 'avro/binary, application/json',
 			},
@@ -120,27 +125,18 @@ class Gateway(Hashable) :
 			request=self._serializer(body) if self._serializer else 'null',
 		)
 
-		if self._skip_body_handshake :
-			req['data'] = (
-				avro_frame(call_serializer(request)) + 
-				avro_frame()
-			)
+		# handshake must be performed here
+		handshake: HandshakeRequest = HandshakeRequest(
+			clientHash=self._client_hash,
+			clientProtocol=self._client_protocol.json() if self._handshake_status is not HandshakeMatch.both else None,
+			serverHash=self._server_hash,
+		)
 
-		else :
-			# handshake must be performed here
-			handshake: HandshakeRequest = HandshakeRequest(
-				clientHash=self._client_hash,
-				clientProtocol=self._client_protocol.json() if self._handshake_status is not HandshakeMatch.both else None,
-				serverHash=self._server_hash,
-			)
-
-			print('HandshakeRequest:', handshake)
-
-			req['data'] = (
-				avro_frame(handshake_serializer(handshake)) + 
-				avro_frame(call_serializer(request)) + 
-				avro_frame()
-			)
+		req['data'] = (
+			avro_frame(handshake_serializer(handshake)) + 
+			avro_frame(call_serializer(request)) + 
+			avro_frame()
+		)
 
 		# TODO: delete a bunch of vars that aren't needed anymore
 
@@ -153,56 +149,51 @@ class Gateway(Hashable) :
 				try :
 					frames = read_avro_frames(await response.read())
 
-					if response.headers.get('avro-handshake-match') == HandshakeMatch.both.value :
-						self._handshake_status = HandshakeMatch.both
-						self._skip_body_handshake = True
+					handshake_body: bytes = b''
+					response_handshake: HandshakeResponse
+					for frame in frames :
+						handshake_body += frame
 
-					else :
-						self._skip_body_handshake = False
-						handshake_body: bytes = b''
-						handshake: HandshakeResponse
-						for frame in frames :
-							handshake_body += frame
+						try :
+							response_handshake = handshake_deserializer(handshake_body)
+							del handshake_body
+							break
 
-							try :
-								handshake = handshake_deserializer(handshake_body)
-								del handshake_body
-								break
+						except TypeError :
+							pass
 
-							except TypeError :
-								pass
+					assert response_handshake, 'handshake missing!!'
 
-						assert handshake, 'handshake missing!!'
-						print('HandshakeResponse:', handshake)
+					if response_handshake.match == HandshakeMatch.none :
+						if self._handshake_status :
+							self._handshake_status = None
+							handshake.clientProtocol=self._client_protocol.json()
+							req['data'] = (
+								avro_frame(handshake_serializer(handshake)) + 
+								avro_frame(call_serializer(request)) + 
+								avro_frame()
+							)
+							raise Retry()
 
-						if handshake.match == HandshakeMatch.none :
-							if self._handshake_status :
-								self._handshake_status = None
-								handshake.clientProtocol=self._client_protocol.json()
-								req['data'] = (
-									avro_frame(handshake_serializer(handshake)) + 
-									avro_frame(call_serializer(request)) + 
-									avro_frame()
-								)
+						else :
+							raise ValueError('protocols are incompatible!')
 
-							else :
-								raise ValueError('protocols are incompatible!')
+					elif response_handshake.match == HandshakeMatch.client :
+						server_protocol = json.loads(response_handshake.serverProtocol)
+						server_types = { i['name']: i for i in server_protocol['messages'][self._message_name]['types'] }
+						server_response = server_protocol['messages'][self._message_name]['response']
 
-						elif handshake.match == HandshakeMatch.client :
-							server_protocol = json.loads(handshake.serverProtocol)
-							server_types = { i['name']: i for i in server_protocol['messages'][self._message_name]['types'] }
-							server_response = server_protocol['messages'][self._message_name]['response']
+						if self._response_model :
+							self._deserializer = AvroDeserializer(self._response_model, json.dumps(server_types[server_response] if server_response in server_types else server_response))
 
-							if self._response_model :
-								self._deserializer = AvroDeserializer(self._response_model, json.dumps(server_types[server_response] if server_response in server_types else server_response))
+						# TODO: update error deserializer too
+						self._server_hash = response_handshake.serverHash
 
-							self._server_hash = handshake.serverHash
+						# TODO: do we need to update anything else?
+						self._client_protocol.messages[self._message_name].response = server_response
+						self._client_hash: bytes = md5(self._client_protocol.json().encode()).digest()
 
-							# TODO: do we need to update anything else?
-							self._client_protocol.messages[self._message_name].response = server_response
-							self._client_hash: bytes = md5(self._client_protocol.json().encode()).digest()
-
-						self._handshake_status = handshake.match
+					self._handshake_status = response_handshake.match
 
 					call_response: CallResponse
 					response_body: bytes = b''
@@ -231,3 +222,6 @@ class Gateway(Hashable) :
 
 				except ClientResponseError :
 					await sleep(self._backoff(attempt))
+
+				except Retry :
+					pass
