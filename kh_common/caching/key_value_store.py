@@ -131,5 +131,5 @@ class KeyValueStore :
 			# check the metadata, since it will always be populated
 			return meta != None
 
-		except aerospike.exceptions.RecordNotFound :
+		except aerospike.exception.RecordNotFound :
 			return False
