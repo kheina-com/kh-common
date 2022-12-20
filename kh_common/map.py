@@ -1,5 +1,6 @@
-from kh_common.sql import SqlInterface
 from typing import Any, Hashable
+
+from kh_common.sql import SqlInterface
 
 
 class Map(SqlInterface, dict) :

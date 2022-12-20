@@ -1,8 +1,9 @@
-from typing import Any, Dict, NamedTuple, Set
-from enum import Enum, IntEnum, unique
-from pydantic import BaseModel
 from datetime import datetime
+from enum import Enum, IntEnum, unique
+from typing import Any, Dict, NamedTuple, Set
 from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class AuthToken(NamedTuple) :

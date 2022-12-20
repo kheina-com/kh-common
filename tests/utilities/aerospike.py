@@ -1,8 +1,9 @@
-from typing import Any, Dict, List, Optional, Tuple, Type
+import time
 from collections import defaultdict
 from copy import deepcopy
+from typing import Any, Dict, List, Optional, Tuple, Type
+
 import aerospike
-import time
 
 
 AerospikeKey: Type = Tuple[str, str, str]

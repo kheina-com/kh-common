@@ -1,7 +1,7 @@
-from kh_common.caching import key_value_store
-from kh_common import caching
-
 import time
+
+from kh_common import caching
+from kh_common.caching import key_value_store
 
 
 class CachingTestClass :

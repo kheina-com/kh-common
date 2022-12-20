@@ -1,20 +1,23 @@
-from kh_common.config.repo import short_hash, name as repo_name
-from kh_common.utilities import getFullyQualifiedClassName
-from typing import Any, Callable, Dict, List, Tuple, Union
-from google.cloud import logging as google_logging
-from google.api_core.exceptions import RetryError
-from kh_common.utilities.json import json_stream
-from google.auth import compute_engine
+import logging
 from traceback import format_tb
 from types import ModuleType
-import logging
+from typing import Any, Callable, Dict, List, Tuple, Union
+
+from google.api_core.exceptions import RetryError
+from google.auth import compute_engine
+from google.cloud import logging as google_logging
+
+from kh_common.config.repo import name as repo_name
+from kh_common.config.repo import short_hash
+from kh_common.utilities import getFullyQualifiedClassName
+from kh_common.utilities.json import json_stream
 
 
 class TerminalAgent :
 
 	def __init__(self) -> None :
-		import time
 		import json
+		import time
 		self.time: ModuleType = time
 		self.json: ModuleType = json
 
