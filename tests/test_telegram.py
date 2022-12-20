@@ -1,9 +1,12 @@
 from tests.utilities.credentials import injectCredentials
+
+
 injectCredentials(telegram={ 'telegram_access_token': 'test_token', 'telegram_bot_id': 1234567890 })
 
-from kh_common.utilities.signal import Terminated
-from kh_common.telegram import Listener
 import pytest
+
+from kh_common.telegram import Listener
+from kh_common.utilities.signal import Terminated
 
 
 class TestListener :

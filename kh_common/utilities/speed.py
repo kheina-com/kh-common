@@ -1,5 +1,6 @@
 import time
 
+
 def pretty_time(time) :
 	test_time = abs(time)
 	if test_time > 5400:  # 90 minutes in seconds

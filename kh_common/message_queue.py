@@ -1,13 +1,15 @@
-from pika import BaseConnection, BlockingConnection, ConnectionParameters
-from typing import Any, Dict, Iterator, List, Tuple, Union
-from kh_common.utilities import getFullyQualifiedClassName
-from kh_common.config.credentials import message_queue
-from kh_common.config.repo import name, short_hash
-from kh_common.logging import getLogger, Logger
-from pika.channel import Channel
+from sys import exc_info
 from traceback import format_tb
 from types import TracebackType
-from sys import exc_info
+from typing import Any, Dict, Iterator, List, Tuple, Union
+
+from pika import BaseConnection, BlockingConnection, ConnectionParameters
+from pika.channel import Channel
+
+from kh_common.config.credentials import message_queue
+from kh_common.config.repo import name, short_hash
+from kh_common.logging import Logger, getLogger
+from kh_common.utilities import getFullyQualifiedClassName
 
 
 class Receiver :

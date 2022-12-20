@@ -1,6 +1,7 @@
-from kh_common.caching import SimpleCache, ArgsCache, KwargsCache, Aggregate, Aggregator
-from tests.utilities.caching import CachingTestClass
 import pytest
+
+from kh_common.caching import Aggregate, Aggregator, ArgsCache, KwargsCache, SimpleCache
+from tests.utilities.caching import CachingTestClass
 
 
 class TestSimpleCache(CachingTestClass) :

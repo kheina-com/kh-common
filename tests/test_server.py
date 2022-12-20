@@ -1,24 +1,25 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
+from datetime import datetime, timezone
+from uuid import uuid4
+
+import pytest
+from aiohttp import request
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from kh_common.auth import Scope
+from kh_common.caching.key_value_store import KeyValueStore
+from kh_common.config.repo import short_hash
+from kh_common.models.auth import AuthState, TokenMetadata
+from kh_common.server import Request, ServerApp
 from kh_common.server.middleware import CustomHeaderMiddleware, HeadersToSet
 from kh_common.server.middleware.cors import KhCorsMiddleware
-from tests.utilities.auth import expires, mock_pk, mock_token
-from kh_common.caching.key_value_store import KeyValueStore
-from kh_common.models.auth import AuthState, TokenMetadata
 from tests.utilities.aerospike import AerospikeClient
-from kh_common.server import Request, ServerApp
-from kh_common.config.repo import short_hash
-from fastapi.testclient import TestClient
-from datetime import datetime, timezone
-from kh_common.auth import Scope
-from fastapi import FastAPI
-from aiohttp import request
-from uuid import uuid4
-import pytest
+from tests.utilities.auth import expires, mock_pk, mock_token
 
 
 endpoint = '/'
-base_url = 'dev.kheina.com'
-schema = 'https://'
+base_url = 'https://dev.kheina.com'
 
 
 @pytest.mark.asyncio
@@ -58,7 +59,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 200 == response.status_code
@@ -79,7 +80,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 500 == response.status_code
@@ -100,7 +101,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 502 == response.status_code
@@ -121,7 +122,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 500 == response.status_code
@@ -142,7 +143,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 401 == response.status_code
@@ -160,7 +161,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 200 == response.status_code
@@ -179,7 +180,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 401 == response.status_code
@@ -201,7 +202,7 @@ class TestAppServer :
 		token = mock_token(TestAppServer.user_id, key_id=TestAppServer.key_id, guid=TestAppServer.guid)
 
 		# act
-		response = client.get(schema + base_url + endpoint, headers={ 'authorization': f'Bearer {token}' })
+		response = client.get(base_url + endpoint, headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 200 == response.status_code
@@ -225,7 +226,7 @@ class TestAppServer :
 		token = mock_token(TestAppServer.user_id, key_id=TestAppServer.key_id, guid=TestAppServer.guid, token_data={ 'scope': [Scope.mod] })
 
 		# act
-		response = client.get(schema + base_url + endpoint, cookies={ 'kh-auth': token })
+		response = client.get(base_url + endpoint, cookies={ 'kh-auth': token })
 
 		# assert
 		assert 200 == response.status_code
@@ -246,7 +247,7 @@ class TestAppServer :
 		token = str(None)
 
 		# act
-		response = client.get(schema + base_url + endpoint, cookies={ 'kh-auth': token })
+		response = client.get(base_url + endpoint, cookies={ 'kh-auth': token })
 
 		# assert
 		assert 400 == response.status_code
@@ -267,7 +268,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		result = client.get(f'{schema}{base_url}{endpoint}', headers={ 'Origin': 'https://example.com' })
+		result = client.get(f'{base_url}{endpoint}', headers={ 'Origin': 'https://example.com' })
 
 		# assert
 		assert 400 == result.status_code
@@ -288,7 +289,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		result = client.get(f'{schema}{base_url}{endpoint}', headers={ 'Origin': f'{schema}{base_url}' })
+		result = client.get(f'{base_url}{endpoint}', headers={ 'Origin': f'{base_url}' })
 
 		# assert
 		assert 200 == result.status_code
@@ -433,7 +434,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		result = client.get(f'{schema}{base_url}{endpoint}')
+		result = client.get(f'{base_url}{endpoint}')
 
 		# assert
 		assert 200 == result.status_code
@@ -458,7 +459,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		result = client.get(f'{schema}{base_url}{endpoint}', headers={ 'Origin': f'{schema}{base_url}' })
+		result = client.get(f'{base_url}{endpoint}', headers={ 'Origin': f'{base_url}' })
 
 		# assert
 		assert 200 == result.status_code

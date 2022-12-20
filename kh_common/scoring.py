@@ -1,8 +1,10 @@
-from kh_common.config.constants import epoch
-from kh_common.caching import CalcDict
-from scipy.stats import norm
 from math import log10, sqrt
 from typing import Union
+
+from scipy.stats import norm
+
+from kh_common.caching import CalcDict
+from kh_common.config.constants import epoch
 
 
 """
