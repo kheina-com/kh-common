@@ -7,6 +7,7 @@ from enum import Enum
 from hashlib import md5
 from logging import Logger, getLogger
 from typing import Any, Callable, Dict, Iterator, List, Optional, Sequence, Set, Tuple, Type, Union
+from uuid import UUID, uuid4
 from warnings import warn
 
 from avro.compatibility import ReaderWriterCompatibilityChecker, SchemaCompatibilityResult, SchemaCompatibilityType
@@ -36,7 +37,7 @@ from kh_common.avro.serialization import AvroDeserializer, AvroSerializer, avro_
 from kh_common.caching import CalcDict
 from kh_common.config.repo import name
 from kh_common.models import Error, ValidationError, ValidationErrorDetail
-from uuid import UUID, uuid4
+
 
 # number of client protocols to cache per endpoint
 # this should be set to something reasonable based on the number of expected consumers per endpoint

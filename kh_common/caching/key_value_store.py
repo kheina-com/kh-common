@@ -1,6 +1,8 @@
-from asyncio import Lock
+from asyncio import Lock, get_event_loop
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy
+from functools import partial, wraps
 from time import time
 from typing import Any, Dict, Iterable, List, Set, Tuple
 
@@ -42,6 +44,12 @@ class KeyValueStore :
 		self._cache[key] = (time() + self._local_TTL, data)
 
 
+	@wraps(put)
+	async def put_async(self: 'KeyValueStore', *args, **kwargs) -> Any :
+		with ThreadPoolExecutor() as threadpool :
+			return await get_event_loop().run_in_executor(threadpool, partial(self.put, *args, **kwargs))
+
+
 	def _get(self: 'KeyValueStore', key: str) :
 		if key in self._cache :
 			return copy(self._cache[key][1])
@@ -57,10 +65,11 @@ class KeyValueStore :
 		return self._get(key)
 
 
-	async def get_async(self: 'KeyValueStore', key: str) -> Any :
-		async with self._get_lock :
-			__clear_cache__(self._cache, time)
-			return self._get(key)
+	@wraps(get)
+	async def get_async(self: 'KeyValueStore', *args, **kwargs) -> Any :
+		with ThreadPoolExecutor() as threadpool :
+			async with self._get_lock :
+				return await get_event_loop().run_in_executor(threadpool, partial(self.get, *args, **kwargs))
 
 
 	def _get_many(self: 'KeyValueStore', keys: Iterable[str]) :
@@ -133,5 +142,5 @@ class KeyValueStore :
 			# check the metadata, since it will always be populated
 			return meta != None
 
-		except aerospike.exceptions.RecordNotFound :
+		except aerospike.exception.RecordNotFound :
 			return False
