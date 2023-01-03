@@ -19,8 +19,7 @@ class TestAuthToken :
 	client = None
 
 	def setup(self) :
-		TestAuthToken.client = AerospikeClient()
-		KeyValueStore._client = TestAuthToken.client
+		KeyValueStore.__client__ = TestAuthToken.client = AerospikeClient()
 
 
 	async def test_VerifyToken_ValidToken_DecodesSuccessfully(self, mocker) :
@@ -197,6 +196,7 @@ class TestAuthToken :
 		# act
 		result = await user.authenticated()
 
+		# assert
 		assert True == result
 
 

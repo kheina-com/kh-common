@@ -1,10 +1,18 @@
 from collections import OrderedDict
 from math import ceil
 from time import time
-from typing import Any, Iterable
+from typing import Any, Callable, Hashable, Iterable, Tuple
 
 
-def __clear_cache__(cache: OrderedDict, t=time) :
+def __clear_cache__(cache: OrderedDict[Hashable, Tuple[float, Any]], t: Callable[[], float] = time) -> None :
+	"""
+	clears the cache structure of all stale data up to the time returned by t. assumes the cache is an OrderedDict in standard format used by kh_common.caching:
+	OrderedDict({
+		key: (expiration unix time, cached response data)
+	})
+	key is usually a string or function parameters
+	NOTE: does not provide any asnyc locking. if used in an async context, surround by `async with asyncio.Lock`
+	"""
 	now: float = t()
 
 	try :
