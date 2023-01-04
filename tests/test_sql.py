@@ -1,7 +1,9 @@
 from kh_common.config import credentials; credentials.db = { }
-from kh_common.sql.query import Field, Join, JoinType, Operator, Order, Query, Table, Value, Where
 from typing import Any, List, Tuple, Union
+
 import pytest
+
+from kh_common.sql.query import Field, Join, JoinType, Operator, Order, Query, Table, Value, Where
 
 
 class TestQuery :

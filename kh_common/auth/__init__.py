@@ -1,23 +1,25 @@
-from kh_common.models.auth import AuthState, AuthToken, KhUser, PublicKeyResponse, Scope, TokenMetadata
+from asyncio import Task, ensure_future
+from hashlib import sha1
+from re import compile as re_compile
+from typing import Callable, Dict, Union
+from uuid import UUID
+
+import aerospike
+import ujson as json
+from aiohttp import request as async_request
+from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
-from kh_common.exceptions.http_error import Forbidden, Unauthorized
-from kh_common.caching.key_value_store import KeyValueStore
-from cryptography.hazmat.backends import default_backend
-from kh_common.base64 import b64decode, b64encode
-from kh_common.config.constants import auth_host
-from kh_common.utilities import int_from_bytes
-from aiohttp import request as async_request
-from typing import Callable, Dict, Union
-from kh_common.datetime import datetime
-from kh_common.caching import ArgsCache
-from asyncio import ensure_future, Task
-from re import compile as re_compile
 from fastapi import Request
-from hashlib import sha1
-from uuid import UUID
-import ujson as json
-import aerospike
+
+from kh_common.base64 import b64decode, b64encode
+from kh_common.caching import ArgsCache
+from kh_common.caching.key_value_store import KeyValueStore
+from kh_common.config.constants import auth_host
+from kh_common.datetime import datetime
+from kh_common.exceptions.http_error import Forbidden, Unauthorized
+from kh_common.models.auth import AuthState, AuthToken, KhUser, PublicKeyResponse, Scope, TokenMetadata
+from kh_common.utilities import int_from_bytes
 
 
 ua_strip = re_compile(r'\/\d+(?:\.\d+)*')
@@ -152,7 +154,7 @@ async def verifyToken(token: str, allow_non_user_tokens=False) -> AuthToken :
 async def retrieveAuthToken(request: Request) -> AuthToken :
 	token: str = request.headers.get('Authorization') or request.cookies.get('kh-auth')
 
-	if not token :
+	if not token or len(token) <= 10 :
 		raise Unauthorized('An authentication token was not provided.')
 
 	token_data: AuthToken = await verifyToken(token.split()[-1])

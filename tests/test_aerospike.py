@@ -1,11 +1,13 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
+import time
+
+import pytest
+
+from kh_common.caching import AerospikeCache
+from kh_common.caching.integer import Integer
 from kh_common.caching.key_value_store import KeyValueStore
 from tests.utilities.aerospike import AerospikeClient
 from tests.utilities.caching import CachingTestClass
-from kh_common.caching.integer import Integer
-from kh_common.caching import AerospikeCache
-import pytest
-import time
 
 
 class TestAerospikeCache(CachingTestClass) :

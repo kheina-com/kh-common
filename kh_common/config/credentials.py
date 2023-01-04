@@ -1,6 +1,7 @@
-from os import environ, path, listdir
-from ujson import load as json_load
+from os import environ, listdir, path
 from typing import Any, Dict
+
+from ujson import load as json_load
 
 
 environment: str = environ.get('ENVIRONMENT', 'LOCAL').lower()

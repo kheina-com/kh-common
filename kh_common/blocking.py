@@ -1,7 +1,8 @@
-from kh_common.caching import ArgsCache
-from kh_common.sql import SqlInterface
-from kh_common.hashing import Hashable
 from typing import Set
+
+from kh_common.caching import ArgsCache
+from kh_common.hashing import Hashable
+from kh_common.sql import SqlInterface
 
 
 class UserBlocking(SqlInterface, Hashable) :

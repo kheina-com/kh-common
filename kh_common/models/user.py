@@ -1,8 +1,10 @@
-from kh_common.models.privacy import UserPrivacy
-from kh_common.models.verified import Verified
-from pydantic import BaseModel
 from datetime import datetime
 from typing import Optional
+
+from pydantic import BaseModel
+
+from kh_common.models.privacy import UserPrivacy
+from kh_common.models.verified import Verified
 
 
 class User(BaseModel) :

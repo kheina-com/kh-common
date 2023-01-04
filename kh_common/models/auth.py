@@ -1,8 +1,9 @@
-from typing import Any, Dict, NamedTuple, Set
-from enum import Enum, IntEnum, unique
-from pydantic import BaseModel
 from datetime import datetime
+from enum import Enum, IntEnum, unique
+from typing import Any, Dict, NamedTuple, Set
 from uuid import UUID
+
+from pydantic import BaseModel
 
 
 class AuthToken(NamedTuple) :
@@ -15,12 +16,12 @@ class AuthToken(NamedTuple) :
 
 @unique
 class Scope(Enum) :
-	default: int = 0
+	internal: int = -2
 	bot: int = 1
-	user: int = 2
-	mod: int = 3
-	admin: int = 4
-	internal: int = 5
+	default: int = 0
+	user: int = 1
+	mod: int = 2
+	admin: int = 3
 
 	def all_included_scopes(self) :
 		return [v for v in Scope.__members__.values() if Scope.user.value <= v.value <= self.value] or [self]
