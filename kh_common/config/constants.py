@@ -47,26 +47,26 @@ local: Dict[str, str] = {
 }
 
 dev: Dict[str, str] = {
-	'auth_host': 'https://dev.kheina.com/auth',
-	'upload_host': 'https://dev.kheina.com/upload',
-	'tags_host': 'https://dev.kheina.com/tags',
-	'posts_host': 'https://dev.kheina.com/posts',
-	'account_host': 'https://dev.kheina.com/acct',
-	'users_host': 'https://dev.kheina.com/users',
-	'config_host': 'https://dev.kheina.com/config',
+	'auth_host': 'https://auth-dev.fuzz.ly',
+	'upload_host': 'https://upload-dev.fuzz.ly',
+	'tags_host': 'https://tags-dev.fuzz.ly',
+	'posts_host': 'https://posts-dev.fuzz.ly',
+	'account_host': 'https://account-dev.fuzz.ly',
+	'users_host': 'https://users-dev.fuzz.ly',
+	'config_host': 'https://config-dev.fuzz.ly',
 }
 
 prod: Dict[str, str] = {
-	'auth_host': 'https://auth.kheina.com',
-	'upload_host': 'https://upload.kheina.com',
-	'tags_host': 'https://tags.kheina.com',
-	'posts_host': 'https://posts.kheina.com',
-	'account_host': 'https://account.kheina.com',
-	'users_host': 'https://users.kheina.com',
-	'config_host': 'https://config.kheina.com',
+	'auth_host': 'https://auth.fuzz.ly',
+	'upload_host': 'https://upload.fuzz.ly',
+	'tags_host': 'https://tags.fuzz.ly',
+	'posts_host': 'https://posts.fuzz.ly',
+	'account_host': 'https://account.fuzz.ly',
+	'users_host': 'https://users.fuzz.ly',
+	'config_host': 'https://config.fuzz.ly',
 }
 
-assert local.keys() == dev.keys() == prod.keys()
+assert test.keys() == local.keys() == dev.keys() == prod.keys()
 
 env_vars: Dict[str, str] = locals().get(environment.name, local)
 
