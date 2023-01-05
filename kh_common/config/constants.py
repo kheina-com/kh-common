@@ -34,6 +34,7 @@ test: Dict[str, str] = {
 	'account_host': 'http://localhost:5004',
 	'users_host': 'http://localhost:5005',
 	'config_host': 'http://localhost:5006',
+	'avro_host': 'http://localhost:5007',
 }
 
 local: Dict[str, str] = {
@@ -44,6 +45,7 @@ local: Dict[str, str] = {
 	'account_host': 'http://localhost:5004',
 	'users_host': 'http://localhost:5005',
 	'config_host': 'http://localhost:5006',
+	'avro_host': 'http://localhost:5007',
 }
 
 dev: Dict[str, str] = {
@@ -54,6 +56,7 @@ dev: Dict[str, str] = {
 	'account_host': 'https://account-dev.fuzz.ly',
 	'users_host': 'https://users-dev.fuzz.ly',
 	'config_host': 'https://config-dev.fuzz.ly',
+	'avro_host': 'https://avro-dev.fuzz.ly',
 }
 
 prod: Dict[str, str] = {
@@ -64,6 +67,7 @@ prod: Dict[str, str] = {
 	'account_host': 'https://account.fuzz.ly',
 	'users_host': 'https://users.fuzz.ly',
 	'config_host': 'https://config.fuzz.ly',
+	'avro_host': 'https://avro.fuzz.ly',
 }
 
 assert test.keys() == local.keys() == dev.keys() == prod.keys()
