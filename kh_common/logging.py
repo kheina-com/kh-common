@@ -1,19 +1,23 @@
-from kh_common.config.repo import short_hash, name as repo_name
-from kh_common.utilities import getFullyQualifiedClassName
-from typing import Any, Callable, Dict, List, Tuple, Union
-from google.cloud import logging as google_logging
-from kh_common.utilities.json import json_stream
-from google.auth import compute_engine
+import logging
 from traceback import format_tb
 from types import ModuleType
-import logging
+from typing import Any, Callable, Dict, List, Tuple, Union
+
+from google.api_core.exceptions import RetryError
+from google.auth import compute_engine
+from google.cloud import logging as google_logging
+
+from kh_common.config.repo import name as repo_name
+from kh_common.config.repo import short_hash
+from kh_common.utilities import getFullyQualifiedClassName
+from kh_common.utilities.json import json_stream
 
 
 class TerminalAgent :
 
 	def __init__(self) -> None :
-		import time
 		import json
+		import time
 		self.time: ModuleType = time
 		self.json: ModuleType = json
 
@@ -58,12 +62,26 @@ class LogHandler(logging.Handler) :
 				errorinfo.update(json_stream(record.msg))
 			else :
 				errorinfo['message'] = record.msg
-			self.agent.log_struct(errorinfo, severity=record.levelname)
+
+			try :
+				self.agent.log_struct(errorinfo, severity=record.levelname)
+
+			except RetryError :
+				# we really, really do not want to fail-crash here.
+				# normally we would log this error and move on, but, well.
+				pass
+
 		else :
-			if isinstance(record.msg, self._structs) :
-				self.agent.log_struct(json_stream(record.msg), severity=record.levelname)
-			else :
-				self.agent.log_text(str(record.msg), severity=record.levelname)
+			try :
+				if isinstance(record.msg, self._structs) :
+					self.agent.log_struct(json_stream(record.msg), severity=record.levelname)
+				else :
+					self.agent.log_text(str(record.msg), severity=record.levelname)
+
+			except RetryError :
+				# we really, really do not want to fail-crash here.
+				# normally we would log this error and move on, but, well.
+				pass
 
 
 Logger: type = logging.Logger

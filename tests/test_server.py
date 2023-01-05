@@ -1,22 +1,51 @@
 from kh_common.logging import LogHandler; LogHandler.logging_available = False
-from kh_common.server.middleware.cors import KhCorsMiddleware
-from tests.utilities.auth import mock_pk, mock_token
-from kh_common.server import Request, ServerApp
-from kh_common.config.repo import short_hash
-from fastapi.testclient import TestClient
-from kh_common.auth import Scope
-from fastapi import FastAPI
+from datetime import datetime, timezone
 from uuid import uuid4
+
 import pytest
+from aiohttp import request
+from fastapi import FastAPI
+from fastapi.testclient import TestClient
+
+from kh_common.auth import Scope
+from kh_common.caching.key_value_store import KeyValueStore
+from kh_common.config.repo import short_hash
+from kh_common.models.auth import AuthState, TokenMetadata
+from kh_common.server import Request, ServerApp
+from kh_common.server.middleware import CustomHeaderMiddleware, HeadersToSet
+from kh_common.server.middleware.cors import KhCorsMiddleware
+from tests.utilities.aerospike import AerospikeClient
+from tests.utilities.auth import expires, mock_pk, mock_token
 
 
 endpoint = '/'
-base_url = 'dev.kheina.com'
-schema = 'https://'
+base_url = 'https://dev.kheina.com'
 
 
 @pytest.mark.asyncio
 class TestAppServer :
+
+	client = None
+	key_id = 54321
+	user_id = 9876543210
+	guid = uuid4()
+
+
+	def setup(self) :
+		TestAppServer.client = AerospikeClient()
+		KeyValueStore._client = TestAppServer.client
+
+		TestAppServer.client.put(('kheina', 'token', TestAppServer.guid.bytes), { 'data': TokenMetadata(
+			state=AuthState.active,
+			key_id=TestAppServer.key_id,
+			user_id=TestAppServer.user_id,
+			version=b'1',
+			algorithm='ed25519',
+			expires=datetime.fromtimestamp(expires, timezone.utc),
+			issued=datetime.now(timezone.utc),
+			fingerprint=b'',
+		)})
+
 
 	def test_ServerApp_GetNoAuth_Success(self) :
 
@@ -30,7 +59,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 200 == response.status_code
@@ -51,11 +80,34 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 500 == response.status_code
 		assert { 'status': 500, 'refid': refid.hex, 'error': 'HttpError: test' } == response.json()
+
+
+	def test_ServerApp_GetRaisesClientResponseError_CorrectErrorFormat(self) :
+
+		# arrange
+		app = ServerApp(auth=False)
+
+		@app.get(endpoint)
+		async def test_func() :
+			# send request to a fake url to generate a ClientResponseError
+			async with request('GET', '/') :
+				pass
+
+		client = TestClient(app, base_url=base_url)
+
+		# act
+		response = client.get(base_url + endpoint)
+
+		# assert
+		assert 502 == response.status_code
+		response_json = response.json()
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'status': 502, 'error': 'BadGateway: received an invalid response from an upstream server.' } == response_json
 
 
 	def test_ServerApp_GetRaisesValueError_CorrectErrorFormat(self) :
@@ -70,7 +122,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 500 == response.status_code
@@ -91,7 +143,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 401 == response.status_code
@@ -109,7 +161,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 200 == response.status_code
@@ -128,7 +180,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		response = client.get(schema + base_url + endpoint)
+		response = client.get(base_url + endpoint)
 
 		# assert
 		assert 401 == response.status_code
@@ -137,7 +189,7 @@ class TestAppServer :
 	def test_ServerApp_GetRequiresAuth_Authorized(self, mocker) :
 
 		# arrange
-		mock_pk(mocker)
+		mock_pk(mocker, key_id=TestAppServer.key_id)
 
 		app = ServerApp(auth=True, auth_required=True)
 
@@ -147,20 +199,20 @@ class TestAppServer :
 
 		client = TestClient(app, base_url=base_url)
 
-		token = mock_token(1)
+		token = mock_token(TestAppServer.user_id, key_id=TestAppServer.key_id, guid=TestAppServer.guid)
 
 		# act
-		response = client.get(schema + base_url + endpoint, headers={ 'authorization': f'bearer {token}' })
+		response = client.get(base_url + endpoint, headers={ 'authorization': f'Bearer {token}' })
 
 		# assert
 		assert 200 == response.status_code
-		assert { 'user_id': 1 } == response.json()
+		assert { 'user_id': TestAppServer.user_id } == response.json()
 
 
 	def test_ServerApp_GetRequiresScope_Authorized(self, mocker) :
 
 		# arrange
-		mock_pk(mocker)
+		mock_pk(mocker, key_id=TestAppServer.key_id)
 
 		app = ServerApp(auth=True, auth_required=True)
 
@@ -171,14 +223,14 @@ class TestAppServer :
 
 		client = TestClient(app, base_url=base_url)
 
-		token = mock_token(1000000, { 'scope': [Scope.mod] })
+		token = mock_token(TestAppServer.user_id, key_id=TestAppServer.key_id, guid=TestAppServer.guid, token_data={ 'scope': [Scope.mod] })
 
 		# act
-		response = client.get(schema + base_url + endpoint, cookies={ 'kh-auth': token })
+		response = client.get(base_url + endpoint, cookies={ 'kh-auth': token })
 
 		# assert
 		assert 200 == response.status_code
-		assert { 'user_id': 1000000, 'data': { 'scope': ['mod'] } } == response.json()
+		assert { 'user_id': TestAppServer.user_id, 'data': { 'scope': ['mod'] } } == response.json()
 
 
 	def test_ServerApp_GetInvalidAuth_NullAuthCookie(self) :
@@ -195,13 +247,34 @@ class TestAppServer :
 		token = str(None)
 
 		# act
-		response = client.get(schema + base_url + endpoint, cookies={ 'kh-auth': token })
+		response = client.get(base_url + endpoint, cookies={ 'kh-auth': token })
 
 		# assert
 		assert 400 == response.status_code
 		response_json = response.json()
 		assert 32 == len(response_json.pop('refid'))
 		assert { 'status': 400, 'error': 'BadRequest: The given token uses a version that is unable to be decoded.' } == response_json
+
+
+	def test_ServerApp_InvalidOrigin_BadRequest(self) :
+
+		# arrange
+		app = ServerApp(auth=False, cors=True, custom_headers=False)
+
+		@app.get(endpoint)
+		async def app_func() :
+			return { 'success': True }
+
+		client = TestClient(app, base_url=base_url)
+
+		# act
+		result = client.get(f'{base_url}{endpoint}', headers={ 'Origin': 'https://example.com' })
+
+		# assert
+		assert 400 == result.status_code
+		response_json = result.json()
+		assert 32 == len(response_json.pop('refid'))
+		assert { 'status': 400, 'error': 'BadRequest: Origin not allowed.' } == response_json
 
 
 	def test_ServerApp_ValidOrigin_Success(self) :
@@ -216,7 +289,7 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		result = client.get(f'{schema}{base_url}{endpoint}', headers={ 'Origin': f'{schema}{base_url}' })
+		result = client.get(f'{base_url}{endpoint}', headers={ 'Origin': f'{base_url}' })
 
 		# assert
 		assert 200 == result.status_code
@@ -361,9 +434,37 @@ class TestAppServer :
 		client = TestClient(app, base_url=base_url)
 
 		# act
-		result = client.get(f'{schema}{base_url}{endpoint}')
+		result = client.get(f'{base_url}{endpoint}')
 
 		# assert
 		assert 200 == result.status_code
 		assert { 'success': True } == result.json()
-		assert short_hash == result.headers['kh-hash']
+		assert short_hash == result.headers.get('kh-hash')
+
+
+	def test_CustomHeaderMiddleware_CustomHeadersInjected_Success(self) :
+
+		# arrange
+		HeadersToSet.clear()
+		HeadersToSet.update({
+			'kh-hash': short_hash,
+			'kh-custom': 'custom',
+		})
+		app = ServerApp(auth=True, auth_required=False, cors=True, custom_headers=True)
+
+		@app.get(endpoint)
+		async def app_func() :
+			return { 'success': True }
+
+		client = TestClient(app, base_url=base_url)
+
+		# act
+		result = client.get(f'{base_url}{endpoint}', headers={ 'Origin': f'{base_url}' })
+
+		# assert
+		assert 200 == result.status_code
+		assert { 'success': True } == result.json()
+		assert short_hash == result.headers.get('kh-hash')
+		assert 'custom' == result.headers.get('kh-custom')
+		assert 'kh-custom' not in result.headers.get('access-control-allow-headers', '')
+		assert 'kh-custom' in result.headers.get('access-control-expose-headers', '')

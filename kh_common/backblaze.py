@@ -1,15 +1,20 @@
-from requests import Response, get as requests_get, post as requests_post
-from aiohttp import ClientTimeout, request as async_request
-from kh_common.exceptions.base_error import BaseError
-from kh_common.logging import getLogger, Logger
-from kh_common.config.credentials import b2
 from asyncio import sleep as sleep_async
-from hashlib import sha1 as hashlib_sha1
-from urllib.parse import quote, unquote
-from typing import Any, Dict, Union
 from base64 import b64encode
+from hashlib import sha1 as hashlib_sha1
 from time import sleep
+from typing import Any, Dict, Union
+from urllib.parse import quote, unquote
+
 import ujson as json
+from aiohttp import ClientTimeout
+from aiohttp import request as async_request
+from requests import Response
+from requests import get as requests_get
+from requests import post as requests_post
+
+from kh_common.config.credentials import b2
+from kh_common.exceptions.base_error import BaseError
+from kh_common.logging import Logger, getLogger
 
 
 class B2AuthorizationError(BaseError) :
@@ -22,7 +27,13 @@ class B2UploadError(BaseError) :
 
 class B2Interface :
 
-	def __init__(self, timeout:float=300, max_backoff:float=30, max_retries:float=15, mime_types:Dict[str, str]={ }) -> None :
+	def __init__(
+		self: 'B2Interface', 
+		timeout: float = 300,
+		max_backoff: float = 30,
+		max_retries: float = 15,
+		mime_types: Dict[str, str] = { }
+	) -> None :
 		self.logger: Logger = getLogger()
 		self.b2_timeout: float = timeout
 		self.b2_max_backoff: float = max_backoff
@@ -41,7 +52,7 @@ class B2Interface :
 		self._b2_authorize()
 
 
-	def _b2_authorize(self) -> bool :
+	def _b2_authorize(self: 'B2Interface') -> bool :
 		basic_auth_string: bytes = b'Basic ' + b64encode((b2['key_id'] + ':' + b2['key']).encode())
 		b2_headers: Dict[str, bytes] = { 'authorization': basic_auth_string }
 		response: Union[Response, None] = None
@@ -73,14 +84,14 @@ class B2Interface :
 			)
 
 
-	def _get_mime_from_filename(self, filename: str) -> str :
+	def _get_mime_from_filename(self: 'B2Interface', filename: str) -> str :
 		extension: str = filename[filename.rfind('.') + 1:]
 		if extension in self.mime_types :
 			return self.mime_types[extension.lower()]
 		raise ValueError(f'file extention does not have a known mime type: {filename}')
 
 
-	def _obtain_upload_url(self) -> Dict[str, Any] :
+	def _obtain_upload_url(self: 'B2Interface') -> Dict[str, Any] :
 		backoff: float = 1
 		content: Union[str, None] = None
 		status: Union[int, None] = None
@@ -117,7 +128,7 @@ class B2Interface :
 		)
 
 
-	async def _obtain_upload_url_async(self) -> Dict[str, Any] :
+	async def _obtain_upload_url_async(self: 'B2Interface') -> Dict[str, Any] :
 		backoff: float = 1
 		content: Union[str, None] = None
 		status: Union[int, None] = None
@@ -155,7 +166,7 @@ class B2Interface :
 		)
 
 
-	def b2_upload(self, file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
+	def b2_upload(self: 'B2Interface', file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
 		# obtain upload url
 		upload_url: str = self._obtain_upload_url()
 
@@ -212,7 +223,7 @@ class B2Interface :
 		)
 
 
-	async def b2_delete_file_async(self, filename: str) :
+	async def b2_delete_file_async(self: 'B2Interface', filename: str) -> bool :
 		files = None
 
 		for _ in range(self.b2_max_retries) :
@@ -237,7 +248,7 @@ class B2Interface :
 			except Exception as e :
 				self.logger.error('error encountered during b2 delete.', exc_info=e)
 
-		assert files is not None
+		assert files
 
 		deletes = 0
 
@@ -266,7 +277,7 @@ class B2Interface :
 		return bool(deletes)
 
 
-	async def b2_upload_async(self, file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
+	async def b2_upload_async(self: 'B2Interface', file_data: bytes, filename: str, content_type:Union[str, None]=None, sha1:Union[str, None]=None) -> Dict[str, Any] :
 		# obtain upload url
 		upload_url: str = await self._obtain_upload_url_async()
 
@@ -322,3 +333,30 @@ class B2Interface :
 			headers=headers,
 			filesize=len(file_data),
 		)
+
+
+	async def b2_get_file_info(self: 'B2Interface', filename: str) :
+		for _ in range(self.b2_max_retries) :
+			try :
+				async with async_request(
+					'POST',
+					self.b2_api_url + '/b2api/v2/b2_list_file_versions',
+					json={
+						'bucketId': self.b2_bucket_id,
+						'startFileName': filename,
+						'maxFileCount': 5,
+					},
+					headers={ 'authorization': self.b2_auth_token },
+				) as response :
+
+					if response.status == 401 :
+						self._b2_authorize()
+						continue
+
+					return next(filter(lambda x : x['fileName'] == filename, (await response.json())['files']))
+
+			except StopIteration :
+				self.logger.error('file not found in b2.', exc_info=e)
+
+			except Exception as e :
+				self.logger.error('error encountered during b2 get file info.', exc_info=e)

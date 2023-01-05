@@ -1,4 +1,5 @@
-from datetime import timezone, datetime as pydatetime
+from datetime import datetime as pydatetime
+from datetime import timezone
 from typing import Union
 
 

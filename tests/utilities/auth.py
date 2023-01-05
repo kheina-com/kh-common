@@ -1,14 +1,16 @@
-from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-from cryptography.hazmat.primitives import serialization
-from tests.utilities.requests import MockResponse
-from kh_common.config.constants import auth_host
-from kh_common.utilities.json import json_stream
-from kh_common.utilities import int_to_bytes
-from kh_common.base64 import b64encode
-from uuid import UUID, uuid4
 from asyncio import Future
 from time import time
+from uuid import UUID, uuid4
+
 import ujson as json
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+from kh_common.base64 import b64encode
+from kh_common.config.constants import auth_host
+from kh_common.utilities import int_to_bytes
+from kh_common.utilities.json import json_stream
+from tests.utilities.requests import MockResponse
 
 
 private_key = Ed25519PrivateKey.generate()
