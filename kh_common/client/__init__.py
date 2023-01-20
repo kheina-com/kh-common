@@ -9,13 +9,12 @@ from kh_common.gateway import Gateway
 from kh_common.models.auth import LoginResponse
 
 
-BotLogin: Gateway = Gateway(account_host + '/v1/bot_login', LoginResponse, 'POST')
-
-
 class Client :
 	"""
 	Defines a fuzz.ly client that can accept a bot token and self-manage authentication
 	"""
+
+	_login: Gateway = Gateway(account_host + '/v1/bot_login', LoginResponse, 'POST')
 
 	def __init__(self: 'Client', token: Optional[str] = None) :
 		"""
@@ -26,7 +25,7 @@ class Client :
 
 
 	async def start(self: 'Client') :
-		login_response: LoginResponse = await BotLogin({ 'token': self._token })
+		login_response: LoginResponse = await Client._login({ 'token': self._token })
 		self._auth = login_response.token.token
 
 
@@ -34,7 +33,7 @@ class Client :
 		if self._token and not self._auth :
 			raise ValueError('authorization was not set! was Client.start called during init?')
 
-		if not iscoroutinefunction(func) :
+		if not iscoroutinefunction(func) and type(func) != Gateway :
 			raise NotImplementedError('provided func is not defined as async. did you pass in a kh_common.gateway.Gateway?')
 
 		@wraps(func)
