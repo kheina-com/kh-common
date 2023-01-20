@@ -266,7 +266,7 @@ class TestAuthToken :
 		assert True == result
 
 
-	async def test_VerifyScope_ZeroUser_DoesNotThrowError(self, mocker) :
+	async def test_VerifyScope_ZeroUser_ThrowsError(self, mocker) :
 
 		# arrange
 		TestAuthToken.client.clear()
@@ -276,19 +276,6 @@ class TestAuthToken :
 		guid = uuid4()
 		token = mock_token(user_id, guid=guid, key_id=key_id)
 
-		TestAuthToken.client.put(('kheina', 'token', guid.bytes), { 'data': TokenMetadata(
-			state=AuthState.active,
-			key_id=key_id,
-			user_id=user_id,
-			version=b'1',
-			algorithm='ed25519',
-			expires=datetime.fromtimestamp(expires, timezone.utc),
-			issued=datetime.now(timezone.utc),
-			fingerprint=b'',
-		)})
-
 		# act
-		result = await verifyToken(token)
-
-		# assert
-		assert result
+		with raises(Unauthorized) :
+			await verifyToken(token)
