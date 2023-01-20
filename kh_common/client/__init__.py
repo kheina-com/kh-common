@@ -44,7 +44,7 @@ class Client :
 				result = await func(*args, auth=self._auth, **kwargs)
 
 			except ClientResponseError as e :
-				if e.result != 401 or not self._token :
+				if e.status != 401 or not self._token :
 					raise
 
 				# reauthorize
