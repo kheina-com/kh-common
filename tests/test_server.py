@@ -19,7 +19,7 @@ from tests.utilities.auth import expires, mock_pk, mock_token
 
 
 endpoint = '/'
-base_url = 'https://dev.kheina.com'
+base_url = 'https://dev.fuzz.ly'
 
 
 @pytest.mark.asyncio

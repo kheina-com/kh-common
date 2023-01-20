@@ -1,5 +1,6 @@
-from kh_common.crc import CRC
 import pytest
+
+from kh_common.crc import CRC
 
 
 @pytest.mark.parametrize(
