@@ -58,7 +58,7 @@ async def _fetchPublicKey(key_id: int, algorithm: str) -> Ed25519PublicKey :
 	) as response :
 		load: PublicKeyResponse = PublicKeyResponse.parse_obj(await response.json())
 
-	if datetime.now() > datetime.fromtimestamp(load.expires) :
+	if datetime.now() > load.expires :
 		raise Unauthorized('Key has expired.')
 
 	key: bytes = b64decode(load.key)

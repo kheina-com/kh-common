@@ -45,8 +45,8 @@ class PublicKeyResponse(BaseModel) :
 	algorithm: str
 	key: str
 	signature: str
-	issued: int
-	expires: int
+	issued: datetime
+	expires: datetime
 
 
 @unique
