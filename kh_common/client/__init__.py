@@ -4,8 +4,8 @@ from typing import Any, Callable, Dict, Optional, Tuple
 
 from aiohttp import ClientResponseError
 
-from kh_common.gateway import Gateway
 from kh_common.config.constants import account_host
+from kh_common.gateway import Gateway
 from kh_common.models.auth import LoginResponse
 
 
