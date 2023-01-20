@@ -70,7 +70,7 @@ async def _fetchPublicKey(key_id: int, algorithm: str) -> Ed25519PublicKey :
 	return public_key
 
 
-async def v1token(token: str, allow_non_user_tokens=False) -> AuthToken :
+async def v1token(token: str) -> AuthToken :
 	content: str
 	signature: str
 	load: str
@@ -96,9 +96,6 @@ async def v1token(token: str, allow_non_user_tokens=False) -> AuthToken :
 	if key_id <= 0 :
 		raise Unauthorized('Key is invalid.')
 
-	if not allow_non_user_tokens and user_id <= 0 :
-		raise Unauthorized('User is invalid.')
-
 	if datetime.now() > expires :
 		raise Unauthorized('Key has expired.')
 
@@ -122,8 +119,7 @@ async def v1token(token: str, allow_non_user_tokens=False) -> AuthToken :
 		assert token_info.key_id == key_id, 'Token encryption key mismatch.'
 
 	except aerospike.exception.RecordNotFound :
-		if not allow_non_user_tokens :
-			raise
+		raise
 
 	except AssertionError as e :
 		raise Unauthorized(str(e))
@@ -142,11 +138,11 @@ tokenVersionSwitch: Dict[bytes, Callable] = {
 }
 
 
-async def verifyToken(token: str, allow_non_user_tokens=False) -> AuthToken :
+async def verifyToken(token: str) -> AuthToken :
 	version: bytes = b64decode(token[:token.find('.')])
 
 	if version in tokenVersionSwitch :
-		return await tokenVersionSwitch[version](token, allow_non_user_tokens)
+		return await tokenVersionSwitch[version](token)
 
 	raise InvalidToken('The given token uses a version that is unable to be decoded.')
 

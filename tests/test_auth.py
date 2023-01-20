@@ -279,20 +279,3 @@ class TestAuthToken :
 		# act
 		with raises(Unauthorized) :
 			await verifyToken(token)
-
-
-	async def test_VerifyScope_ZeroUser_DoesNotThrowError(self, mocker) :
-
-		# arrange
-		TestAuthToken.client.clear()
-		key_id = 123456
-		mock_pk(mocker, key_id=key_id)
-		user_id = 0
-		guid = uuid4()
-		token = mock_token(user_id, guid=guid, key_id=key_id)
-
-		# act
-		result = await verifyToken(token, allow_non_user_tokens=True)
-
-		# assert
-		assert result
