@@ -2,7 +2,7 @@ from typing import Iterable
 
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
-from starlette.exceptions import ExceptionMiddleware
+from starlette.middleware.exceptions import ExceptionMiddleware
 
 from kh_common.config.constants import environment
 from kh_common.exceptions import jsonErrorHandler
@@ -21,14 +21,14 @@ def ServerApp(
 	allowed_hosts: Iterable[str] = [
 		'localhost',
 		'127.0.0.1',
-		'*.kheina.com',
-		'kheina.com',
+		'*.fuzz.ly',
+		'fuzz.ly',
 	],
 	allowed_origins: Iterable[str] = [
 		'localhost',
 		'127.0.0.1',
-		'dev.kheina.com',
-		'kheina.com',
+		'dev.fuzz.ly',
+		'fuzz.ly',
 	],
 	allowed_methods: Iterable[str] = [
 		'GET',

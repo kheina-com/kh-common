@@ -31,7 +31,6 @@ server.py
 *.log
 *.txt
 *.out
-!requirements.txt
 !requirements*.txt
 
 # back ups of files hosted remotely
