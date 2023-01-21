@@ -17,11 +17,11 @@ At this point, your client can be used to inject credentials into `kh_common.gat
 
 ```python
 from kh_common.gateway import Gateway
-from kh_common.config.constants import post_host
+from kh_common.config.constants import posts_host
 from models import Post  # a pydantic model used to decode post responses
 
 # fetch a post
-fetch_post: Gateway = fuzzly_client.authenticated(Gateway(post_host + '/v1/post/{post_id}', Post, 'GET'))
+fetch_post: Gateway = fuzzly_client.authenticated(Gateway(posts_host + '/v1/post/{post_id}', Post, 'GET'))
 
 post: Post = await fetch_post(post_id='abcd1234')  # credentials are automatically injected
 ```
@@ -30,6 +30,7 @@ Because `Client.authenticated` is just a decorator, you can use it on your own f
 ```python
 import aiohttp
 from typing import Any, Dict
+from kh_common.config.constants import posts_host
 
 
 @fuzzly_client.authenticated
@@ -37,10 +38,12 @@ async def fetch_post(post_id: str, auth: str = None) -> Dict[str, Any] :
 	# auth is a str object containing a valid fuzz.ly authorization bearer token
 	async with aiohttp.request(
 		'GET',
-		post_host + f'/v1/post/{post_id}',
-		headers = { authorization: 'Bearer ' + auth },
+		posts_host + f'/v1/post/{post_id}',
+		headers = { 'authorization': 'Bearer ' + auth },
 		timeout = aiohttp.ClientTimeout(30),
 		raise_for_status = True,
 	) as response :
 		return await response.json()
+
+post: dict = await fetch_post('abcd1234')  # credentials are automatically injected
 ```
