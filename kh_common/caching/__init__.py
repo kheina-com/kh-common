@@ -20,7 +20,7 @@ class CalcDict(dict) :
 		self.default = default
 
 
-	def __missing__(self, key: Hashable) -> Any:
+	def __missing__(self, key: Hashable) -> Any :
 		self[key] = self.default(key)
 		return self[key]
 
@@ -189,6 +189,7 @@ def AerospikeCache(
 	TTL_hours: int = 0,
 	TTL_days: int = 0,
 	local_TTL: float = 1,
+	read_only: bool = False,
 	_kvs: 'KeyValueStore' = None,
 ) -> Callable :
 	"""
@@ -205,10 +206,13 @@ def AerospikeCache(
 	the internal KeyValueStore to use for caching can be passed in via the _kvs argument. only for advanced usage.
 	"""
 	from kh_common.caching.key_value_store import KeyValueStore
+
 	TTL: int = int(TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400)
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
-
 	assert local_TTL >= 0
+
+	writable: bool = not read_only
+	del read_only
 
 	import aerospike
 
@@ -230,7 +234,9 @@ def AerospikeCache(
 
 				except aerospike.exception.RecordNotFound :
 					data: Any = await func(*args, **kwargs)
-					decorator.kvs.put(key, data, TTL)
+
+					if writable :
+						decorator.kvs.put(key, data, TTL)
 
 				return data
 
@@ -246,7 +252,9 @@ def AerospikeCache(
 
 				except aerospike.exception.RecordNotFound :
 					data: Any = func(*args, **kwargs)
-					decorator.kvs.put(key, data, TTL)
+
+					if writable :
+						decorator.kvs.put(key, data, TTL)
 
 				return data
 

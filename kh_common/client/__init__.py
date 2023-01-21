@@ -30,14 +30,14 @@ class Client :
 
 
 	def authenticated(self: 'Client', func: Gateway) -> Callable :
-		if self._token and not self._auth :
-			raise ValueError('authorization was not set! was Client.start called during init?')
-
 		if not iscoroutinefunction(func) and type(func) != Gateway :
 			raise NotImplementedError('provided func is not defined as async. did you pass in a kh_common.gateway.Gateway?')
 
 		@wraps(func)
 		async def wrapper(*args: Tuple[Any], **kwargs: Dict[str, Any]) -> Any :
+			if self._token and not self._auth :
+				await self.start()
+
 			result: Any
 
 			try :
@@ -49,6 +49,7 @@ class Client :
 
 				# reauthorize
 				await self.start()
+
 				# now try re-running
 				result = await func(*args, auth=self._auth, **kwargs)
 
