@@ -135,3 +135,7 @@ class KeyValueStore :
 
 		except aerospike.exception.RecordNotFound :
 			return False
+
+
+	def truncate(self: 'KeyValueStore') -> None :
+		self._client.truncate(self._namespace, self._set, 0)

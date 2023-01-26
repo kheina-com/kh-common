@@ -193,8 +193,8 @@ def AerospikeCache(
 	_kvs: 'KeyValueStore' = None,
 ) -> Callable :
 	"""
-	checks if data exists in aerospike before running the function.
-	if data doesn't exist, it is stored after running this function.
+	checks if data exists in aerospike before running the function. cached data is automatically type checked against the wrapped fucntion's return type (if available)
+	if data doesn't exist, it is stored after running this function, if read only is false (default)
 	key is created from function arguments
 	ex:
 	@AerospikeCache('kheina', 'test', '{a}.{b}')
@@ -220,6 +220,8 @@ def AerospikeCache(
 
 		arg_spec: FullArgSpec = getfullargspec(func)
 		kw: Dict[str, Hashable] = dict(zip(arg_spec.args[-len(arg_spec.defaults):], arg_spec.defaults)) if arg_spec.defaults else { }
+		return_type: type = arg_spec.annotations.get('return')
+		assert return_type, 'return type must be defined to validate cached response data. response type can be defined with "->". def ex() -> int:'
 		arg_spec: Tuple[str] = tuple(arg_spec.args)
 
 		if iscoroutinefunction(func) :
@@ -233,10 +235,17 @@ def AerospikeCache(
 					data = await decorator.kvs.get_async(key)
 
 				except aerospike.exception.RecordNotFound :
-					data: Any = await func(*args, **kwargs)
+					data = await func(*args, **kwargs)
 
 					if writable :
 						decorator.kvs.put(key, data, TTL)
+
+				else :
+					if type(data) != return_type :
+						data = await func(*args, **kwargs)
+
+						if writable :
+							decorator.kvs.put(key, data, TTL)
 
 				return data
 
@@ -251,10 +260,17 @@ def AerospikeCache(
 					data = decorator.kvs.get(key)
 
 				except aerospike.exception.RecordNotFound :
-					data: Any = func(*args, **kwargs)
+					data = func(*args, **kwargs)
 
 					if writable :
 						decorator.kvs.put(key, data, TTL)
+
+				else :
+					if type(data) != return_type :
+						data = func(*args, **kwargs)
+
+						if writable :
+							decorator.kvs.put(key, data, TTL)
 
 				return data
 

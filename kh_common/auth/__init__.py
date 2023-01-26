@@ -3,6 +3,7 @@ from hashlib import sha1
 from re import compile as re_compile
 from typing import Callable, Dict, Union
 from uuid import UUID
+from functools import lru_cache
 
 import aerospike
 import ujson as json
@@ -138,6 +139,7 @@ tokenVersionSwitch: Dict[bytes, Callable] = {
 }
 
 
+@lru_cache
 async def verifyToken(token: str) -> AuthToken :
 	version: bytes = b64decode(token[:token.find('.')])
 
