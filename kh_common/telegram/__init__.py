@@ -10,8 +10,8 @@ from aiohttp import request as async_request
 from kh_common.caching import Aggregate
 from kh_common.config.credentials import telegram
 from kh_common.logging import getLogger
+from kh_common.models.telegram import Message, MessageEntity, MessageEntityType, Update, Updates
 from kh_common.utilities.signal import Terminated
-from kh_common.models.telegram import Updates, Update, Message, MessageEntity, MessageEntityType
 
 
 logger = getLogger()

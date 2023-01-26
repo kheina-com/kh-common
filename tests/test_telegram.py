@@ -5,9 +5,9 @@ injectCredentials(telegram={ 'telegram_access_token': 'test_token', 'telegram_bo
 
 import pytest
 
-from kh_common.telegram import Listener
-from kh_common.models.telegram import Message, ChatType
 from kh_common.datetime import datetime
+from kh_common.models.telegram import ChatType, Message
+from kh_common.telegram import Listener
 
 
 class TestListener :
