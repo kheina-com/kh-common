@@ -6,18 +6,24 @@ injectCredentials(telegram={ 'telegram_access_token': 'test_token', 'telegram_bo
 import pytest
 
 from kh_common.telegram import Listener
-from kh_common.utilities.signal import Terminated
+from kh_common.models.telegram import Message, ChatType
+from kh_common.datetime import datetime
 
 
 class TestListener :
 
 	def createTelegramMessage(self, command=None, text=None, is_chat=False) :
 		message = {
+			'message_id': 123,
+			'date': datetime.now(),
 			'from': {
 				'id': 1,
+				'first_name': 'test',
+				'is_bot': False,
 			},
 			'chat': {
 				'id': 1 + is_chat,
+				'type': ChatType.private,
 			},
 		}
 
@@ -39,7 +45,7 @@ class TestListener :
 		message['text'] = text or ''
 		message['entities'] = entities
 
-		return message
+		return Message.parse_obj(message)
 
 
 	@pytest.mark.asyncio
@@ -230,4 +236,4 @@ class TestListener :
 		result = await listener.parseMessage(message)
 
 		# assert
-		assert { 'recipient': message['chat']['id'], 'response': response } == result
+		assert { 'recipient': message.chat.id, 'response': response } == result
