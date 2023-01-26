@@ -7,6 +7,7 @@ class Privacy(Enum) :
 	unlisted: str = 'unlisted'
 	private: str = 'private'
 	unpublished: str = 'unpublished'
+	draft: str = 'draft'
 
 
 @unique
