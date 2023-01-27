@@ -2,7 +2,7 @@ from asyncio import Queue, QueueEmpty, ensure_future, sleep
 from asyncio import wait as WaitAll
 from collections import defaultdict
 from inspect import getfullargspec
-from typing import List
+from typing import List, Optional, Union
 
 from aiohttp import ClientTimeout
 from aiohttp import request as async_request
@@ -10,7 +10,7 @@ from aiohttp import request as async_request
 from kh_common.caching import Aggregate
 from kh_common.config.credentials import telegram
 from kh_common.logging import getLogger
-from kh_common.models.telegram import Message, MessageEntity, MessageEntityType, Update, Updates
+from kh_common.models.telegram import Message, MessageEntity, MessageEntityType, Update, Updates, InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply
 from kh_common.utilities.signal import Terminated
 
 
@@ -101,19 +101,29 @@ class Listener :
 
 
 	# parse_mode = MarkdownV2 or HTML
-	async def sendMessage(self, recipient, message, parse_mode='HTML') :
+	async def sendMessage(self, recipient, message, parse_mode: str = 'HTML', reply_to: int = None, markup: Union[InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply] = None) :
 		messages = self.splitMessage(message)
+		reply_markup: dict = None
 		success = False
 
 		for i, m in enumerate(messages) :
-			success = await self._sendSingleMessage(recipient, m, parse_mode, i, len(messages))
+			if i == len(messages) - 1 :
+				if markup :
+					# passthrough encoder so that it's still a dict, and not a string
+					reply_markup = markup.json(encoder=lambda x : x)
+
+				success = await self._sendSingleMessage(recipient, m, parse_mode, reply_to, reply_markup, i, len(messages))
+
+			else :
+				success = await self._sendSingleMessage(recipient, m, parse_mode, reply_to, None, i, len(messages))
+
 			if not success :
 				return False
 
 		return success
 
 
-	async def _sendSingleMessage(self, recipient, message, parse_mode='HTML', message_index=0, message_count=1) :
+	async def _sendSingleMessage(self, recipient, message, parse_mode: str = 'HTML', reply_to: int = None, reply_markup: Optional[dict] = None, message_index: int = 0, message_count: int = 1) :
 		request = f'https://api.telegram.org/bot{self._telegram_access_token}/sendMessage'
 		error = 'failed to send notification to telegram.'
 		info = None
@@ -126,6 +136,8 @@ class Listener :
 						'parse_mode': parse_mode,
 						'chat_id': recipient,
 						'text': message,
+						'reply_to_message_id': reply_to,
+						'reply_markup': reply_markup,
 					},
 					timeout=ClientTimeout(self.timeout),
 				) as response :
