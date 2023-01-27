@@ -101,7 +101,7 @@ class Listener :
 
 
 	# parse_mode = MarkdownV2 or HTML
-	async def sendMessage(self, recipient, message, parse_mode: str = 'HTML', reply_to: int = None, markup: Union[InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply] = None) :
+	async def sendMessage(self, recipient, message, parse_mode: str = 'HTML', reply_to: int = None, markup: Optional[Union[InlineKeyboardMarkup, ReplyKeyboardMarkup, ReplyKeyboardRemove, ForceReply]] = None) :
 		messages = self.splitMessage(message)
 		reply_markup: dict = None
 		success = False
@@ -183,7 +183,6 @@ class Listener :
 
 
 	async def parseMessage(self, message: Message) -> None :
-		print(message)
 		user = message.from_user.id
 		chat = message.chat.id
 		is_chat = False
