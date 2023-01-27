@@ -110,7 +110,7 @@ class Listener :
 			if i == len(messages) - 1 :
 				if markup :
 					# passthrough encoder so that it's still a dict, and not a string
-					reply_markup = markup.json(encoder=lambda x : x)
+					reply_markup = markup.json(encoder=lambda x : x, exclude_unset=True)
 
 				success = await self._sendSingleMessage(recipient, m, parse_mode, reply_to, reply_markup, i, len(messages))
 
