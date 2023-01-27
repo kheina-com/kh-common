@@ -203,7 +203,7 @@ def AerospikeCache(
 	yields a key in the format: '{a}.{b}'.format(a=a, b=b) in the namespace 'kheina' and set 'test'
 
 	NOTE: AerospikeCache contains a built in local cache system. use local_TTL to set local cache TTL in seconds. set local_TTL=0 to disable.
-	the internal KeyValueStore to use for caching can be passed in via the _kvs argument. only for advanced usage.
+	the internal KeyValueStore used for caching can be passed in via the _kvs argument. only for advanced usage.
 	"""
 	from kh_common.caching.key_value_store import KeyValueStore
 
