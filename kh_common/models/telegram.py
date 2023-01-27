@@ -6,6 +6,8 @@ from pydantic import BaseModel, Field, HttpUrl
 
 
 ################################################## RESPONSE MODELS ##################################################
+
+
 class WebAppInfo(BaseModel) :
 	url: str
 	"""An HTTPS URL of a Web App to be opened with additional data as specified in [Initializing Web Apps](https://core.telegram.org/bots/webapps#initializing-web-apps)"""
