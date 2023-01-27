@@ -127,18 +127,24 @@ class Listener :
 		request = f'https://api.telegram.org/bot{self._telegram_access_token}/sendMessage'
 		error = 'failed to send notification to telegram.'
 		info = None
+		body = {
+			'parse_mode': parse_mode,
+			'chat_id': recipient,
+			'text': message,
+		}
+
+		if reply_to :
+			body['reply_to_message_id'] = reply_to
+
+		if reply_markup :
+			body['reply_markup'] = reply_markup
+
 		for _ in range(5) :
 			try :
 				async with async_request(
 					'POST',
 					request,
-					json={
-						'parse_mode': parse_mode,
-						'chat_id': recipient,
-						'text': message,
-						'reply_to_message_id': reply_to,
-						'reply_markup': reply_markup,
-					},
+					json=body,
 					timeout=ClientTimeout(self.timeout),
 				) as response :
 					info = await response.json()
@@ -154,9 +160,9 @@ class Listener :
 			'request': {
 				'url': request,
 				'message': {
-					'text': message,
 					'index': message_index,
 					'total': message_count,
+					**body,
 				},
 			},
 		})
