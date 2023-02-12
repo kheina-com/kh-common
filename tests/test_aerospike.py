@@ -27,7 +27,7 @@ class TestAerospikeCache(CachingTestClass) :
 		TestAerospikeCache.it = 0
 
 		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
-		def cache_test(t, a=2) :
+		def cache_test(t, a=2) -> int :
 			TestAerospikeCache.it += 1
 			return t + TestAerospikeCache.it - 1
 
@@ -79,7 +79,7 @@ class TestAerospikeCacheAsync(CachingTestClass) :
 		TestAerospikeCache.it = 0
 
 		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
-		async def cache_test(t, a=2, b=1) :
+		async def cache_test(t, a=2, b=1) -> int :
 			TestAerospikeCache.it += 1
 			return t + TestAerospikeCache.it - 1
 

@@ -5,9 +5,11 @@ from functools import wraps
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from math import sqrt
 from time import time
-from typing import Any, Callable, Dict, Hashable, Iterable, Set, Tuple
+from typing import Any, Callable, Dict, Hashable, Iterable, Optional, Set, Tuple
 
 from kh_common.utilities import __clear_cache__
+
+from .key_value_store import KeyValueStore
 
 
 class CalcDict(dict) :
@@ -190,10 +192,10 @@ def AerospikeCache(
 	TTL_days: int = 0,
 	local_TTL: float = 1,
 	read_only: bool = False,
-	_kvs: 'KeyValueStore' = None,
+	_kvs: Optional['KeyValueStore'] = None,
 ) -> Callable :
 	"""
-	checks if data exists in aerospike before running the function. cached data is automatically type checked against the wrapped fucntion's return type (if available)
+	checks if data exists in aerospike before running the function. cached data is automatically type checked against the wrapped fucntion's return type
 	if data doesn't exist, it is stored after running this function, if read only is false (default)
 	key is created from function arguments
 	ex:
@@ -205,7 +207,6 @@ def AerospikeCache(
 	NOTE: AerospikeCache contains a built in local cache system. use local_TTL to set local cache TTL in seconds. set local_TTL=0 to disable.
 	the internal KeyValueStore used for caching can be passed in via the _kvs argument. only for advanced usage.
 	"""
-	from kh_common.caching.key_value_store import KeyValueStore
 
 	TTL: int = int(TTL_seconds + TTL_minutes * 60 + TTL_hours * 3600 + TTL_days * 86400)
 	del TTL_seconds, TTL_minutes, TTL_hours, TTL_days
@@ -221,7 +222,8 @@ def AerospikeCache(
 		arg_spec: FullArgSpec = getfullargspec(func)
 		kw: Dict[str, Hashable] = dict(zip(arg_spec.args[-len(arg_spec.defaults):], arg_spec.defaults)) if arg_spec.defaults else { }
 		return_type: type = arg_spec.annotations.get('return')
-		assert return_type, 'return type must be defined to validate cached response data. response type can be defined with "->". def ex() -> int:'
+		if not return_type :
+			raise NotImplementedError('return type must be defined to validate cached response data. response type can be defined with "->". def ex() -> int:')
 		arg_spec: Tuple[str] = tuple(arg_spec.args)
 
 		if iscoroutinefunction(func) :
