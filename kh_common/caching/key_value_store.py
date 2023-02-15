@@ -3,6 +3,9 @@ from collections import OrderedDict
 from copy import copy
 from time import time
 from typing import Any, Dict, Iterable, List, Set, Tuple
+from concurrent.futures import ThreadPoolExecutor
+from asyncio import get_event_loop
+from functools import partial, wraps
 
 import aerospike
 
@@ -42,6 +45,12 @@ class KeyValueStore :
 		self._cache[key] = (time() + self._local_TTL, data)
 
 
+	@wraps(put)
+	async def put_async(self: 'KeyValueStore', *args, **kwargs) :
+		with ThreadPoolExecutor() as threadpool :
+			return await get_event_loop().run_in_executor(threadpool, partial(self.put, *args, **kwargs))
+
+
 	def _get(self: 'KeyValueStore', key: str) :
 		if key in self._cache :
 			return copy(self._cache[key][1])
@@ -57,10 +66,11 @@ class KeyValueStore :
 		return self._get(key)
 
 
-	async def get_async(self: 'KeyValueStore', key: str) -> Any :
+	@wraps(get)
+	async def get_async(self: 'KeyValueStore', *args, **kwargs) :
 		async with self._get_lock :
-			__clear_cache__(self._cache, time)
-			return self._get(key)
+			with ThreadPoolExecutor() as threadpool :
+				return await get_event_loop().run_in_executor(threadpool, partial(self.get, *args, **kwargs))
 
 
 	def _get_many(self: 'KeyValueStore', keys: Iterable[str]) :
@@ -104,10 +114,11 @@ class KeyValueStore :
 		return self._get_many(keys)
 
 
-	async def get_many_async(self: 'KeyValueStore', keys: Iterable[str]) -> Dict[str, Any] :
+	@wraps(get_many)
+	async def get_many_async(self: 'KeyValueStore', *args, **kwargs) :
 		async with self._get_many_lock :
-			__clear_cache__(self._cache, time)
-			return self._get_many(keys)
+			with ThreadPoolExecutor() as threadpool :
+				return await get_event_loop().run_in_executor(threadpool, partial(self.get_many, *args, **kwargs))
 
 
 	def remove(self: 'KeyValueStore', key: str) -> None :
@@ -120,6 +131,12 @@ class KeyValueStore :
 				'max_retries': 3,
 			},
 		)
+
+
+	@wraps(remove)
+	async def remove_async(self: 'KeyValueStore', *args, **kwargs) :
+		with ThreadPoolExecutor() as threadpool :
+			return await get_event_loop().run_in_executor(threadpool, partial(self.remove, *args, **kwargs))
 
 
 	def exists(self: 'KeyValueStore', key: str) -> bool :
@@ -135,3 +152,13 @@ class KeyValueStore :
 
 		except aerospike.exception.RecordNotFound :
 			return False
+
+
+	@wraps(exists)
+	async def exists_async(self: 'KeyValueStore', *args, **kwargs) :
+		with ThreadPoolExecutor() as threadpool :
+			return await get_event_loop().run_in_executor(threadpool, partial(self.exists, *args, **kwargs))
+
+
+	def truncate(self: 'KeyValueStore') -> None :
+		self._client.truncate(self._namespace, self._set, 0)

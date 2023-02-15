@@ -138,6 +138,7 @@ tokenVersionSwitch: Dict[bytes, Callable] = {
 }
 
 
+@ArgsCache(30)
 async def verifyToken(token: str) -> AuthToken :
 	version: bytes = b64decode(token[:token.find('.')])
 

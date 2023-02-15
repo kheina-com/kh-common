@@ -21,13 +21,13 @@ class TestAerospikeCache(CachingTestClass) :
 		Integer._client = TestAerospikeCache.client
 
 
-	def test_FormatCache_int(self) :
+	def test_AerospikeCache_int(self) :
 		# setup
 		TestAerospikeCache.client.clear()
 		TestAerospikeCache.it = 0
 
 		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
-		def cache_test(t, a=2) :
+		def cache_test(t, a=2) -> int :
 			TestAerospikeCache.it += 1
 			return t + TestAerospikeCache.it - 1
 
@@ -68,18 +68,41 @@ class TestAerospikeCache(CachingTestClass) :
 		assert 3 == len(TestAerospikeCache.client.calls['get'])
 
 
+	def test_AerospikeCache_IncorrectType(self) :
+
+		# arrange
+		# we gotta inject a value with an incorrect return type
+		TestAerospikeCache.client.put(('kheina', 'test', 'value'), { 'data': 1 })
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.it = 0
+
+		@AerospikeCache('kheina', 'test', '{v}', local_TTL=0)
+		def cache_test(v) -> str :
+			TestAerospikeCache.it += 1
+			return v
+
+		# apply
+		assert 'value' == cache_test('value')
+
+		# assert
+		assert 1 == TestAerospikeCache.it
+		assert 1 == len(TestAerospikeCache.client.calls['put'])
+		assert 1 == len(TestAerospikeCache.client.calls['get'])
+		assert { 'data': 'value' } == TestAerospikeCache.client.get(('kheina', 'test', 'value'))[2]
+
+
 @pytest.mark.asyncio
 class TestAerospikeCacheAsync(CachingTestClass) :
 
 	it = 0
 
-	async def test_async_FormatCache_int(self) :
+	async def test_async_AerospikeCache_int(self) :
 		# setup
 		TestAerospikeCache.client.clear()
 		TestAerospikeCache.it = 0
 
 		@AerospikeCache('kheina', 'test', '{t}.{a}', 0, local_TTL=5)
-		async def cache_test(t, a=2, b=1) :
+		async def cache_test(t, a=2, b=1) -> int :
 			TestAerospikeCache.it += 1
 			return t + TestAerospikeCache.it - 1
 
@@ -118,6 +141,29 @@ class TestAerospikeCacheAsync(CachingTestClass) :
 
 		assert 3 == len(TestAerospikeCache.client.calls['put'])
 		assert 3 == len(TestAerospikeCache.client.calls['get'])  # initial set runs get + aerospike retrieval
+
+
+	async def test_async_AerospikeCache_IncorrectType(self) :
+
+		# arrange
+		# we gotta inject a value with an incorrect return type
+		TestAerospikeCache.client.put(('kheina', 'test', 'value'), { 'data': 1 })
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.it = 0
+
+		@AerospikeCache('kheina', 'test', '{v}', local_TTL=0)
+		async def cache_test(v) -> str :
+			TestAerospikeCache.it += 1
+			return v
+
+		# apply
+		assert 'value' == await cache_test('value')
+
+		# assert
+		assert 1 == TestAerospikeCache.it
+		assert 1 == len(TestAerospikeCache.client.calls['put'])
+		assert 1 == len(TestAerospikeCache.client.calls['get'])
+		assert { 'data': 'value' } == TestAerospikeCache.client.get(('kheina', 'test', 'value'))[2]
 
 
 class TestKeyValueStore :
@@ -419,7 +465,7 @@ class TestKeyValueStore :
 		kvs.get(key).pop('a')
 
 		# assert
-		assert kvs.get(key) == data
+		assert data == kvs.get(key)
 
 
 	def test_GetMany_NotAllKeysExist_EmptyKeysReturnNone(self) :
@@ -431,6 +477,325 @@ class TestKeyValueStore :
 
 		# apply
 		results = kvs.get_many(keys)
+
+		# assert
+		assert len(results) == len(keys)
+		assert results == { k: None for k in keys }
+
+
+@pytest.mark.asyncio
+class TestKeyValueStoreAsync :
+
+	async def test_GetAsync_LocalCacheEmpty_ClientReturnsValue(self) :
+
+		# arrange
+		key = 'key'
+		data = 1
+
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.client.put(('kheina', 'test', key), { 'data': data })
+		TestAerospikeCache.client.calls.clear()
+
+		kvs = KeyValueStore('kheina', 'test')
+
+		# apply
+		result = await kvs.get_async(key)
+
+		# assert
+		assert result == data
+		assert len(TestAerospikeCache.client.calls['get']) == 1
+
+
+	async def test_GetAsync_LocalCachePopulated_ClientNotCalled(self) :
+
+		# arrange
+		key = 'key'
+		data = 1
+
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.client.put(('kheina', 'test', key), { 'data': data })
+		TestAerospikeCache.client.calls.clear()
+
+		kvs = KeyValueStore('kheina', 'test')
+
+		# apply
+		result = await kvs.put_async(key, data)
+		result = await kvs.get_async(key)
+
+		# assert
+		assert result == data
+		assert len(TestAerospikeCache.client.calls['get']) == 0
+
+
+	async def test_GetAsync_LocalCacheCleaned_ClientReturnsValue(self) :
+
+		# arrange
+		key = 'key'
+		data = 1
+
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.client.put(('kheina', 'test', key), { 'data': data })
+		TestAerospikeCache.client.calls.clear()
+
+		kvs = KeyValueStore('kheina', 'test')
+		kvs._cache[key] = (time.time(), data)
+
+		# apply
+		result = await kvs.get_async(key)
+
+		# assert
+		assert result == data
+		assert len(TestAerospikeCache.client.calls['get']) == 1
+
+
+	async def test_GetAsync_LocalTTLZero_LocalCacheNotUsed(self) :
+
+		# arrange
+		key = 'key'
+		data = 1
+
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.client.put(('kheina', 'test', key), { 'data': data })
+		TestAerospikeCache.client.calls.clear()
+
+		kvs = KeyValueStore('kheina', 'test', local_TTL=0)
+
+		# apply
+		result = await kvs.get_async(key)
+		result = await kvs.get_async(key)
+
+		# assert
+		assert result == data
+		assert len(TestAerospikeCache.client.calls['get']) == 2
+
+
+	async def test_PutAsync_CacheEmpty_CacheCalledCorrectly(self) :
+
+		# arrange
+		key = 'key'
+		data = 1
+
+		TestAerospikeCache.client.clear()
+
+		kvs = KeyValueStore('kheina', 'test', local_TTL=0)
+
+		# apply
+		await kvs.put_async(key, data)
+		result = await kvs.get_async(key)
+
+		# assert
+		assert result == data
+		assert len(TestAerospikeCache.client.calls['put']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 1
+		assert TestAerospikeCache.client.calls['put'][0] == (('kheina', 'test', key), { 'data': data }, { 'ttl': 0 }, { 'max_retries': 3 })
+
+
+	async def test_PutAsync_TTLSet_CacheCalledCorrectly(self) :
+
+		# arrange
+		key = 'key'
+		data = 1
+
+		TestAerospikeCache.client.clear()
+
+		kvs = KeyValueStore('kheina', 'test', local_TTL=0)
+
+		# apply
+		await kvs.put_async(key, data, TTL=1000)
+		result = await kvs.get_async(key)
+
+		# assert
+		assert result == data
+		assert len(TestAerospikeCache.client.calls['put']) == 1
+		assert len(TestAerospikeCache.client.calls['get']) == 1
+		assert TestAerospikeCache.client.calls['put'][0] == (('kheina', 'test', key), { 'data': data }, { 'ttl': 1000 }, { 'max_retries': 3 })
+
+
+	async def test_PutAsync_CachePopulated_CacheOverWritten(self) :
+
+		# arrange
+		key = 'key'
+		different_data = 10
+		data = 1
+
+		TestAerospikeCache.client.clear()
+
+		kvs = KeyValueStore('kheina', 'test', local_TTL=0)
+
+		# apply
+		await kvs.put_async(key, data)
+		await kvs.put_async(key, different_data)
+		result = await kvs.get_async(key)
+
+		# assert
+		assert result == different_data
+		assert len(TestAerospikeCache.client.calls['put']) == 2
+		assert len(TestAerospikeCache.client.calls['get']) == 1
+		assert TestAerospikeCache.client.calls['put'][-1] == (('kheina', 'test', key), { 'data': different_data }, { 'ttl': 0 }, { 'max_retries': 3 })
+
+
+	async def test_GetManyAsync_HalfLocalHalfRemotePopulated_AllValuesReturned(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		keys = [f'key.{i}' for i in range(10)]
+		values = [(key, i) for i, key in enumerate(keys)]
+
+		for key, i in values[:5] :
+			await kvs.put_async(key, i)
+
+		kvs = KeyValueStore('kheina', 'test')
+
+		for key, i in values[5:] :
+			await kvs.put_async(key, i)
+
+		# apply
+		results = await kvs.get_many_async(keys)
+
+		# assert
+		assert results == {
+			key: i
+			for i, key in enumerate(keys)
+		}
+		assert len(kvs._cache) == len(keys)
+		assert len(TestAerospikeCache.client.calls['get']) == 0
+		assert len(TestAerospikeCache.client.calls['get_many']) == 1
+		# only the keys not held in local cache were called
+		assert set(TestAerospikeCache.client.calls['get_many'][0][0]) == set(('kheina', 'test', key) for key in keys[:5])
+
+
+	async def test_GetManyAsync_RemotePopulated_AllValuesReturned(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		keys = [f'key.{i}' for i in range(10)]
+		values = [(key, i) for i, key in enumerate(keys)]
+
+		for key, i in values :
+			await kvs.put_async(key, i)
+
+		kvs = KeyValueStore('kheina', 'test')
+
+		# apply
+		results = await kvs.get_many_async(keys)
+
+		# assert
+		assert results == {
+			key: i
+			for i, key in enumerate(keys)
+		}
+		assert len(TestAerospikeCache.client.calls['get']) == 0
+		assert len(TestAerospikeCache.client.calls['get_many']) == 1
+		# only the keys not held in local cache were called
+		assert set(TestAerospikeCache.client.calls['get_many'][0][0]) == set(('kheina', 'test', key) for key in keys)
+
+
+	async def test_GetManyAsync_LocalPopulated_AllValuesReturned(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		keys = [f'key.{i}' for i in range(10)]
+		values = [(key, i) for i, key in enumerate(keys)]
+
+		for key, i in values :
+			await kvs.put_async(key, i)
+
+		# apply
+		results = await kvs.get_many_async(keys)
+
+		# assert
+		assert results == {
+			key: i
+			for i, key in enumerate(keys)
+		}
+		assert len(TestAerospikeCache.client.calls['get']) == 0
+		assert len(TestAerospikeCache.client.calls['get_many']) == 0
+
+
+	async def test_RemoveAsync_LocalPopulated_RecordRemoved(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+		data = 1
+
+		# apply
+		await kvs.put_async(key, data)
+		await kvs.remove_async(key)
+
+		# assert
+		assert len(TestAerospikeCache.client.calls['remove']) == 1
+		assert TestAerospikeCache.client.calls['remove'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+		assert key not in kvs._cache
+
+
+	async def test_ExistsAsync_LocalPopulated_KeyExistsReturnsTrue(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+		data = 0
+
+		# apply
+		await kvs.put_async(key, data)
+		result = await kvs.exists_async(key)
+
+		# assert
+		assert result == True
+		assert len(TestAerospikeCache.client.calls['exists']) == 1
+		assert TestAerospikeCache.client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+
+
+	async def test_ExistsAsync_LocalNotPopulated_KeyExistsReturnsFalse(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+
+		# apply
+		result = await kvs.exists_async(key)
+
+		# assert
+		assert result == False
+		assert len(TestAerospikeCache.client.calls['exists']) == 1
+		assert TestAerospikeCache.client.calls['exists'][0] == (('kheina', 'test', key), None, { 'max_retries': 3 })
+
+
+	async def test_GetAsync_EnsureCacheNotModified_CacheUnchanged(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		key = 'key'
+		data = { 'a': 1, 'b': '2', 'c': 3.1 }
+
+		await kvs.put_async(key, data)
+		# wipe local cache
+		kvs._cache.clear()
+
+		# apply
+		result = await kvs.get_async(key)
+		result.pop('a')
+
+		# assert
+		assert data == await kvs.get_async(key)
+
+
+	async def test_GetManyAsync_NotAllKeysExist_EmptyKeysReturnNone(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		kvs = KeyValueStore('kheina', 'test')
+		keys = ['key1', 'key2', 'key3']
+
+		# apply
+		results = await kvs.get_many_async(keys)
 
 		# assert
 		assert len(results) == len(keys)

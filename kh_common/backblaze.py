@@ -74,6 +74,7 @@ class B2Interface :
 					self.b2_api_url = content['apiUrl']
 					self.b2_auth_token = content['authorizationToken']
 					self.b2_bucket_id = content['allowed']['bucketId']
+					self.b2_download_url = content['downloadUrl']
 					return True
 
 		else :

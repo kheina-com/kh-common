@@ -6,10 +6,6 @@ from uuid import uuid4
 from aiohttp import ClientError
 
 from kh_common.exceptions.base_error import BaseError
-from kh_common.logging import Logger, getLogger
-
-
-logger: Logger = getLogger()
 
 
 class HttpError(BaseError) :
@@ -69,7 +65,9 @@ def HttpErrorHandler(message: str, exclusions: Iterable[str] = ['self'], handler
 	raises internal server error from any unexpected errors
 	f'an unexpected error occurred while {message}.'
 	"""
+	from kh_common.logging import Logger, getLogger
 
+	logger: Logger = getLogger()
 	exclusions: Set[str] = set(exclusions)
 
 	def decorator(func: Callable) -> Callable :
