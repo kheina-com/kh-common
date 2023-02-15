@@ -21,7 +21,7 @@ class TestAerospikeCache(CachingTestClass) :
 		Integer._client = TestAerospikeCache.client
 
 
-	def test_FormatCache_int(self) :
+	def test_AerospikeCache_int(self) :
 		# setup
 		TestAerospikeCache.client.clear()
 		TestAerospikeCache.it = 0
@@ -68,12 +68,35 @@ class TestAerospikeCache(CachingTestClass) :
 		assert 3 == len(TestAerospikeCache.client.calls['get'])
 
 
+	def test_AerospikeCache_IncorrectType(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.it = 0
+		KVS: KeyValueStore = KeyValueStore('kheina', 'test')
+
+		# we gotta inject a value with an incorrect return type
+		KVS.put('value', 1)
+
+		@AerospikeCache('kheina', 'test', '{v}', _kvs=KVS)
+		def cache_test(v) -> str :
+			TestAerospikeCache.it += 1
+			return v
+
+		# apply
+		assert 'value' == cache_test('value')
+
+		# assert
+		assert 1 == TestAerospikeCache.it
+		assert 'value' == KVS.get('value')
+
+
 @pytest.mark.asyncio
 class TestAerospikeCacheAsync(CachingTestClass) :
 
 	it = 0
 
-	async def test_async_FormatCache_int(self) :
+	async def test_async_AerospikeCache_int(self) :
 		# setup
 		TestAerospikeCache.client.clear()
 		TestAerospikeCache.it = 0
@@ -118,6 +141,28 @@ class TestAerospikeCacheAsync(CachingTestClass) :
 
 		assert 3 == len(TestAerospikeCache.client.calls['put'])
 		assert 3 == len(TestAerospikeCache.client.calls['get'])  # initial set runs get + aerospike retrieval
+
+	async def test_async_AerospikeCache_IncorrectType(self) :
+
+		# arrange
+		TestAerospikeCache.client.clear()
+		TestAerospikeCache.it = 0
+		KVS: KeyValueStore = KeyValueStore('kheina', 'test')
+
+		# we gotta inject a value with an incorrect return type
+		KVS.put('value', 1)
+
+		@AerospikeCache('kheina', 'test', '{v}', _kvs=KVS)
+		async def cache_test(v) -> str :
+			TestAerospikeCache.it += 1
+			return v
+
+		# apply
+		assert 'value' == await cache_test('value')
+
+		# assert
+		assert 1 == TestAerospikeCache.it
+		assert 'value' == KVS.get('value')
 
 
 class TestKeyValueStore :

@@ -192,7 +192,7 @@ def AerospikeCache(
 	TTL_days: int = 0,
 	local_TTL: float = 1,
 	read_only: bool = False,
-	_kvs: Optional['KeyValueStore'] = None,
+	_kvs: Optional[KeyValueStore] = None,
 ) -> Callable :
 	"""
 	checks if data exists in aerospike before running the function. cached data is automatically type checked against the wrapped fucntion's return type
@@ -222,9 +222,10 @@ def AerospikeCache(
 		arg_spec: FullArgSpec = getfullargspec(func)
 		kw: Dict[str, Hashable] = dict(zip(arg_spec.args[-len(arg_spec.defaults):], arg_spec.defaults)) if arg_spec.defaults else { }
 		return_type: type = arg_spec.annotations.get('return')
+		arg_spec: Tuple[str] = tuple(arg_spec.args)
+
 		if not return_type :
 			raise NotImplementedError('return type must be defined to validate cached response data. response type can be defined with "->". def ex() -> int:')
-		arg_spec: Tuple[str] = tuple(arg_spec.args)
 
 		if iscoroutinefunction(func) :
 			@wraps(func)
@@ -234,17 +235,17 @@ def AerospikeCache(
 				data: Any
 
 				try :
-					data = await decorator.kvs.get_async(key)
+					data: Any = await decorator.kvs.get_async(key)
 
 				except aerospike.exception.RecordNotFound :
-					data = await func(*args, **kwargs)
+					data: return_type = await func(*args, **kwargs)
 
 					if writable :
 						decorator.kvs.put(key, data, TTL)
 
 				else :
 					if type(data) != return_type :
-						data = await func(*args, **kwargs)
+						data: return_type = await func(*args, **kwargs)
 
 						if writable :
 							decorator.kvs.put(key, data, TTL)
@@ -259,17 +260,17 @@ def AerospikeCache(
 				data: Any
 
 				try :
-					data = decorator.kvs.get(key)
+					data: Any = decorator.kvs.get(key)
 
 				except aerospike.exception.RecordNotFound :
-					data = func(*args, **kwargs)
+					data: return_type = func(*args, **kwargs)
 
 					if writable :
 						decorator.kvs.put(key, data, TTL)
 
 				else :
 					if type(data) != return_type :
-						data = func(*args, **kwargs)
+						data: return_type = func(*args, **kwargs)
 
 						if writable :
 							decorator.kvs.put(key, data, TTL)
