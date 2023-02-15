@@ -241,14 +241,15 @@ def AerospikeCache(
 					data: return_type = await func(*args, **kwargs)
 
 					if writable :
-						decorator.kvs.put(key, data, TTL)
+						await decorator.kvs.put_async(key, data, TTL)
 
 				else :
+					print('retrieved:', data)
 					if type(data) != return_type :
 						data: return_type = await func(*args, **kwargs)
 
 						if writable :
-							decorator.kvs.put(key, data, TTL)
+							await decorator.kvs.put_async(key, data, TTL)
 
 				return data
 

@@ -71,14 +71,12 @@ class TestAerospikeCache(CachingTestClass) :
 	def test_AerospikeCache_IncorrectType(self) :
 
 		# arrange
+		# we gotta inject a value with an incorrect return type
+		TestAerospikeCache.client.put(('kheina', 'test', 'value'), { 'data': 1 })
 		TestAerospikeCache.client.clear()
 		TestAerospikeCache.it = 0
-		KVS: KeyValueStore = KeyValueStore('kheina', 'test')
 
-		# we gotta inject a value with an incorrect return type
-		KVS.put('value', 1)
-
-		@AerospikeCache('kheina', 'test', '{v}', _kvs=KVS)
+		@AerospikeCache('kheina', 'test', '{v}', local_TTL=0)
 		def cache_test(v) -> str :
 			TestAerospikeCache.it += 1
 			return v
@@ -88,7 +86,9 @@ class TestAerospikeCache(CachingTestClass) :
 
 		# assert
 		assert 1 == TestAerospikeCache.it
-		assert 'value' == KVS.get('value')
+		assert 1 == len(TestAerospikeCache.client.calls['put'])
+		assert 1 == len(TestAerospikeCache.client.calls['get'])
+		assert { 'data': 'value' } == TestAerospikeCache.client.get(('kheina', 'test', 'value'))[2]
 
 
 @pytest.mark.asyncio
@@ -142,17 +142,16 @@ class TestAerospikeCacheAsync(CachingTestClass) :
 		assert 3 == len(TestAerospikeCache.client.calls['put'])
 		assert 3 == len(TestAerospikeCache.client.calls['get'])  # initial set runs get + aerospike retrieval
 
+
 	async def test_async_AerospikeCache_IncorrectType(self) :
 
 		# arrange
+		# we gotta inject a value with an incorrect return type
+		TestAerospikeCache.client.put(('kheina', 'test', 'value'), { 'data': 1 })
 		TestAerospikeCache.client.clear()
 		TestAerospikeCache.it = 0
-		KVS: KeyValueStore = KeyValueStore('kheina', 'test')
 
-		# we gotta inject a value with an incorrect return type
-		KVS.put('value', 1)
-
-		@AerospikeCache('kheina', 'test', '{v}', _kvs=KVS)
+		@AerospikeCache('kheina', 'test', '{v}', local_TTL=0)
 		async def cache_test(v) -> str :
 			TestAerospikeCache.it += 1
 			return v
@@ -162,7 +161,9 @@ class TestAerospikeCacheAsync(CachingTestClass) :
 
 		# assert
 		assert 1 == TestAerospikeCache.it
-		assert 'value' == KVS.get('value')
+		assert 1 == len(TestAerospikeCache.client.calls['put'])
+		assert 1 == len(TestAerospikeCache.client.calls['get'])
+		assert { 'data': 'value' } == TestAerospikeCache.client.get(('kheina', 'test', 'value'))[2]
 
 
 class TestKeyValueStore :
