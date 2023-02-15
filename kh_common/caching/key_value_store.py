@@ -1,11 +1,10 @@
-from asyncio import Lock
+from asyncio import Lock, get_event_loop
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy
+from functools import partial, wraps
 from time import time
 from typing import Any, Dict, Iterable, List, Set, Tuple
-from concurrent.futures import ThreadPoolExecutor
-from asyncio import get_event_loop
-from functools import partial, wraps
 
 import aerospike
 
@@ -69,8 +68,10 @@ class KeyValueStore :
 	@wraps(get)
 	async def get_async(self: 'KeyValueStore', *args, **kwargs) :
 		async with self._get_lock :
-			with ThreadPoolExecutor() as threadpool :
-				return await get_event_loop().run_in_executor(threadpool, partial(self.get, *args, **kwargs))
+			__clear_cache__(self._cache, time)
+
+		with ThreadPoolExecutor() as threadpool :
+			return await get_event_loop().run_in_executor(threadpool, partial(self._get, *args, **kwargs))
 
 
 	def _get_many(self: 'KeyValueStore', keys: Iterable[str]) :
