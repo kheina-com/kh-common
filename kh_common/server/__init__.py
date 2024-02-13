@@ -5,7 +5,7 @@ from fastapi.responses import Response
 from starlette.middleware.exceptions import ExceptionMiddleware
 
 from kh_common.config.constants import environment
-from kh_common.exceptions import jsonErrorHandler
+from kh_common.exceptions.handler import jsonErrorHandler
 from kh_common.exceptions.base_error import BaseError
 
 

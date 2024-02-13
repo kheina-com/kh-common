@@ -6,7 +6,7 @@ from typing import Any, Callable, Dict, List, Optional, Tuple, Type, Union
 
 from psycopg2 import Binary
 from psycopg2 import connect as dbConnect
-from psycopg2.errors import ConnectionException
+from psycopg2.errors import ConnectionException, InterfaceError
 from psycopg2.extensions import connection as Connection
 from psycopg2.extensions import cursor as Cursor
 
@@ -80,7 +80,7 @@ class SqlInterface :
 			elif fetch_all :
 				return cur.fetchall()
 
-		except ConnectionException as e :
+		except (ConnectionException, InterfaceError) as e :
 			if maxretry > 1 :
 				self.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=e)
 				self._sql_connect()
@@ -126,12 +126,15 @@ class Transaction :
 
 
 	def __enter__(self: 'Transaction') :
+		if SqlInterface._conn.closed :
+			self._sql_connect()
+
 		for _ in range(2) :
 			try :
 				self.cur: Cursor = SqlInterface._conn.cursor()
 				return self
 
-			except ConnectionException as e :
+			except (ConnectionException, InterfaceError) as e :
 				self._sql.logger.warning('connection to db was severed, attempting to reconnect.', exc_info=e)
 				self._sql._sql_connect()
 

@@ -4,7 +4,7 @@ from starlette.types import Scope as request_scope
 from starlette.types import Send
 
 from kh_common.auth import AuthToken, InvalidToken, KhUser, Scope, retrieveAuthToken
-from kh_common.exceptions import jsonErrorHandler
+from kh_common.exceptions.handler import jsonErrorHandler
 from kh_common.exceptions.http_error import BadRequest, HttpError, Unauthorized
 
 
