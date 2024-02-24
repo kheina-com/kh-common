@@ -5,11 +5,17 @@ from functools import wraps
 from inspect import FullArgSpec, getfullargspec, iscoroutinefunction
 from math import sqrt
 from time import time
-from typing import Any, Callable, Dict, Hashable, Iterable, Optional, Set, Tuple
+from typing import Any, Callable, Dict, Final, Hashable, Iterable, Optional, Set, Tuple
 
 from kh_common.utilities import __clear_cache__
 
 from .key_value_store import KeyValueStore
+
+
+class Undefined :
+	pass
+
+Undefined: Final[type[Undefined]] = Undefined
 
 
 class CalcDict(dict) :
@@ -101,10 +107,11 @@ def ArgsCache(TTL_seconds:float=0, TTL_minutes:float=0, TTL_hours:float=0, TTL_d
 				async with decorator.lock :
 					__clear_cache__(decorator.cache, time)
 
-				if key in decorator.cache :
-					return copy(decorator.cache[key][1])
+				data: Any = decorator.cache.get(key, Undefined)
+				if data is not Undefined :
+					return copy(data[1])
 
-				data: Any = await func(*key, **kwargs)
+				data = await func(*key, **kwargs)
 				decorator.cache[key] = (time() + TTL, data)
 
 				return copy(data)

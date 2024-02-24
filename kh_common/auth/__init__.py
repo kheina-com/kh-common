@@ -7,6 +7,7 @@ from uuid import UUID
 import aerospike
 import ujson as json
 from aiohttp import request as async_request
+from avrofastapi.serialization import AvroDeserializer
 from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 from cryptography.hazmat.primitives.serialization import load_der_public_key
@@ -18,12 +19,13 @@ from kh_common.caching.key_value_store import KeyValueStore
 from kh_common.config.constants import auth_host
 from kh_common.datetime import datetime
 from kh_common.exceptions.http_error import Forbidden, Unauthorized
-from kh_common.models.auth import AuthState, AuthToken, KhUser, PublicKeyResponse, Scope, TokenMetadata
+from kh_common.models.auth import AuthState, AuthToken, KhUser, PublicKeyResponse, Scope, TokenMetadata, TokenV2Payload
 from kh_common.utilities import int_from_bytes
 
 
 ua_strip = re_compile(r'\/\d+(?:\.\d+)*')
 KVS: KeyValueStore = KeyValueStore('kheina', 'token')
+token_v2_deserializer: AvroDeserializer = AvroDeserializer(TokenV2Payload)
 
 
 class InvalidToken(ValueError) :
@@ -119,7 +121,7 @@ async def v1token(token: str) -> AuthToken :
 		assert token_info.key_id == key_id, 'Token encryption key mismatch.'
 
 	except aerospike.exception.RecordNotFound :
-		raise
+		raise Unauthorized('Token could not be found.')
 
 	except AssertionError as e :
 		raise Unauthorized(str(e))
@@ -131,6 +133,11 @@ async def v1token(token: str) -> AuthToken :
 		data=json.loads(data),
 		token_string=token,
 	)
+
+
+async def v2token(token: str) -> AuthToken :
+	# the general structure is the same as v1: version.payload.signature except that payload is avro encoded
+	pass
 
 
 tokenVersionSwitch: Dict[bytes, Callable] = {

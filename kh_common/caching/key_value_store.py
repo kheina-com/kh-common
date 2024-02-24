@@ -1,16 +1,16 @@
-from asyncio import Lock
+from asyncio import Lock, get_event_loop
 from collections import OrderedDict
+from concurrent.futures import ThreadPoolExecutor
 from copy import copy
+from functools import partial, wraps
 from time import time
 from typing import Any, Dict, Iterable, List, Set, Tuple
-from concurrent.futures import ThreadPoolExecutor
-from asyncio import get_event_loop
-from functools import partial, wraps
 
 import aerospike
 
-from kh_common.config.constants import environment
-from kh_common.utilities import __clear_cache__
+from ..caching import Undefined
+from ..config.constants import environment
+from ..utilities import __clear_cache__
 
 
 class KeyValueStore :
@@ -27,8 +27,7 @@ class KeyValueStore :
 		self._local_TTL: float = local_TTL
 		self._namespace: str = namespace
 		self._set: str = set
-		self._get_lock: Lock = Lock()
-		self._get_many_lock: Lock = Lock()
+		self._lock: Lock = Lock()
 
 
 	def put(self: 'KeyValueStore', key: str, data: Any, TTL: int = 0) :
@@ -52,8 +51,9 @@ class KeyValueStore :
 
 
 	def _get(self: 'KeyValueStore', key: str) :
-		if key in self._cache :
-			return copy(self._cache[key][1])
+		data: Any = self._cache.get(key, Undefined)
+		if data is not Undefined :
+			return copy(data[1])
 
 		_, _, data = KeyValueStore._client.get((self._namespace, self._set, key))
 		self._cache[key] = (time() + self._local_TTL, data['data'])
@@ -68,7 +68,7 @@ class KeyValueStore :
 
 	@wraps(get)
 	async def get_async(self: 'KeyValueStore', *args, **kwargs) :
-		async with self._get_lock :
+		async with self._lock :
 			with ThreadPoolExecutor() as threadpool :
 				return await get_event_loop().run_in_executor(threadpool, partial(self.get, *args, **kwargs))
 
@@ -104,7 +104,7 @@ class KeyValueStore :
 
 		# only local cache is required
 		return {
-			key: self._cache[key][1]
+			key: copy(self._cache[key][1])
 			for key in keys
 		}
 
@@ -116,7 +116,7 @@ class KeyValueStore :
 
 	@wraps(get_many)
 	async def get_many_async(self: 'KeyValueStore', *args, **kwargs) :
-		async with self._get_many_lock :
+		async with self._lock :
 			with ThreadPoolExecutor() as threadpool :
 				return await get_event_loop().run_in_executor(threadpool, partial(self.get_many, *args, **kwargs))
 
@@ -135,8 +135,9 @@ class KeyValueStore :
 
 	@wraps(remove)
 	async def remove_async(self: 'KeyValueStore', *args, **kwargs) :
-		with ThreadPoolExecutor() as threadpool :
-			return await get_event_loop().run_in_executor(threadpool, partial(self.remove, *args, **kwargs))
+		async with self._lock :
+			with ThreadPoolExecutor() as threadpool :
+				return await get_event_loop().run_in_executor(threadpool, partial(self.remove, *args, **kwargs))
 
 
 	def exists(self: 'KeyValueStore', key: str) -> bool :

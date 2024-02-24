@@ -1,9 +1,13 @@
 from datetime import datetime
 from enum import Enum, IntEnum, unique
-from typing import Any, Dict, NamedTuple, Optional, Set
+from typing import Any, Dict, List, NamedTuple, Optional, Set, Type, Union
 from uuid import UUID
 
-from pydantic import BaseModel
+from pydantic import BaseModel, conbytes
+
+
+# from avrofastapi.models import RefId
+# from avrofastapi.schema import AvroException, AvroSchemaGenerator, _validate_avro_name, _validate_avro_namespace, get_name
 
 
 class AuthToken(NamedTuple) :
@@ -15,7 +19,7 @@ class AuthToken(NamedTuple) :
 
 
 @unique
-class Scope(Enum) :
+class Scope(IntEnum) :
 	default: int = 0
 	bot: int = 1
 	user: int = 2
@@ -23,7 +27,7 @@ class Scope(Enum) :
 	admin: int = 4
 	internal: int = 5
 
-	def all_included_scopes(self) :
+	def all_included_scopes(self) -> List['Scope'] :
 		return [v for v in Scope.__members__.values() if Scope.user.value <= v.value <= self.value] or [self]
 
 
@@ -86,3 +90,46 @@ class LoginResponse(BaseModel) :
 	name: Optional[str]
 	mod: bool
 	token: TokenResponse
+
+
+# class TokenV2Payload(BaseModel) :
+# 	algorithm: AuthAlgorithm
+# 	key_id: int
+# 	user_id: int
+# 	expires: datetime
+# 	guid: RefId
+# 	scope: Set[Scope]
+# 	fingerprint: conbytes(min_length=40, max_length=40)
+# 	ip: bytes
+
+
+# class SetEnabledAvroSchemaGenerator(AvroSchemaGenerator) :
+
+# 	def __init__(self, *args, **kwargs) :
+# 		super().__init__(*args, **kwargs, conversions={
+# 			set: AvroSchemaGenerator._convert_array,
+# 			IntEnum: SetEnabledAvroSchemaGenerator._convert_int_enum,
+# 		})
+
+
+# 	def _convert_int_enum(self: 'AvroSchemaGenerator', model: Type[IntEnum]) -> Dict[str, Union[str, List[str]]] :
+# 		name: str = get_name(model)
+# 		_validate_avro_name(name)
+
+# 		values: Optional[List[str]] = list(map(lambda x : x.name, model.__members__.values()))
+
+# 		if len(values) != len(set(values)) :
+# 			raise AvroException('enums must contain all unique names to be avro encoded')
+
+# 		schema: Dict[str, Union[str, List[str]]] = {
+# 			'type': 'enum',
+# 			'name': name,
+# 			'symbols': values,
+# 		}
+
+# 		self_namespace: Optional[str] = getattr(model, '__namespace__', None)
+# 		if self_namespace :
+# 			_validate_avro_namespace(self_namespace, self.namespace)
+# 			schema['namespace'] = self_namespace
+
+# 		return schema

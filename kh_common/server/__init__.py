@@ -91,6 +91,7 @@ def ServerApp(
 		from starlette.middleware.trustedhost import TrustedHostMiddleware
 		app.add_middleware(TrustedHostMiddleware, allowed_hosts=set(allowed_hosts))
 
+	# having auth after cors causes 401 errors during cors requests when using auth_required
 	if auth :
 		from kh_common.server.middleware.auth import KhAuthMiddleware
 		app.add_middleware(KhAuthMiddleware, required=auth_required)
