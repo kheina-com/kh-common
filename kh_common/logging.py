@@ -1,4 +1,5 @@
 import logging
+from logging import Logger
 from traceback import format_tb
 from types import ModuleType
 from typing import Any, Callable, Dict, List, Tuple, Union
@@ -82,9 +83,6 @@ class LogHandler(logging.Handler) :
 				# we really, really do not want to fail-crash here.
 				# normally we would log this error and move on, but, well.
 				pass
-
-
-Logger: type = logging.Logger
 
 
 def getLogger(name: Union[str, None]=None, level:int=logging.INFO, filter:Callable=lambda x : x, disable:List[str]=[], **kwargs:Dict[str, Any]) -> Logger :

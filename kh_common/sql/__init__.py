@@ -127,7 +127,7 @@ class Transaction :
 
 	def __enter__(self: 'Transaction') :
 		if SqlInterface._conn.closed :
-			self._sql_connect()
+			self._sql._sql_connect()
 
 		for _ in range(2) :
 			try :
